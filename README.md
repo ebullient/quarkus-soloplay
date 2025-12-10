@@ -75,3 +75,11 @@ Easily start your REST Web Services
 Create your web page using Quarkus REST and Qute
 
 [Related guide section...](https://quarkus.io/guides/qute#type-safe-templates)
+
+## Contributing
+
+This project integrates LangChain4j with Ollama for AI-powered campaign setting management. To contribute:
+
+- See [CONTRIBUTING.md](CONTRIBUTING.md) for architecture, build commands, and development setup
+- Requires Ollama and Neo4j running locally for testing
+- AI-assisted contributions welcome - see guidelines in CONTRIBUTING.md

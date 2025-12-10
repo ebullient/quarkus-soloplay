@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>D&D Campaign Assistant</title>
+    <title>Campaign Lore Assistant</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="chat.css">
 </head>
 <body>
     <header>
-        <h1>D&D Campaign Assistant</h1>
+        <h1>Campaign Lore Assistant</h1>
     </header>
 
     <nav>
-        <a href="/" class="active">Chat Interface</a>
-        <a href="/lore.html">Lore Questions</a>
+        <a href="/">Chat Interface</a>
+        <a href="/lore.html" class="active">Lore Questions</a>
         <a href="/ingest.html">Ingest Documents</a>
     </nav>
 
@@ -24,7 +24,7 @@
         <input
             type="text"
             id="question-input"
-            placeholder="Ask your campaign question..."
+            placeholder="Ask about campaign lore..."
             autocomplete="off"
         >
         <button id="send-btn">Send</button>
@@ -53,7 +53,7 @@
             const loadingDiv = document.createElement('div');
             loadingDiv.className = 'loading';
             loadingDiv.id = 'loading';
-            loadingDiv.textContent = 'Thinking...';
+            loadingDiv.textContent = 'Searching campaign lore...';
             chatContainer.appendChild(loadingDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
@@ -75,12 +75,8 @@
             addLoadingIndicator();
 
             try {
-                const response = await fetch('/campaign/chat', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'text/plain'
-                    },
-                    body: question
+                const response = await fetch('/campaign/lore?question=' + encodeURIComponent(question), {
+                    method: 'GET'
                 });
 
                 removeLoadingIndicator();
@@ -89,7 +85,7 @@
                     const answer = await response.text();
                     addMessage(answer, false);
                 } else {
-                    addMessage('Error: Could not get response from the DM.', false);
+                    addMessage('Error: Could not retrieve lore information.', false);
                 }
             } catch (error) {
                 removeLoadingIndicator();

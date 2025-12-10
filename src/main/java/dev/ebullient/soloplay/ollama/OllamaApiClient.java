@@ -1,7 +1,10 @@
 package dev.ebullient.soloplay.ollama;
 
+import java.util.List;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.Response;
 
@@ -23,4 +26,15 @@ public interface OllamaApiClient {
     @GET
     @Path("/api/tags")
     Response listTags();
+
+    /**
+     * Lists the tags available from the Ollama API.
+     * @return
+     */
+    @POST
+    @Path("/api/embeddings")
+    OllamaEmbeddingResponse generateEmbedding(OllamaEmbeddingRequest request);
+
+    record OllamaEmbeddingRequest(String model, String prompt) {}
+    record OllamaEmbeddingResponse(List<Double> embedding) {}
 }

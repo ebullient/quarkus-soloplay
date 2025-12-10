@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campaign Setting Ingestion</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="ingest.css">
+</head>
+<body>
+    <header>
+        <h1>Campaign Setting Ingestion</h1>
+    </header>
+
+    <nav>
+        <a href="/">Chat Interface</a>
+        <a href="/lore.html">Lore Questions</a>
+        <a href="/ingest.html" class="active">Ingest Documents</a>
+    </nav>
+
+    <div id="main-container">
+        <div id="ingest-form-container">
+            <form id="ingest-form">
+                <div class="form-group">
+                    <label for="setting-name">Setting Name</label>
+                    <input
+                        type="text"
+                        id="setting-name"
+                        name="settingName"
+                        placeholder="e.g., Forgotten Realms, Eberron, Custom Campaign"
+                        required
+                    >
+                    <p class="help-text">A name to identify this campaign setting</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="documents">Campaign Documents</label>
+                    <div class="file-input-wrapper">
+                        <input
+                            type="file"
+                            id="documents"
+                            name="documents"
+                            multiple
+                            accept=".md,.txt,.markdown"
+                        >
+                        <label for="documents" class="file-input-label">
+                            Choose Files (Markdown, Text)
+                        </label>
+                    </div>
+                    <div id="file-list"></div>
+                    <p class="help-text">Select one or more markdown or text files containing campaign lore</p>
+                </div>
+
+                <button type="submit" id="upload-btn">Upload Documents</button>
+
+                <div id="status-message"></div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('ingest-form');
+        const settingNameInput = document.getElementById('setting-name');
+        const documentsInput = document.getElementById('documents');
+        const fileList = document.getElementById('file-list');
+        const uploadBtn = document.getElementById('upload-btn');
+        const statusMessage = document.getElementById('status-message');
+
+        // Update file list display
+        documentsInput.addEventListener('change', function() {
+            fileList.innerHTML = '';
+            if (this.files.length === 0) {
+                fileList.innerHTML = '<p class="help-text">No files selected</p>';
+            } else {
+                Array.from(this.files).forEach(file => {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'file-item';
+                    fileItem.textContent = file.name;
+                    fileList.appendChild(fileItem);
+                });
+            }
+        });
+
+        // Handle form submission
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const settingName = settingNameInput.value.trim();
+            const files = documentsInput.files;
+
+            if (!settingName) {
+                showStatus('Please enter a setting name', 'error');
+                return;
+            }
+
+            if (files.length === 0) {
+                showStatus('Please select at least one file', 'error');
+                return;
+            }
+
+            // Create FormData
+            const formData = new FormData();
+            formData.append('settingName', settingName);
+
+            // Append all files
+            Array.from(files).forEach(file => {
+                formData.append('documents', file);
+            });
+
+            // Disable button and show uploading status
+            uploadBtn.disabled = true;
+            showStatus('Uploading and processing documents...', 'info');
+
+            try {
+                const response = await fetch('/campaign/load-setting', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    showStatus(`Successfully uploaded ${files.length} document(s) to "${settingName}"`, 'success');
+
+                    // Reset form after 2 seconds
+                    setTimeout(() => {
+                        form.reset();
+                        fileList.innerHTML = '<p class="help-text">No files selected</p>';
+                    }, 2000);
+                } else {
+                    const errorText = await response.text();
+                    showStatus(`Error: ${errorText || 'Failed to upload documents'}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+            } finally {
+                uploadBtn.disabled = false;
+            }
+        });
+
+        function showStatus(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.className = type;
+        }
+
+        // Initialize file list
+        fileList.innerHTML = '<p class="help-text">No files selected</p>';
+    </script>
+</body>
+</html>

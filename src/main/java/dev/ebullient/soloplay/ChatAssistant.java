@@ -12,7 +12,7 @@ import io.quarkiverse.langchain4j.RegisterAiService;
  */
 @RegisterAiService
 @ApplicationScoped
-public interface ChatService {
+public interface ChatAssistant {
 
     /**
      * Generates a chat response based on the user's message.

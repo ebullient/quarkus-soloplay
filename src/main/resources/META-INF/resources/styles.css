@@ -1,0 +1,104 @@
+/* Campaign Assistant - Shared Styles */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Georgia', serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: #e4e4e4;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    background: #0f0f1e;
+    padding: 1rem;
+    text-align: center;
+    border-bottom: 2px solid #d4af37;
+}
+
+h1 {
+    color: #d4af37;
+    font-size: 1.8rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+nav {
+    background: #0f0f1e;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid #d4af37;
+    text-align: center;
+}
+
+nav a {
+    color: #d4af37;
+    text-decoration: none;
+    margin: 0 1rem;
+    font-size: 0.9rem;
+    transition: color 0.3s;
+}
+
+nav a:hover {
+    color: #f4d03f;
+}
+
+input[type="text"] {
+    padding: 0.75rem;
+    background: #1a1a2e;
+    border: 1px solid #d4af37;
+    border-radius: 4px;
+    color: #e4e4e4;
+    font-size: 1rem;
+    font-family: 'Georgia', serif;
+}
+
+input[type="text"]:focus {
+    outline: none;
+    border-color: #f4d03f;
+    box-shadow: 0 0 5px rgba(212, 175, 55, 0.5);
+}
+
+button {
+    padding: 0.75rem 1.5rem;
+    background: #d4af37;
+    border: none;
+    border-radius: 4px;
+    color: #0f0f1e;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+button:hover {
+    background: #f4d03f;
+}
+
+button:disabled {
+    background: #666;
+    cursor: not-allowed;
+}
+
+.help-text {
+    font-size: 0.85rem;
+    color: #999;
+    margin-top: 0.25rem;
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0f0f1e;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #d4af37;
+    border-radius: 5px;
+}
