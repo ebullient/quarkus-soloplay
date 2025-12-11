@@ -21,6 +21,7 @@ public interface OllamaApiClient {
 
     /**
      * Lists the tags available from the Ollama API.
+     *
      * @return
      */
     @GET
@@ -29,12 +30,16 @@ public interface OllamaApiClient {
 
     /**
      * Lists the tags available from the Ollama API.
+     *
      * @return
      */
     @POST
     @Path("/api/embeddings")
     OllamaEmbeddingResponse generateEmbedding(OllamaEmbeddingRequest request);
 
-    record OllamaEmbeddingRequest(String model, String prompt) {}
-    record OllamaEmbeddingResponse(List<Double> embedding) {}
+    record OllamaEmbeddingRequest(String model, String prompt) {
+    }
+
+    record OllamaEmbeddingResponse(List<Double> embedding) {
+    }
 }

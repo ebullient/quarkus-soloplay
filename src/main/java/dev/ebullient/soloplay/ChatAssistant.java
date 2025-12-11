@@ -16,6 +16,7 @@ public interface ChatAssistant {
 
     /**
      * Generates a chat response based on the user's message.
+     *
      * @param userMessage
      * @return
      */

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Assistant</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="chat.css">
+    <script src="/chat-interface.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Chat Assistant</h1>
+    </header>
+
+    <nav>
+        <a href="/chat" class="active">Chat Interface</a>
+        <a href="/lore">Lore Questions</a>
+        <a href="/ingest">Ingest Documents</a>
+        <a href="/inspect">My Game</a>
+    </nav>
+
+    <div id="chat-container"></div>
+
+    <div id="input-container">
+        <input
+            type="text"
+            id="question-input"
+            placeholder="Ask your campaign question..."
+            autocomplete="off"
+        >
+        <button id="send-btn">Send</button>
+    </div>
+
+    <script>
+        new ChatInterface({
+            apiEndpoint: '/campaign/chat',
+            loadingMessage: 'Thinking...',
+            errorMessage: 'Error: Could not get response from the DM.',
+            method: 'POST'
+        });
+    </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-package dev.ebullient.soloplay;
+package dev.ebullient.soloplay.health;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;

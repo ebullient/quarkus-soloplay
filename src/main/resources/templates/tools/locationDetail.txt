@@ -1,0 +1,7 @@
+Location: {location.name} ({location.type})
+ID: {location.id}
+{#if location.summary}Summary: {location.summary}
+{/if}{#if location.description}Description: {location.description}
+{/if}Status: {location.status}
+{#if location.parentLocation}Part of: {location.parentLocation.name}
+{/if}

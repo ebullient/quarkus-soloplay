@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campaign Relationships - {campaignId}</title>
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/inspector.css">
+</head>
+<body>
+    <header>
+        <h1>Campaign Relationships</h1>
+        <p>Campaign: {campaignId}</p>
+    </header>
+
+    <nav>
+        <a href="/chat">Chat Interface</a>
+        <a href="/lore">Lore Questions</a>
+        <a href="/ingest">Ingest Documents</a>
+        <a href="/inspect" class="active">My Game</a>
+    </nav>
+
+    <main>
+        <div class="breadcrumb">
+            <a href="/inspect?campaignId={campaignId}">Inspect</a> &gt; 
+            <span>Relationships</span>
+        </div>
+        
+        <h2>Relationship Network</h2>
+        
+        <div class="actions">
+            <a href="/inspect/ai/campaign-network?campaignId={campaignId}" class="btn btn-ai">View AI Output</a>
+        </div>
+        
+        {#if relationships.isEmpty()}
+            <div class="empty-state">
+                <p>No relationships found in this campaign.</p>
+            </div>
+        {#else}
+            <div class="relationship-network">
+                {#for relationship in relationships}
+                    <div class="relationship-card">
+                        <div class="relationship-connection">
+                            <div class="character from">
+                                <strong>{relationship.from.name}</strong>
+                                <span class="character-type">{relationship.from.type}</span>
+                            </div>
+                            <div class="relationship-details">
+                                <span class="relationship-type">{relationship.type}</span>
+                                <div class="relationship-strength">
+                                    Strength: {relationship.strength}
+                                </div>
+                                {#if relationship.description}
+                                    <p class="relationship-description">{relationship.description}</p>
+                                {/if}
+                            </div>
+                            <div class="character to">
+                                <strong>{relationship.to.name}</strong>
+                                <span class="character-type">{relationship.to.type}</span>
+                            </div>
+                        </div>
+                        <div class="relationship-meta">
+                            Since: {relationship.since}
+                        </div>
+                    </div>
+                {/for}
+            </div>
+        {/if}
+    </main>
+</body>
+</html>

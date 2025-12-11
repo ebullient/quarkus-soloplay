@@ -36,5 +36,5 @@ public class SettingRetriever implements Supplier<RetrievalAugmentor> {
     public RetrievalAugmentor get() {
         return augmentor;
     }
-    
+
 }

@@ -1,0 +1,5 @@
+Locations in campaign:
+
+{#for location in locations}
+{location.name} ({location.type}){#if location.summary} - {location.summary}{/if} - ID: {location.id}
+{/for}

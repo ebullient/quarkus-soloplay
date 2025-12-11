@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campaign Lore Assistant</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="chat.css">
+    <script src="/chat-interface.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Campaign Lore Assistant</h1>
+    </header>
+
+    <nav>
+        <a href="/chat">Chat Interface</a>
+        <a href="/lore" class="active">Lore Questions</a>
+        <a href="/ingest">Ingest Documents</a>
+        <a href="/inspect">My Game</a>
+    </nav>
+
+    <div id="chat-container"></div>
+
+    <div id="input-container">
+        <input
+            type="text"
+            id="question-input"
+            placeholder="Ask about campaign lore..."
+            autocomplete="off"
+        >
+        <button id="send-btn">Send</button>
+    </div>
+
+    <script>
+        new ChatInterface({
+            apiEndpoint: '/campaign/lore',
+            loadingMessage: 'Searching campaign lore...',
+            errorMessage: 'Error: Could not retrieve lore information.',
+            method: 'GET'
+        });
+    </script>
+</body>
+</html>

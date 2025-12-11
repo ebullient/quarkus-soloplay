@@ -22,7 +22,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 
 @ApplicationScoped
-public class CampaignService {
+public class IngestService {
     static final String TOOLS_DOC_SEPARATOR = "============\n";
 
     // Regex pattern for YAML frontmatter
@@ -30,8 +30,8 @@ public class CampaignService {
     // ^--- matches opening ---
     // (.*?) captures content (non-greedy)
     // \n--- matches closing ---
-    static final java.util.regex.Pattern YAML_FRONTMATTER_PATTERN =
-            java.util.regex.Pattern.compile("(?s)^---\\s*\\n(.*?)\\n---\\s*\\n");
+    static final java.util.regex.Pattern YAML_FRONTMATTER_PATTERN = java.util.regex.Pattern
+            .compile("(?s)^---\\s*\\n(.*?)\\n---\\s*\\n");
 
     @ConfigProperty(name = "campaign.chunk.size", defaultValue = "500")
     int chunkSize;

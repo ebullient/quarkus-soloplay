@@ -1,0 +1,5 @@
+Characters in campaign:
+
+{#for character in characters}
+{character.name} ({character.type}){#if character.summary} - {character.summary}{/if} - ID: {character.id}
+{/for}

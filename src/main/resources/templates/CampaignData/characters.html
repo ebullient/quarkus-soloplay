@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Characters - My Game</title>
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/characters.css">
+</head>
+<body>
+    <header>
+        <h1>Campaign Characters</h1>
+        <p>Campaign: {campaignId}</p>
+    </header>
+
+    <nav>
+        <a href="/chat">Chat Interface</a>
+        <a href="/lore">Lore Questions</a>
+        <a href="/ingest">Ingest Documents</a>
+        <a href="/inspect" class="active">My Game</a>
+    </nav>
+
+    <main>
+        <div class="characters-header">
+            <h2>Characters ({characters.size})</h2>
+            <div class="actions">
+                <a href="/inspect?campaignId={campaignId}" class="btn btn-secondary">← Back to Dashboard</a>
+            </div>
+        </div>
+
+        {#if characters.empty}
+        <div class="empty-state">
+            <p>No characters found in this campaign.</p>
+            <p>Characters are automatically created by AI agents during gameplay.</p>
+        </div>
+        {#else}
+        <div class="characters-grid">
+            {#for character in characters}
+            <div class="character-card">
+                <div class="character-header">
+                    <h3><a href="/inspect/characters/{character.id}">{character.name}</a></h3>
+                    <span class="character-type">{character.type}</span>
+                </div>
+                
+                {#if character.summary}
+                <p class="character-summary">{character.summary}</p>
+                {/if}
+                
+                <div class="character-meta">
+                    {#if character.createdAt}
+                    <span class="created-at">Created: {character.createdAt.format('MMM dd, yyyy')}</span>
+                    {/if}
+                </div>
+            </div>
+            {/for}
+        </div>
+        {/if}
+    </main>
+</body>
+</html>

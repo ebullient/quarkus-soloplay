@@ -1,0 +1,8 @@
+Character: {character.name} ({character.type})
+ID: {character.id}
+{#if character.summary}Summary: {character.summary}
+{/if}{#if character.description}Description: {character.description}
+{/if}{#if character.characterClass}Class: {character.characterClass}
+{/if}{#if character.level}Level: {character.level}
+{/if}{#if character.alignment}Alignment: {character.alignment}
+{/if}Status: {character.status}

@@ -10,12 +10,12 @@ import org.commonmark.renderer.html.HtmlRenderer;
  * Service that augments AI responses by converting markdown to HTML.
  */
 @ApplicationScoped
-public class ResponseAugmenter {
+public class MarkdownAugmenter {
 
     private final Parser parser;
     private final HtmlRenderer renderer;
 
-    public ResponseAugmenter() {
+    public MarkdownAugmenter() {
         this.parser = Parser.builder().build();
         this.renderer = HtmlRenderer.builder().build();
     }
@@ -30,7 +30,6 @@ public class ResponseAugmenter {
         if (markdownText == null || markdownText.isBlank()) {
             return "";
         }
-
         Node document = parser.parse(markdownText);
         return renderer.render(document);
     }

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location Connections - {location.name}</title>
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/inspector.css">
+</head>
+<body>
+    <header>
+        <h1>Location Connections</h1>
+        <p>Campaign: {location.campaignId}</p>
+    </header>
+
+    <nav>
+        <a href="/chat">Chat Interface</a>
+        <a href="/lore">Lore Questions</a>
+        <a href="/ingest">Ingest Documents</a>
+        <a href="/inspect" class="active">My Game</a>
+    </nav>
+
+    <main>
+        <div class="breadcrumb">
+            <a href="/inspect?campaignId={location.campaignId}">Inspect</a> &gt; 
+            <a href="/inspect/locations?campaignId={location.campaignId}">Locations</a> &gt; 
+            <a href="/inspect/locations/{location.id}">{location.name}</a> &gt;
+            <span>Connections</span>
+        </div>
+        
+        <h2>{location.name} - Character Connections</h2>
+        
+        <div class="location-summary">
+            <p><strong>Type:</strong> {location.type}</p>
+            {#if location.summary}
+                <p><strong>Summary:</strong> {location.summary}</p>
+            {/if}
+        </div>
+        
+        <div class="actions">
+            <a href="/inspect/ai/location-connections/{location.id}" class="btn btn-ai">View AI Output</a>
+        </div>
+        
+        {#if connectedCharacters.isEmpty()}
+            <div class="empty-state">
+                <p>No characters have been recorded at {location.name}.</p>
+            </div>
+        {#else}
+            <div class="connected-characters">
+                <h3>Characters who have been at this location:</h3>
+                <div class="character-list">
+                    {#for character in connectedCharacters}
+                        <div class="character-card">
+                            <div class="character-info">
+                                <a href="/inspect/characters/{character.id}">
+                                    <strong>{character.name}</strong>
+                                </a>
+                                <span class="character-type">({character.type})</span>
+                                {#if character.summary}
+                                    <p class="character-summary">{character.summary}</p>
+                                {/if}
+                            </div>
+                            <div class="character-actions">
+                                <a href="/inspect/characters/{character.id}/relationships" class="btn btn-sm">
+                                    View Relationships
+                                </a>
+                            </div>
+                        </div>
+                    {/for}
+                </div>
+            </div>
+        {/if}
+        
+        <div class="location-actions">
+            <h3>Analysis Options</h3>
+            {#if connectedCharacters.size() > 1}
+                <p>Compare connections between characters at this location:</p>
+                <div class="comparison-grid">
+                    {#for char1 in connectedCharacters}
+                        {#for char2 in connectedCharacters}
+                            {#if char1.id != char2.id && char1.name < char2.name}
+                                <a href="/inspect/shared-history?char1Id={char1.id}&char2Id={char2.id}" 
+                                   class="btn btn-sm btn-outline">
+                                    {char1.name} ↔ {char2.name}
+                                </a>
+                            {/if}
+                        {/for}
+                    {/for}
+                </div>
+            {/if}
+        </div>
+    </main>
+</body>
+</html>

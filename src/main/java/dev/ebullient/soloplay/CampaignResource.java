@@ -1,6 +1,5 @@
 package dev.ebullient.soloplay;
 
-import java.nio.file.Files;
 import java.util.List;
 
 import jakarta.enterprise.context.ApplicationScoped;
@@ -9,12 +8,12 @@ import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 
-import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.RestQuery;
-import org.jboss.resteasy.reactive.multipart.FileUpload;
+
+import dev.ebullient.soloplay.health.Neo4jHealth;
 
 @ApplicationScoped
 @Path("/campaign")
@@ -27,13 +26,16 @@ public class CampaignResource {
     SettingAssistant settingAssistant;
 
     @Inject
-    CampaignService campaignService;
+    IngestService campaignService;
 
     @Inject
-    ResponseAugmenter prettify;
+    MarkdownAugmenter prettify;
 
     @Inject
     Neo4jHealth neo4jHealth;
+
+    @Inject
+    CampaignRepository campaignRepository;
 
     // 1. Set a basic chat interface though to Ollama
 
@@ -46,45 +48,19 @@ public class CampaignResource {
 
     @POST
     @Path("/chat")
+    @Consumes(MediaType.TEXT_PLAIN)
     public String postChat(String question) {
         String response = chatService.chat(question);
         return prettify.markdownToHtml(response);
     }
 
-    // 2. Set up embeddings for campaign-specific knowledge
-
-    @POST
-    @Path("/load-setting")
-    @Consumes(MediaType.MULTIPART_FORM_DATA)
-    public Response loadSetting(
-            @RestForm String settingName,
-            @RestForm("documents") List<FileUpload> files) {
-
-        // Verify Neo4j connectivity before processing files
-        try {
-            neo4jHealth.neo4jIsAvailable();
-        } catch (Exception e) {
-            return Response.status(Response.Status.SERVICE_UNAVAILABLE)
-                    .entity("Neo4j is not available: " + e.getMessage())
-                    .build();
-        }
-
-        // Process multiple files
-        for (var file : files) {
-            try {
-                String content = Files.readString(file.uploadedFile());
-                campaignService.loadSetting(settingName, file.fileName(), content);
-            } catch (Exception e) {
-                e.printStackTrace();
-                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                        .entity("Error processing file: " + file.fileName())
-                        .build();
-            }
-        }
-        return Response.ok("Setting '" + settingName + "' updated with " + files.size() + " files.").build();
-    }
-
-    // 3. Ask a lore question
+    // 2. Setting
+    //
+    // Set up embeddings for campaign-specific knowledge
+    // Note: Document upload is now handled by the Renarde controller at /load-setting
+    // for proper form handling with CSRF protection and flash messages
+    //
+    // Ask a lore question
 
     @GET
     @Path("/lore")
@@ -95,10 +71,22 @@ public class CampaignResource {
 
     @POST
     @Path("/lore")
+    @Consumes(MediaType.TEXT_PLAIN)
     public String postLore(String question) {
         String response = settingAssistant.lore(question);
         return prettify.markdownToHtml(response);
     }
 
+    // 3. Campaign-Specific Data (Tools, etc.)
+    // More interactions available through Renarde controllers
+    //
+    // Get list of known campaign IDs
+
+    @GET
+    @Path("/list")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<String> getCampaignIds() {
+        return campaignRepository.getCampaignIds();
+    }
 
 }
