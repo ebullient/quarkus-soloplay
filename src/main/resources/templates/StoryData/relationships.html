@@ -43,7 +43,9 @@
                         <div class="relationship-connection">
                             <div class="character from">
                                 <strong>{relationship.from.name}</strong>
-                                <span class="character-type">{relationship.from.type}</span>
+                                {#if relationship.from.tags}
+                                <span class="character-tags">({#each relationship.from.tags}{it}{#if it_hasNext}, {/if}{/each})</span>
+                                {/if}
                             </div>
                             <div class="relationship-details">
                                 <span class="relationship-type">{relationship.type}</span>
@@ -56,7 +58,9 @@
                             </div>
                             <div class="character to">
                                 <strong>{relationship.to.name}</strong>
-                                <span class="character-type">{relationship.to.type}</span>
+                                {#if relationship.to.tags}
+                                <span class="character-tags">({#each relationship.to.tags}{it}{#if it_hasNext}, {/if}{/each})</span>
+                                {/if}
                             </div>
                         </div>
                         <div class="relationship-meta">

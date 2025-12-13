@@ -1,5 +1,5 @@
 Characters in campaign:
 
 {#for character in characters}
-{character.name} ({character.type}){#if character.summary} - {character.summary}{/if} - ID: {character.id}
+{character.name}{#if character.tags} [{#each character.tags}{it}{#if it_hasNext}, {/if}{/each}]{/if}{#if character.summary} - {character.summary}{/if} - ID: {character.id}
 {/for}

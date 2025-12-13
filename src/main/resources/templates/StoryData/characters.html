@@ -39,9 +39,15 @@
             <div class="character-card">
                 <div class="character-header">
                     <h3><a href="/inspect/characters/{character.id}">{character.name}</a></h3>
-                    <span class="character-type">{character.type}</span>
+                    <div class="character-tags">
+                        {#if character.tags}
+                        {#each character.tags}
+                        <span class="tag">{it}</span>
+                        {/each}
+                        {/if}
+                    </div>
                 </div>
-                
+
                 {#if character.summary}
                 <p class="character-summary">{character.summary}</p>
                 {/if}

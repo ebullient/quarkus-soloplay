@@ -33,21 +33,25 @@
                 <a href="/inspect/characters/{char1.id}">
                     <strong>{char1.name}</strong>
                 </a>
-                <span class="character-type">({char1.type})</span>
+                {#if char1.tags}
+                <span class="character-tags">({#each char1.tags}{it}{#if it_hasNext}, {/if}{/each})</span>
+                {/if}
                 {#if char1.summary}
                     <p class="character-summary">{char1.summary}</p>
                 {/if}
             </div>
-            
+
             <div class="connection-indicator">
                 <span class="connection-symbol">⟷</span>
             </div>
-            
+
             <div class="character-info">
                 <a href="/inspect/characters/{char2.id}">
                     <strong>{char2.name}</strong>
                 </a>
-                <span class="character-type">({char2.type})</span>
+                {#if char2.tags}
+                <span class="character-tags">({#each char2.tags}{it}{#if it_hasNext}, {/if}{/each})</span>
+                {/if}
                 {#if char2.summary}
                     <p class="character-summary">{char2.summary}</p>
                 {/if}

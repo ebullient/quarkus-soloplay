@@ -34,7 +34,11 @@
                 <div class="basic-info">
                     <h2>{character.name}</h2>
                     <div class="character-badges">
-                        <span class="badge type-badge">{character.type}</span>
+                        {#if character.tags}
+                        {#each character.tags}
+                        <span class="badge tag-badge">{it}</span>
+                        {/each}
+                        {/if}
                         {#if character.characterClass}
                         <span class="badge class-badge">{character.characterClass}</span>
                         {/if}
@@ -43,9 +47,6 @@
                         {/if}
                         {#if character.alignment}
                         <span class="badge alignment-badge">{character.alignment}</span>
-                        {/if}
-                        {#if character.status}
-                        <span class="badge status-badge">{character.status}</span>
                         {/if}
                     </div>
                 </div>

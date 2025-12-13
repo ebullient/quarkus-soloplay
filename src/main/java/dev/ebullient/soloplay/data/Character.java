@@ -1,6 +1,8 @@
 package dev.ebullient.soloplay.data;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.neo4j.ogm.annotation.GeneratedValue;
 import org.neo4j.ogm.annotation.Id;
@@ -9,6 +11,16 @@ import org.neo4j.ogm.id.UuidStrategy;
 
 /**
  * Represents a PC or NPC in the campaign.
+ * <p>
+ * Characters use a tag-based classification system instead of rigid enums.
+ * Common tags include:
+ * <ul>
+ * <li>Control: "player-controlled", "npc"</li>
+ * <li>Party: "companion", "temporary", "protagonist"</li>
+ * <li>Status: "dead", "missing", "imprisoned", "retired"</li>
+ * <li>Roles: "quest-giver", "merchant", "informant", "villain", "mentor"</li>
+ * <li>Prefixed: "faction:thieves-guild", "profession:blacksmith", "location:tavern"</li>
+ * </ul>
  */
 @NodeEntity("Character")
 public class Character {
@@ -20,26 +32,26 @@ public class Character {
 
     private String storyThreadId;
 
-    private CharacterType type;
+    private List<String> tags;
     private String name;
     private String summary; // Short, stable identifier (e.g., "Aged wizard", "Young warrior")
     private String description; // Full narrative that can evolve over time
     private String characterClass; // e.g., "Fighter", "Wizard"
     private Integer level;
     private String alignment;
-    private CharacterStatus status;
 
     public Character() {
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
-        this.status = CharacterStatus.ACTIVE;
+        this.tags = new ArrayList<>();
     }
 
-    public Character(String storyThreadId, CharacterType type, String name) {
+    public Character(String storyThreadId, String name) {
         this();
         this.storyThreadId = storyThreadId;
-        this.type = type;
         this.name = name;
+        // Default to NPC if no tags specified
+        this.tags.add("npc");
     }
 
     // Getters and setters
@@ -59,12 +71,75 @@ public class Character {
         this.storyThreadId = storyThreadId;
     }
 
-    public CharacterType getType() {
-        return type;
+    public List<String> getTags() {
+        return tags;
     }
 
-    public void setType(CharacterType type) {
-        this.type = type;
+    public void setTags(List<String> tags) {
+        this.tags = tags != null ? tags : new ArrayList<>();
+        this.updatedAt = Instant.now();
+    }
+
+    /**
+     * Add a tag to this character (case-insensitive, normalized to lowercase).
+     */
+    public void addTag(String tag) {
+        if (tag == null || tag.isBlank()) {
+            return;
+        }
+        String normalized = tag.trim().toLowerCase();
+        if (!tags.contains(normalized)) {
+            tags.add(normalized);
+            this.updatedAt = Instant.now();
+        }
+    }
+
+    /**
+     * Remove a tag from this character (case-insensitive).
+     */
+    public void removeTag(String tag) {
+        if (tag == null || tag.isBlank()) {
+            return;
+        }
+        String normalized = tag.trim().toLowerCase();
+        if (tags.remove(normalized)) {
+            this.updatedAt = Instant.now();
+        }
+    }
+
+    /**
+     * Check if this character has a specific tag (case-insensitive).
+     */
+    public boolean hasTag(String tag) {
+        if (tag == null || tag.isBlank()) {
+            return false;
+        }
+        String normalized = tag.trim().toLowerCase();
+        return tags.contains(normalized);
+    }
+
+    /**
+     * Check if this character has any of the provided tags (case-insensitive).
+     */
+    public boolean hasAnyTag(List<String> checkTags) {
+        if (checkTags == null || checkTags.isEmpty()) {
+            return false;
+        }
+        return checkTags.stream()
+                .map(t -> t.trim().toLowerCase())
+                .anyMatch(tags::contains);
+    }
+
+    /**
+     * Check if this character has all of the provided tags (case-insensitive).
+     */
+    public boolean hasAllTags(List<String> checkTags) {
+        if (checkTags == null || checkTags.isEmpty()) {
+            return true;
+        }
+        return checkTags.stream()
+                .map(t -> t.trim().toLowerCase())
+                .allMatch(tags::contains);
     }
 
     public String getName() {
@@ -120,15 +195,6 @@ public class Character {
         this.updatedAt = Instant.now();
     }
 
-    public CharacterStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(CharacterStatus status) {
-        this.status = status;
-        this.updatedAt = Instant.now();
-    }
-
     public Instant getCreatedAt() {
         return createdAt;
     }
@@ -143,19 +209,5 @@ public class Character {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
-    }
-
-    public enum CharacterType {
-        PC, // Player Character
-        NPC, // Non-Player Character
-        SIDEKICK // NPC that travels with party
-    }
-
-    public enum CharacterStatus {
-        ACTIVE,
-        RETIRED,
-        DEAD,
-        MISSING,
-        UNKNOWN
     }
 }

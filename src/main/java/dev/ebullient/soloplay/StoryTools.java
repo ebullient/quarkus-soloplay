@@ -35,27 +35,63 @@ public class StoryTools {
     }
 
     @Tool("""
-            Create a new character (PC, NPC, or SIDEKICK) in the story thread.
+            Create a new character in the story thread with optional tags.
             Summary should be brief (5-10 words) for quick identification.
             Description can be detailed narrative.
+
+            Common tags:
+            - Control: "player-controlled", "npc" (default if no tags specified)
+            - Party: "companion", "temporary", "protagonist"
+            - Roles: "quest-giver", "merchant", "informant", "villain", "mentor"
+            - Status: "dead", "missing", "imprisoned", "retired"
+
+            Tags parameter should be a list like: ["player-controlled", "protagonist"]
             """)
-    public String createCharacter(String storyThreadId, String type, String name, String summary, String description) {
-        Character character = storyRepository.createCharacter(storyThreadId, type, name, summary, description);
-        return "Created character: " + character.getName() + " (ID: " + character.getId() + ")";
+    public String createCharacter(String storyThreadId, String name, String summary, String description,
+            List<String> tags) {
+        Character character = storyRepository.createCharacter(storyThreadId, name, summary, description, tags);
+        String tagInfo = tags != null && !tags.isEmpty() ? " with tags: " + String.join(", ", tags) : "";
+        return "Created character: " + character.getName() + " (ID: " + character.getId() + ")" + tagInfo;
     }
 
     @Tool("""
-            Update an existing character's information.
-            All fields except ID can be updated.
+            Update an existing character's basic information (name, summary, description, class, level, alignment).
+            For tag management, use addCharacterTags or removeCharacterTags instead.
             """)
     public String updateCharacter(String characterId, String name, String summary, String description,
-            String characterClass, Integer level, String alignment, String status) {
+            String characterClass, Integer level, String alignment) {
         Character character = storyRepository.updateCharacter(characterId, name, summary, description,
-                characterClass, level, alignment, status);
+                characterClass, level, alignment);
         if (character == null) {
             return "Error: Character not found with ID: " + characterId;
         }
         return "Updated character: " + character.getName();
+    }
+
+    @Tool("""
+            Add tags to a character. Tags are case-insensitive and automatically normalized.
+            Common tags: "player-controlled", "companion", "quest-giver", "merchant", "villain", "dead", etc.
+            Can also use prefixed tags like "faction:thieves-guild" or "profession:blacksmith".
+            """)
+    public String addCharacterTags(String characterId, List<String> tags) {
+        Character character = storyRepository.addCharacterTags(characterId, tags);
+        if (character == null) {
+            return "Error: Character not found with ID: " + characterId;
+        }
+        return "Added tags to " + character.getName() + ": " + String.join(", ", tags)
+                + "\nCurrent tags: " + String.join(", ", character.getTags());
+    }
+
+    @Tool("""
+            Remove tags from a character.
+            """)
+    public String removeCharacterTags(String characterId, List<String> tags) {
+        Character character = storyRepository.removeCharacterTags(characterId, tags);
+        if (character == null) {
+            return "Error: Character not found with ID: " + characterId;
+        }
+        return "Removed tags from " + character.getName() + ": " + String.join(", ", tags)
+                + "\nCurrent tags: " + String.join(", ", character.getTags());
     }
 
     @Tool("List all characters in a story thread")
@@ -90,6 +126,91 @@ public class StoryTools {
             return "Character not found with ID: " + characterId;
         }
         return Templates.characterDetail(character).render();
+    }
+
+    @Tool("""
+            Find characters that have ANY of the specified tags (OR logic).
+            Example: findCharactersByTags(threadId, ["merchant", "quest-giver"]) finds merchants OR quest-givers.
+            """)
+    public String findCharactersByTags(String storyThreadId, List<String> tags) {
+        List<Character> characters = storyRepository.findCharactersByAnyTag(storyThreadId, tags);
+        if (characters.isEmpty()) {
+            return "No characters found with tags: " + String.join(", ", tags);
+        }
+        return Templates.characterList(characters).render();
+    }
+
+    @Tool("""
+            Get all player-controlled characters (PCs) in the story thread.
+            """)
+    public String getPlayerCharacters(String storyThreadId) {
+        List<Character> characters = storyRepository.findCharactersByAnyTag(storyThreadId,
+                List.of("player-controlled"));
+        if (characters.isEmpty()) {
+            return "No player-controlled characters found";
+        }
+        return Templates.characterList(characters).render();
+    }
+
+    @Tool("""
+            Get all party members (player-controlled characters and companions).
+            """)
+    public String getPartyMembers(String storyThreadId) {
+        List<Character> characters = storyRepository.findCharactersByAnyTag(storyThreadId,
+                List.of("player-controlled", "companion"));
+        if (characters.isEmpty()) {
+            return "No party members found";
+        }
+        return Templates.characterList(characters).render();
+    }
+
+    @Tool("""
+            Add a character to the party temporarily (adds "temporary" tag).
+            Useful for NPCs joining for combat or a single quest.
+            """)
+    public String addTemporaryPartyMember(String characterId) {
+        return addCharacterTags(characterId, List.of("temporary", "companion"));
+    }
+
+    @Tool("""
+            Remove a character from temporary party status (removes "temporary" and "companion" tags).
+            """)
+    public String removeTemporaryPartyMember(String characterId) {
+        return removeCharacterTags(characterId, List.of("temporary", "companion"));
+    }
+
+    @Tool("""
+            Transfer character control between player and GM.
+            If playerControlled is true, removes "npc" and adds "player-controlled".
+            If false, removes "player-controlled" and adds "npc".
+            """)
+    public String setCharacterControl(String characterId, boolean playerControlled) {
+        Character character = storyRepository.findCharacterById(characterId);
+        if (character == null) {
+            return "Error: Character not found with ID: " + characterId;
+        }
+
+        if (playerControlled) {
+            storyRepository.removeCharacterTags(characterId, List.of("npc"));
+            character = storyRepository.addCharacterTags(characterId, List.of("player-controlled"));
+            return character.getName() + " is now player-controlled";
+        } else {
+            storyRepository.removeCharacterTags(characterId, List.of("player-controlled"));
+            character = storyRepository.addCharacterTags(characterId, List.of("npc"));
+            return character.getName() + " is now GM-controlled (NPC)";
+        }
+    }
+
+    @Tool("""
+            Get all quest-givers in the story thread.
+            """)
+    public String getQuestGivers(String storyThreadId) {
+        List<Character> characters = storyRepository.findCharactersByAnyTag(storyThreadId,
+                List.of("quest-giver"));
+        if (characters.isEmpty()) {
+            return "No quest-givers found";
+        }
+        return Templates.characterList(characters).render();
     }
 
     @Tool("""

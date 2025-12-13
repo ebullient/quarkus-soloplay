@@ -55,7 +55,9 @@
                                 <a href="/inspect/characters/{character.id}">
                                     <strong>{character.name}</strong>
                                 </a>
-                                <span class="character-type">({character.type})</span>
+                                {#if character.tags}
+                                <span class="character-tags">({#each character.tags}{it}{#if it_hasNext}, {/if}{/each})</span>
+                                {/if}
                                 {#if character.summary}
                                     <p class="character-summary">{character.summary}</p>
                                 {/if}

@@ -5,6 +5,7 @@ A Quarkus application that integrates LangChain4j with Ollama for AI-powered cam
 ## Project Overview
 
 **Tech Stack:**
+
 - Java 21
 - Quarkus 3.30.2 with Quarkus REST
 - LangChain4j with Ollama integration
@@ -12,6 +13,7 @@ A Quarkus application that integrates LangChain4j with Ollama for AI-powered cam
 - CommonMark for markdown rendering
 
 **Key Features:**
+
 - AI chat interface powered by Ollama (mistral-nemo:12b)
 - Document ingestion with YAML frontmatter support
 - Text embeddings using nomic-embed-text (768 dimensions)
@@ -64,6 +66,7 @@ A Quarkus application that integrates LangChain4j with Ollama for AI-powered cam
 You'll need the following running locally:
 
 1. **Ollama** with required models:
+
    ```bash
    # Install Ollama from https://ollama.ai
 
@@ -73,6 +76,7 @@ You'll need the following running locally:
    ```
 
 2. **Neo4j** database:
+
    ```bash
    # Using Docker
    docker run -d \
@@ -85,6 +89,7 @@ You'll need the following running locally:
 ### Configuration
 
 The application expects these services at default locations:
+
 - Ollama: Configure via `quarkus.langchain4j.ollama.base-url` in application.properties
 - Neo4j: Configure via standard Quarkus Neo4j properties
 
@@ -138,7 +143,7 @@ User Request → REST Endpoint → AI Service Interface → LangChain4j
 
 - **Java 21**: Use modern Java features (records, pattern matching, etc.)
 - **Quarkus REST**: Use `quarkus-rest` (not `quarkus-resteasy`)
-  - Annotations: `@RestQuery`, `@RestForm` from `org.jboss.resteasy.reactive`
+    - Annotations: `@RestQuery`, `@RestForm` from `org.jboss.resteasy.reactive`
 - **Dependency Injection**: Use `@Inject` and `@ApplicationScoped`
 - **AI Services**: Declarative interfaces with `@RegisterAiService`
 
@@ -151,6 +156,7 @@ User Request → REST Endpoint → AI Service Interface → LangChain4j
 3. Inject the interface where needed - implementation is automatic
 
 Example:
+
 ```java
 @RegisterAiService
 @ApplicationScoped
@@ -163,6 +169,7 @@ public interface MyAssistant {
 ### Working with Embeddings
 
 When storing documents:
+
 - Always include metadata (settingName, sourceFile, etc.)
 - Use `canonical: true` for source material vs generated content
 - Configure chunk size/overlap via `campaign.chunk.size` and `campaign.chunk.overlap`
@@ -170,6 +177,7 @@ When storing documents:
 ### Configuration
 
 Quarkus configuration follows standard patterns:
+
 - `application.properties` for default settings
 - Environment variables or system properties for overrides
 - `@ConfigProperty` for injection

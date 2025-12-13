@@ -30,6 +30,8 @@ Act as a pair programming partner with these responsibilities:
 - [CampaignService.java](src/main/java/dev/ebullient/soloplay/CampaignService.java) - Document processing & embeddings
 - [ChatAssistant.java](src/main/java/dev/ebullient/soloplay/ChatAssistant.java) - AI chat interface
 - [SettingAssistant.java](src/main/java/dev/ebullient/soloplay/SettingAssistant.java) - RAG lore queries
+- [StoryTools.java](src/main/java/dev/ebullient/soloplay/StoryTools.java) - AI tools for character/location/event management
+- [StoryRepository.java](src/main/java/dev/ebullient/soloplay/StoryRepository.java) - Data access for story elements
 - [application.properties](src/main/resources/application.properties) - Configuration
 
 ## Key Development Principles
@@ -64,6 +66,28 @@ Act as a pair programming partner with these responsibilities:
 
 - Always include: `settingName`, `sourceFile`, `canonical` flag
 - Use `canonical: true` for source material vs generated content
+
+**Character Tag System:**
+
+Characters use a flexible tag-based classification instead of rigid enums:
+
+- **Control tags**: `"player-controlled"`, `"npc"` (default)
+- **Party tags**: `"companion"`, `"temporary"`, `"protagonist"`
+- **Status tags**: `"dead"`, `"missing"`, `"imprisoned"`, `"retired"`
+- **Role tags**: `"quest-giver"`, `"merchant"`, `"informant"`, `"villain"`, `"mentor"`
+- **Prefixed tags**: `"faction:thieves-guild"`, `"profession:blacksmith"`, `"location:tavern"`
+
+Tags are case-insensitive and normalized to lowercase. Characters can have multiple tags.
+
+Available tag operations:
+
+- `createCharacter()` - accepts optional tags list
+- `addCharacterTags()` - add tags to existing character
+- `removeCharacterTags()` - remove tags from character
+- `findCharactersByTags()` - find by ANY tag (OR)
+- `getPlayerCharacters()` - find player-controlled
+- `getPartyMembers()` - find PCs + companions
+- `setCharacterControl()` - transfer between player/GM control
 
 **Response Augmentation:**
 

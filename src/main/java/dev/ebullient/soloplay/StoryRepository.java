@@ -11,7 +11,6 @@ import org.neo4j.ogm.session.SessionFactory;
 import org.neo4j.ogm.transaction.Transaction;
 
 import dev.ebullient.soloplay.data.Character;
-import dev.ebullient.soloplay.data.Character.CharacterType;
 import dev.ebullient.soloplay.data.CharacterRelationship;
 import dev.ebullient.soloplay.data.Location;
 import dev.ebullient.soloplay.data.StoryEvent;
@@ -50,19 +49,25 @@ public class StoryRepository {
     // ===== CHARACTER METHODS =====
 
     /**
-     * Create a new character in the story thread.
+     * Create a new character in the story thread with tags.
      */
-    public Character createCharacter(String storyThreadId, String type, String name, String summary, String description) {
+    public Character createCharacter(String storyThreadId, String name, String summary, String description,
+            List<String> tags) {
         var session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
 
         try {
-            Character character = new Character(storyThreadId, CharacterType.valueOf(type), name);
+            Character character = new Character(storyThreadId, name);
             if (isPresent(summary)) {
                 character.setSummary(summary);
             }
             if (isPresent(description)) {
                 character.setDescription(description);
+            }
+            if (tags != null && !tags.isEmpty()) {
+                // Clear default "npc" tag if specific tags are provided
+                character.getTags().clear();
+                tags.forEach(character::addTag);
             }
 
             session.save(character);
@@ -80,7 +85,7 @@ public class StoryRepository {
      * Update a character's details.
      */
     public Character updateCharacter(String characterId, String name, String summary, String description,
-            String characterClass, Integer level, String alignment, String status) {
+            String characterClass, Integer level, String alignment) {
         var session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
 
@@ -103,8 +108,6 @@ public class StoryRepository {
                 character.setLevel(level);
             if (isPresent(alignment))
                 character.setAlignment(alignment);
-            if (isPresent(status))
-                character.setStatus(Character.CharacterStatus.valueOf(status));
 
             session.save(character);
             transaction.commit();
@@ -143,6 +146,106 @@ public class StoryRepository {
     public Character findCharacterById(String characterId) {
         var session = sessionFactory.openSession();
         return session.load(Character.class, characterId);
+    }
+
+    /**
+     * Add tags to a character.
+     */
+    public Character addCharacterTags(String characterId, List<String> tags) {
+        var session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+
+        try {
+            Character character = session.load(Character.class, characterId);
+            if (character == null) {
+                transaction.rollback();
+                return null;
+            }
+
+            tags.forEach(character::addTag);
+            session.save(character);
+            transaction.commit();
+            return character;
+        } catch (Exception e) {
+            transaction.rollback();
+            throw e;
+        } finally {
+            transaction.close();
+        }
+    }
+
+    /**
+     * Remove tags from a character.
+     */
+    public Character removeCharacterTags(String characterId, List<String> tags) {
+        var session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+
+        try {
+            Character character = session.load(Character.class, characterId);
+            if (character == null) {
+                transaction.rollback();
+                return null;
+            }
+
+            tags.forEach(character::removeTag);
+            session.save(character);
+            transaction.commit();
+            return character;
+        } catch (Exception e) {
+            transaction.rollback();
+            throw e;
+        } finally {
+            transaction.close();
+        }
+    }
+
+    /**
+     * Find characters that have ANY of the specified tags (OR).
+     */
+    public List<Character> findCharactersByAnyTag(String storyThreadId, List<String> tags) {
+        var session = sessionFactory.openSession();
+        String cypher = """
+                MATCH (c:Character)
+                WHERE c.storyThreadId = $storyThreadId
+                  AND any(tag IN $tags WHERE tag IN c.tags)
+                RETURN c
+                ORDER BY c.name
+                """;
+        return toList(session.query(Character.class, cypher,
+                Map.of("storyThreadId", storyThreadId, "tags", tags)));
+    }
+
+    /**
+     * Find characters that have ALL of the specified tags (AND).
+     */
+    public List<Character> findCharactersByAllTags(String storyThreadId, List<String> tags) {
+        var session = sessionFactory.openSession();
+        String cypher = """
+                MATCH (c:Character)
+                WHERE c.storyThreadId = $storyThreadId
+                  AND all(tag IN $tags WHERE tag IN c.tags)
+                RETURN c
+                ORDER BY c.name
+                """;
+        return toList(session.query(Character.class, cypher,
+                Map.of("storyThreadId", storyThreadId, "tags", tags)));
+    }
+
+    /**
+     * Find characters that do NOT have any of the specified tags.
+     */
+    public List<Character> findCharactersExcludingTags(String storyThreadId, List<String> excludeTags) {
+        var session = sessionFactory.openSession();
+        String cypher = """
+                MATCH (c:Character)
+                WHERE c.storyThreadId = $storyThreadId
+                  AND none(tag IN $excludeTags WHERE tag IN c.tags)
+                RETURN c
+                ORDER BY c.name
+                """;
+        return toList(session.query(Character.class, cypher,
+                Map.of("storyThreadId", storyThreadId, "excludeTags", excludeTags)));
     }
 
     // ===== LOCATION METHODS =====
