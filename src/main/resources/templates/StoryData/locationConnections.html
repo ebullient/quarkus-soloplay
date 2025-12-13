@@ -10,7 +10,7 @@
 <body>
     <header>
         <h1>Location Connections</h1>
-        <p>Campaign: {location.campaignId}</p>
+        <p>Campaign: {location.storyThreadId}</p>
     </header>
 
     <nav>
@@ -22,8 +22,8 @@
 
     <main>
         <div class="breadcrumb">
-            <a href="/inspect?campaignId={location.campaignId}">Inspect</a> &gt; 
-            <a href="/inspect/locations?campaignId={location.campaignId}">Locations</a> &gt; 
+            <a href="/inspect?storyThreadId={location.storyThreadId}">Inspect</a> &gt; 
+            <a href="/inspect/locations?storyThreadId={location.storyThreadId}">Locations</a> &gt; 
             <a href="/inspect/locations/{location.id}">{location.name}</a> &gt;
             <span>Connections</span>
         </div>

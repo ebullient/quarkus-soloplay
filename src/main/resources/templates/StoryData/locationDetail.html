@@ -10,7 +10,7 @@
 <body>
     <header>
         <h1>Location: {location.name}</h1>
-        <p>Campaign: {location.campaignId}</p>
+        <p>Campaign: {location.storyThreadId}</p>
     </header>
 
     <nav>
@@ -23,7 +23,7 @@
     <main>
         <div class="location-detail-header">
             <div class="actions">
-                <a href="/inspect/locations?campaignId={location.campaignId}" class="btn btn-secondary">← Back to Locations</a>
+                <a href="/inspect/locations?storyThreadId={location.storyThreadId}" class="btn btn-secondary">← Back to Locations</a>
                 <a href="/inspect/locations/{location.id}/connections" class="btn btn-primary">View Connections</a>
                 <a href="/inspect/ai/location-connections/{location.id}" class="btn btn-ai">AI View</a>
             </div>

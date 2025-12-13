@@ -9,84 +9,88 @@ import jakarta.ws.rs.Path;
 import org.jboss.resteasy.reactive.RestPath;
 import org.jboss.resteasy.reactive.RestQuery;
 
-import dev.ebullient.soloplay.CampaignRepository;
-import dev.ebullient.soloplay.CampaignTools;
-import dev.ebullient.soloplay.data.CampaignEvent;
+import dev.ebullient.soloplay.StoryRepository;
+import dev.ebullient.soloplay.StoryTools;
 import dev.ebullient.soloplay.data.Character;
 import dev.ebullient.soloplay.data.CharacterRelationship;
 import dev.ebullient.soloplay.data.Location;
+import dev.ebullient.soloplay.data.StoryEvent;
 import io.quarkiverse.renarde.Controller;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 
 /**
- * Controller for viewing and managing campaign data.
+ * Controller for viewing and managing story data.
  * Provides "Inspect" interface - CRUD views over characters, locations, events, and relationships.
- * This allows us to oversee what the AI is working with in the campaign database,
- * but.. SPOLIERS!
+ * This allows us to oversee what the AI is working with in the story database,
+ * but.. SPOILERS!
  */
 @Path("/inspect")
-public class CampaignData extends Controller {
+public class StoryData extends Controller {
 
     @Inject
-    CampaignRepository campaignRepository;
+    StoryRepository storyRepository;
 
     @Inject
-    CampaignTools campaignTools;
+    StoryTools storyTools;
 
     @CheckedTemplate
     public static class Templates {
         // Main dashboard
-        public static native TemplateInstance index(String campaignId);
+        public static native TemplateInstance index(String storyThreadId);
 
         // Character views
-        public static native TemplateInstance characters(List<Character> characters, String campaignId);
+        public static native TemplateInstance characters(List<Character> characters, String storyThreadId);
 
         public static native TemplateInstance characterDetail(Character character);
 
         // Location views
-        public static native TemplateInstance locations(List<Location> locations, String campaignId);
+        public static native TemplateInstance locations(List<Location> locations, String storyThreadId);
 
         public static native TemplateInstance locationDetail(Location location);
 
         // Relationship views
-        public static native TemplateInstance relationships(String campaignId, List<CharacterRelationship> relationships);
+        public static native TemplateInstance relationships(String storyThreadId, List<CharacterRelationship> relationships);
 
         public static native TemplateInstance characterRelationships(Character character,
                 List<CharacterRelationship> relationships);
 
         public static native TemplateInstance locationConnections(Location location, List<Character> connectedCharacters);
 
-        public static native TemplateInstance sharedHistory(Character char1, Character char2, List<CampaignEvent> sharedEvents);
+        public static native TemplateInstance sharedHistory(Character char1, Character char2, List<StoryEvent> sharedEvents);
 
         // AI Tool outputs (what the AI sees)
         public static native TemplateInstance aiToolOutput(String toolName, String output);
     }
 
     /**
-     * Main campaign data dashboard.
-     * Shows overview of all campaign elements.
+     * Main story data dashboard.
+     * Shows overview of all story elements.
+     * Requires storyThreadId to be provided as query parameter.
      */
     @GET
     @Path("/")
-    public TemplateInstance index(@RestQuery String campaignId) {
-        if (campaignId == null || campaignId.isBlank()) {
-            campaignId = "default";
+    public TemplateInstance index(@RestQuery String storyThreadId) {
+        if (storyThreadId == null || storyThreadId.isBlank()) {
+            validation.addError("storyThreadId", "Story Thread ID is required");
+            // Return error page or redirect to story thread selection
+            throw new IllegalArgumentException("storyThreadId parameter is required");
         }
-        return Templates.index(campaignId);
+        return Templates.index(storyThreadId);
     }
 
     /**
-     * List all characters in a campaign.
+     * List all characters in a story thread.
+     * Requires storyThreadId to be provided as query parameter.
      */
     @GET
     @Path("/characters")
-    public TemplateInstance characters(@RestQuery String campaignId) {
-        if (campaignId == null || campaignId.isBlank()) {
-            campaignId = "default";
+    public TemplateInstance characters(@RestQuery String storyThreadId) {
+        if (storyThreadId == null || storyThreadId.isBlank()) {
+            throw new IllegalArgumentException("storyThreadId parameter is required");
         }
-        List<Character> characters = campaignRepository.findCharactersByCampaignIdOrderByCreatedAt(campaignId);
-        return Templates.characters(characters, campaignId);
+        List<Character> characters = storyRepository.findCharactersByStoryThreadId(storyThreadId);
+        return Templates.characters(characters, storyThreadId);
     }
 
     /**
@@ -95,7 +99,7 @@ public class CampaignData extends Controller {
     @GET
     @Path("/characters/{id}")
     public TemplateInstance characterDetail(@RestPath String id) {
-        Character character = campaignRepository.findCharacterByIdForWeb(id);
+        Character character = storyRepository.findCharacterById(id);
         if (character == null) {
             notFound();
             return null; // This line is never reached, but needed for compilation
@@ -104,16 +108,17 @@ public class CampaignData extends Controller {
     }
 
     /**
-     * List all locations in a campaign.
+     * List all locations in a story thread.
+     * Requires storyThreadId to be provided as query parameter.
      */
     @GET
     @Path("/locations")
-    public TemplateInstance locations(@RestQuery String campaignId) {
-        if (campaignId == null || campaignId.isBlank()) {
-            campaignId = "default";
+    public TemplateInstance locations(@RestQuery String storyThreadId) {
+        if (storyThreadId == null || storyThreadId.isBlank()) {
+            throw new IllegalArgumentException("storyThreadId parameter is required");
         }
-        List<Location> locations = campaignRepository.findLocationsByCampaignIdOrderByCreatedAt(campaignId);
-        return Templates.locations(locations, campaignId);
+        List<Location> locations = storyRepository.findLocationsByStoryThreadId(storyThreadId);
+        return Templates.locations(locations, storyThreadId);
     }
 
     /**
@@ -122,7 +127,7 @@ public class CampaignData extends Controller {
     @GET
     @Path("/locations/{id}")
     public TemplateInstance locationDetail(@RestPath String id) {
-        Location location = campaignRepository.findLocationByIdForWeb(id);
+        Location location = storyRepository.findLocationById(id);
         if (location == null) {
             notFound();
             return null; // This line is never reached, but needed for compilation
@@ -131,16 +136,17 @@ public class CampaignData extends Controller {
     }
 
     /**
-     * View all relationships in a campaign (relationship network).
+     * View all relationships in a story thread (relationship network).
+     * Requires storyThreadId to be provided as query parameter.
      */
     @GET
     @Path("/relationships")
-    public TemplateInstance relationships(@RestQuery String campaignId) {
-        if (campaignId == null || campaignId.isBlank()) {
-            campaignId = "default";
+    public TemplateInstance relationships(@RestQuery String storyThreadId) {
+        if (storyThreadId == null || storyThreadId.isBlank()) {
+            throw new IllegalArgumentException("storyThreadId parameter is required");
         }
-        List<CharacterRelationship> relationships = campaignRepository.findRelationshipsByCampaignId(campaignId);
-        return Templates.relationships(campaignId, relationships);
+        List<CharacterRelationship> relationships = storyRepository.findRelationshipsByStoryThreadId(storyThreadId);
+        return Templates.relationships(storyThreadId, relationships);
     }
 
     /**
@@ -149,12 +155,12 @@ public class CampaignData extends Controller {
     @GET
     @Path("/characters/{id}/relationships")
     public TemplateInstance characterRelationships(@RestPath String id) {
-        Character character = campaignRepository.findCharacterByIdForWeb(id);
+        Character character = storyRepository.findCharacterById(id);
         if (character == null) {
             notFound();
             return null;
         }
-        List<CharacterRelationship> relationships = campaignRepository.findRelationshipsByCharacterId(id);
+        List<CharacterRelationship> relationships = storyRepository.findRelationshipsByCharacterId(id);
         return Templates.characterRelationships(character, relationships);
     }
 
@@ -164,12 +170,12 @@ public class CampaignData extends Controller {
     @GET
     @Path("/locations/{id}/connections")
     public TemplateInstance locationConnections(@RestPath String id) {
-        Location location = campaignRepository.findLocationByIdForWeb(id);
+        Location location = storyRepository.findLocationById(id);
         if (location == null) {
             notFound();
             return null;
         }
-        List<Character> connectedCharacters = campaignRepository.findCharactersByLocation(id);
+        List<Character> connectedCharacters = storyRepository.findCharactersByLocation(id);
         return Templates.locationConnections(location, connectedCharacters);
     }
 
@@ -183,13 +189,13 @@ public class CampaignData extends Controller {
             badRequest();
             return null;
         }
-        Character char1 = campaignRepository.findCharacterByIdForWeb(char1Id);
-        Character char2 = campaignRepository.findCharacterByIdForWeb(char2Id);
+        Character char1 = storyRepository.findCharacterById(char1Id);
+        Character char2 = storyRepository.findCharacterById(char2Id);
         if (char1 == null || char2 == null) {
             notFound();
             return null;
         }
-        List<CampaignEvent> sharedEvents = campaignRepository.findSharedEvents(char1Id, char2Id);
+        List<StoryEvent> sharedEvents = storyRepository.findSharedEvents(char1Id, char2Id);
         return Templates.sharedHistory(char1, char2, sharedEvents);
     }
 
@@ -201,21 +207,22 @@ public class CampaignData extends Controller {
     @GET
     @Path("/ai/character-relationships/{id}")
     public TemplateInstance aiCharacterRelationships(@RestPath String id) {
-        String output = campaignTools.getCharacterRelationships(id);
+        String output = storyTools.getCharacterRelationships(id);
         return Templates.aiToolOutput("Character Relationships", output);
     }
 
     /**
-     * See what the AI tool returns for campaign network.
+     * See what the AI tool returns for story network.
+     * Requires storyThreadId to be provided as query parameter.
      */
     @GET
-    @Path("/ai/campaign-network")
-    public TemplateInstance aiCampaignNetwork(@RestQuery String campaignId) {
-        if (campaignId == null || campaignId.isBlank()) {
-            campaignId = "default";
+    @Path("/ai/story-network")
+    public TemplateInstance aiStoryNetwork(@RestQuery String storyThreadId) {
+        if (storyThreadId == null || storyThreadId.isBlank()) {
+            throw new IllegalArgumentException("storyThreadId parameter is required");
         }
-        String output = campaignTools.getCampaignNetwork(campaignId);
-        return Templates.aiToolOutput("Campaign Network", output);
+        String output = storyTools.getStoryNetwork(storyThreadId);
+        return Templates.aiToolOutput("Story Network", output);
     }
 
     /**
@@ -224,7 +231,7 @@ public class CampaignData extends Controller {
     @GET
     @Path("/ai/location-connections/{id}")
     public TemplateInstance aiLocationConnections(@RestPath String id) {
-        String output = campaignTools.getLocationConnections(id);
+        String output = storyTools.getLocationConnections(id);
         return Templates.aiToolOutput("Location Connections", output);
     }
 
@@ -238,7 +245,7 @@ public class CampaignData extends Controller {
             badRequest();
             return null;
         }
-        String output = campaignTools.getSharedHistory(char1Id, char2Id);
+        String output = storyTools.getSharedHistory(char1Id, char2Id);
         return Templates.aiToolOutput("Shared History", output);
     }
 }

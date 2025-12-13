@@ -35,12 +35,13 @@ public class CampaignResource {
     Neo4jHealth neo4jHealth;
 
     @Inject
-    CampaignRepository campaignRepository;
+    StoryRepository storyRepository;
 
     // 1. Set a basic chat interface though to Ollama
 
     @GET
     @Path("/chat")
+    @Produces(MediaType.TEXT_HTML)
     public String chat(@RestQuery String question) {
         String response = chatService.chat(question);
         return prettify.markdownToHtml(response);
@@ -49,6 +50,7 @@ public class CampaignResource {
     @POST
     @Path("/chat")
     @Consumes(MediaType.TEXT_PLAIN)
+    @Produces(MediaType.TEXT_HTML)
     public String postChat(String question) {
         String response = chatService.chat(question);
         return prettify.markdownToHtml(response);
@@ -64,6 +66,7 @@ public class CampaignResource {
 
     @GET
     @Path("/lore")
+    @Produces(MediaType.TEXT_HTML)
     public String lore(@RestQuery String question) {
         String response = settingAssistant.lore(question);
         return prettify.markdownToHtml(response);
@@ -72,21 +75,22 @@ public class CampaignResource {
     @POST
     @Path("/lore")
     @Consumes(MediaType.TEXT_PLAIN)
+    @Produces(MediaType.TEXT_HTML)
     public String postLore(String question) {
         String response = settingAssistant.lore(question);
         return prettify.markdownToHtml(response);
     }
 
-    // 3. Campaign-Specific Data (Tools, etc.)
+    // 3. Story-Specific Data (Tools, etc.)
     // More interactions available through Renarde controllers
     //
-    // Get list of known campaign IDs
+    // Get list of known story thread IDs
 
     @GET
     @Path("/list")
     @Produces(MediaType.APPLICATION_JSON)
-    public List<String> getCampaignIds() {
-        return campaignRepository.getCampaignIds();
+    public List<String> getStoryThreadIds() {
+        return storyRepository.getStoryThreadIds();
     }
 
 }

@@ -10,7 +10,7 @@
 <body>
     <header>
         <h1>Character Relationships</h1>
-        <p>Campaign: {character.campaignId}</p>
+        <p>Campaign: {character.storyThreadId}</p>
     </header>
 
     <nav>
@@ -22,8 +22,8 @@
 
     <main>
         <div class="breadcrumb">
-            <a href="/inspect?campaignId={character.campaignId}">Inspect</a> &gt; 
-            <a href="/inspect/characters?campaignId={character.campaignId}">Characters</a> &gt; 
+            <a href="/inspect?storyThreadId={character.storyThreadId}">Inspect</a> &gt; 
+            <a href="/inspect/characters?storyThreadId={character.storyThreadId}">Characters</a> &gt; 
             <a href="/inspect/characters/{character.id}">{character.name}</a> &gt;
             <span>Relationships</span>
         </div>

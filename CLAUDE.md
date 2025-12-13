@@ -76,11 +76,12 @@ Act as a pair programming partner with these responsibilities:
 - Connection pooling and lifecycle are managed by the extension
 - This is the documented pattern - see [movies-java-quarkus example](https://github.com/sdaschner/movies-java-quarkus)
 - Example from official pattern:
+
   ```java
   @ApplicationScoped
   public class MovieRepository {
       @Inject SessionFactory sessionFactory;
-      
+
       public List<Movie> findAll() {
           Session session = sessionFactory.openSession();
           return session.loadAll(Movie.class);
@@ -88,6 +89,7 @@ Act as a pair programming partner with these responsibilities:
       }
   }
   ```
+
 - Read-only queries: Open session, execute query, return results (no transaction needed)
 - Write operations: Use `session.beginTransaction()`, commit/rollback as needed, close transaction
 - The CampaignRepository follows this pattern correctly

@@ -20,6 +20,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import io.quarkus.logging.Log;
 
 @ApplicationScoped
 public class IngestService {
@@ -32,6 +33,12 @@ public class IngestService {
     // \n--- matches closing ---
     static final java.util.regex.Pattern YAML_FRONTMATTER_PATTERN = java.util.regex.Pattern
             .compile("(?s)^---\\s*\\n(.*?)\\n---\\s*\\n");
+
+    // Regex pattern for markdown section headers (## Header)
+    // (?m) enables multiline mode (^ matches line starts)
+    // ^## matches headers at line start
+    static final java.util.regex.Pattern SECTION_HEADER_PATTERN = java.util.regex.Pattern
+            .compile("(?m)^## ");
 
     @ConfigProperty(name = "campaign.chunk.size", defaultValue = "500")
     int chunkSize;
@@ -67,13 +74,15 @@ public class IngestService {
         String cleanContent = removeYamlFrontmatter(content);
         Metadata common = Metadata.from(yamlMetadata)
                 .put("settingName", settingName)
+                // Note: structured frontmatter includes a filename
+                // indicate the source file for traceability
                 .put("sourceFile", filename)
                 .put("canonical", "true"); // source material
 
         List<TextSegment> segments = new ArrayList<>();
 
         if (cleanContent.length() > chunkSize) {
-            String[] sections = content.split("(?m)^## ");
+            String[] sections = SECTION_HEADER_PATTERN.split(cleanContent);
             for (int i = 0; i < sections.length; i++) {
                 String section = sections[i];
                 String sectionTitle = extractFirstLine(section);
@@ -110,7 +119,7 @@ public class IngestService {
             TextSegment segment = segments.get(i);
             segment.metadata()
                     .put("settingName", settingName)
-                    .put("filename", filename)
+                    .put("sourceFile", filename)
                     .put("canonical", "true") // source material
                     .put("chunkIndex", i);
         }
@@ -140,7 +149,7 @@ public class IngestService {
             var matcher = YAML_FRONTMATTER_PATTERN.matcher(content);
 
             if (!matcher.find()) {
-                return new HashMap<>(); // No frontmatter
+                return new HashMap<>(); // No frontmatter - this is fine
             }
 
             String yamlContent = matcher.group(1).trim();
@@ -167,9 +176,10 @@ public class IngestService {
             }
             return result;
         } catch (Exception e) {
-            // Log and return empty map on error
-            System.err.println("Error parsing YAML frontmatter: " + e.getMessage());
-            return new HashMap<>();
+            // Document has frontmatter but it's malformed - fail the upload
+            Log.errorf(e, "Failed to parse YAML frontmatter: %s", e.getMessage());
+            throw new DocumentProcessingException(
+                    "Invalid YAML frontmatter: " + e.getMessage(), e);
         }
     }
 }

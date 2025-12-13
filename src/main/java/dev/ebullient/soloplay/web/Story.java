@@ -8,23 +8,22 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 
-import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
 import dev.ebullient.soloplay.IngestService;
 import dev.ebullient.soloplay.health.Neo4jHealth;
 import io.quarkiverse.renarde.Controller;
+import io.quarkus.logging.Log;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 
 /**
- * Renarde controller for campaign pages and operations.
+ * Renarde controller for story pages and operations.
  * Serves chat, lore, and document ingestion pages with CSRF protection.
  */
 @Path("/")
-public class Campaign extends Controller {
-    private static final Logger LOG = Logger.getLogger(Campaign.class);
+public class Story extends Controller {
 
     @CheckedTemplate
     public static class Templates {
@@ -74,27 +73,27 @@ public class Campaign extends Controller {
      */
     @POST
     @Path("/load-setting")
-    public void loadSetting(
+    public TemplateInstance loadSetting(
             @RestForm String settingName,
             @RestForm("documents") List<FileUpload> files) {
 
         if (settingName == null || settingName.isBlank()) {
             flash("error", "Please provide a setting name");
-            return;
+            return Templates.ingest();
         }
 
         if (files == null || files.isEmpty()) {
             flash("error", "Please select at least one file to upload");
-            return;
+            return Templates.ingest();
         }
 
         // Verify Neo4j connectivity before processing files
         try {
             neo4jHealth.neo4jIsAvailable();
         } catch (Exception e) {
-            LOG.error("Neo4j not available", e);
+            Log.error("Neo4j not available", e);
             flash("error", "Neo4j is not available: " + e.getMessage());
-            return;
+            return Templates.ingest();
         }
 
         // Process multiple files
@@ -105,13 +104,14 @@ public class Campaign extends Controller {
                 campaignService.loadSetting(settingName, file.fileName(), content);
                 successCount++;
             } catch (Exception e) {
-                LOG.error("Error processing file: " + file.fileName(), e);
+                Log.errorf(e, "Error processing file: %s", file.fileName());
                 flash("error", "Error processing file " + file.fileName() + ": " + e.getMessage());
-                return;
+                return Templates.ingest();
             }
         }
 
         flash("success", "Setting '" + settingName + "' updated with " + successCount + " file(s)");
-        // Renarde automatically redirects back to the referring page
+        redirect(Story.class).ingest();
+        return null; // Redirect handles the response
     }
 }

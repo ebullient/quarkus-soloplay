@@ -18,7 +18,7 @@ public class Character {
     private Instant createdAt;
     private Instant updatedAt;
 
-    private String campaignId;
+    private String storyThreadId;
 
     private CharacterType type;
     private String name;
@@ -35,9 +35,9 @@ public class Character {
         this.status = CharacterStatus.ACTIVE;
     }
 
-    public Character(String campaignId, CharacterType type, String name) {
+    public Character(String storyThreadId, CharacterType type, String name) {
         this();
-        this.campaignId = campaignId;
+        this.storyThreadId = storyThreadId;
         this.type = type;
         this.name = name;
     }
@@ -51,12 +51,12 @@ public class Character {
         this.id = id;
     }
 
-    public String getCampaignId() {
-        return campaignId;
+    public String getStoryThreadId() {
+        return storyThreadId;
     }
 
-    public void setCampaignId(String campaignId) {
-        this.campaignId = campaignId;
+    public void setStoryThreadId(String storyThreadId) {
+        this.storyThreadId = storyThreadId;
     }
 
     public CharacterType getType() {

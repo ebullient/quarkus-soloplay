@@ -46,7 +46,7 @@ docker compose up -d    # Recreates database with indexes auto-applied
 
 The indexes optimize these common operations:
 
-- **Character/Location searches by campaign** - `MATCH (c:Character {campaignId: $id})`
+- **Character/Location searches by campaign** - `MATCH (c:Character {storyThreadId: $id})`
 - **Name-based searches** - `WHERE c.name CONTAINS $name`
 - **Event temporal queries** - `ORDER BY e.timestamp DESC`
 - **Relationship filtering** - `WHERE r.type = 'ALLY'`
@@ -62,7 +62,7 @@ SHOW INDEXES
 To check if an index is being used in a query:
 
 ```cypher
-PROFILE MATCH (c:Character {campaignId: 'test'}) RETURN c
+PROFILE MATCH (c:Character {storyThreadId: 'test'}) RETURN c
 ```
 
 Look for `NodeIndexSeek` in the query plan.

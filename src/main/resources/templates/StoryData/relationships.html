@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Campaign Relationships - {campaignId}</title>
+    <title>Campaign Relationships - {storyThreadId}</title>
     <link rel="stylesheet" href="/styles.css">
     <link rel="stylesheet" href="/inspector.css">
 </head>
 <body>
     <header>
         <h1>Campaign Relationships</h1>
-        <p>Campaign: {campaignId}</p>
+        <p>Campaign: {storyThreadId}</p>
     </header>
 
     <nav>
@@ -22,14 +22,14 @@
 
     <main>
         <div class="breadcrumb">
-            <a href="/inspect?campaignId={campaignId}">Inspect</a> &gt; 
+            <a href="/inspect?storyThreadId={storyThreadId}">Inspect</a> &gt; 
             <span>Relationships</span>
         </div>
         
         <h2>Relationship Network</h2>
         
         <div class="actions">
-            <a href="/inspect/ai/campaign-network?campaignId={campaignId}" class="btn btn-ai">View AI Output</a>
+            <a href="/inspect/ai/campaign-network?storyThreadId={storyThreadId}" class="btn btn-ai">View AI Output</a>
         </div>
         
         {#if relationships.isEmpty()}

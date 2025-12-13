@@ -10,7 +10,7 @@
 <body>
     <header>
         <h1>Shared History</h1>
-        <p>Campaign: {char1.campaignId}</p>
+        <p>Campaign: {char1.storyThreadId}</p>
     </header>
 
     <nav>
@@ -22,7 +22,7 @@
 
     <main>
         <div class="breadcrumb">
-            <a href="/inspect?campaignId={char1.campaignId}">Inspect</a> &gt; 
+            <a href="/inspect?storyThreadId={char1.storyThreadId}">Inspect</a> &gt; 
             <span>Shared History</span>
         </div>
         
@@ -87,9 +87,9 @@
                                     </div>
                                 {/if}
                                 
-                                {#if event.campaignDay}
+                                {#if event.storyDay}
                                     <div class="event-timing">
-                                        <strong>Campaign Day:</strong> {event.campaignDay}
+                                        <strong>Campaign Day:</strong> {event.storyDay}
                                         {#if event.inWorldDate}
                                             <span class="in-world-date">({event.inWorldDate})</span>
                                         {/if}

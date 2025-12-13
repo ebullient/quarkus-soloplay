@@ -14,18 +14,18 @@ import org.neo4j.ogm.id.UuidStrategy;
  * Represents an event that occurred during a game session.
  */
 @NodeEntity("Event")
-public class CampaignEvent {
+public class StoryEvent {
     @Id
     @GeneratedValue(strategy = UuidStrategy.class)
     private String id;
     private Instant timestamp; // Real-world timestamp
 
-    private String campaignId;
+    private String storyThreadId;
     private String conversationId; // Narrative thread this event belongs to
 
     private EventType type;
 
-    private Long campaignDay; // In-world day number (e.g., Day 1, Day 2)
+    private Long storyDay; // In-world day number (e.g., Day 1, Day 2)
     private String inWorldDate; // Optional formatted in-world date (e.g., "3rd of Hammer, 1492 DR")
 
     private String description;
@@ -36,14 +36,14 @@ public class CampaignEvent {
     @Relationship(type = "OCCURRED_AT")
     private Location location;
 
-    public CampaignEvent() {
+    public StoryEvent() {
         this.timestamp = Instant.now();
         this.participants = new ArrayList<>();
     }
 
-    public CampaignEvent(String campaignId, String conversationId, String description) {
+    public StoryEvent(String storyThreadId, String conversationId, String description) {
         this();
-        this.campaignId = campaignId;
+        this.storyThreadId = storyThreadId;
         this.conversationId = conversationId;
         this.description = description;
     }
@@ -57,12 +57,12 @@ public class CampaignEvent {
         this.id = id;
     }
 
-    public String getCampaignId() {
-        return campaignId;
+    public String getStoryThreadId() {
+        return storyThreadId;
     }
 
-    public void setCampaignId(String campaignId) {
-        this.campaignId = campaignId;
+    public void setStoryThreadId(String storyThreadId) {
+        this.storyThreadId = storyThreadId;
     }
 
     public String getConversationId() {
@@ -81,12 +81,12 @@ public class CampaignEvent {
         this.timestamp = timestamp;
     }
 
-    public Long getCampaignDay() {
-        return campaignDay;
+    public Long getStoryDay() {
+        return storyDay;
     }
 
-    public void setCampaignDay(Long campaignDay) {
-        this.campaignDay = campaignDay;
+    public void setStoryDay(Long storyDay) {
+        this.storyDay = storyDay;
     }
 
     public String getInWorldDate() {

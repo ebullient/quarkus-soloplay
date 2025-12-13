@@ -16,7 +16,7 @@ public class Location {
     @Id
     @GeneratedValue(strategy = UuidStrategy.class)
     private String id;
-    private String campaignId;
+    private String storyThreadId;
     private Instant createdAt;
     private Instant updatedAt;
 
@@ -36,9 +36,9 @@ public class Location {
         this.status = LocationStatus.ACTIVE;
     }
 
-    public Location(String campaignId, LocationType type, String name) {
+    public Location(String storyThreadId, LocationType type, String name) {
         this();
-        this.campaignId = campaignId;
+        this.storyThreadId = storyThreadId;
         this.type = type;
         this.name = name;
     }
@@ -52,12 +52,12 @@ public class Location {
         this.id = id;
     }
 
-    public String getCampaignId() {
-        return campaignId;
+    public String getStoryThreadId() {
+        return storyThreadId;
     }
 
-    public void setCampaignId(String campaignId) {
-        this.campaignId = campaignId;
+    public void setStoryThreadId(String storyThreadId) {
+        this.storyThreadId = storyThreadId;
     }
 
     public LocationType getType() {

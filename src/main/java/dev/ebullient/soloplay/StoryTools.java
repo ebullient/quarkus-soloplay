@@ -5,23 +5,23 @@ import java.util.List;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
-import dev.ebullient.soloplay.data.CampaignEvent;
 import dev.ebullient.soloplay.data.Character;
 import dev.ebullient.soloplay.data.CharacterRelationship;
 import dev.ebullient.soloplay.data.Location;
+import dev.ebullient.soloplay.data.StoryEvent;
 import dev.langchain4j.agent.tool.Tool;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 
 /**
- * AI Tools for campaign data operations.
- * Delegates to CampaignRepository for actual data access.
+ * AI Tools for story data operations.
+ * Delegates to StoryRepository for actual data access.
  */
 @ApplicationScoped
-public class CampaignTools {
+public class StoryTools {
 
     @Inject
-    CampaignRepository campaignRepository;
+    StoryRepository storyRepository;
 
     @CheckedTemplate(basePath = "tools")
     public static class Templates {
@@ -35,12 +35,12 @@ public class CampaignTools {
     }
 
     @Tool("""
-            Create a new character (PC, NPC, or SIDEKICK) in the campaign.
+            Create a new character (PC, NPC, or SIDEKICK) in the story thread.
             Summary should be brief (5-10 words) for quick identification.
             Description can be detailed narrative.
             """)
-    public String createCharacter(String campaignId, String type, String name, String summary, String description) {
-        Character character = campaignRepository.createCharacter(campaignId, type, name, summary, description);
+    public String createCharacter(String storyThreadId, String type, String name, String summary, String description) {
+        Character character = storyRepository.createCharacter(storyThreadId, type, name, summary, description);
         return "Created character: " + character.getName() + " (ID: " + character.getId() + ")";
     }
 
@@ -50,7 +50,7 @@ public class CampaignTools {
             """)
     public String updateCharacter(String characterId, String name, String summary, String description,
             String characterClass, Integer level, String alignment, String status) {
-        Character character = campaignRepository.updateCharacter(characterId, name, summary, description,
+        Character character = storyRepository.updateCharacter(characterId, name, summary, description,
                 characterClass, level, alignment, status);
         if (character == null) {
             return "Error: Character not found with ID: " + characterId;
@@ -58,19 +58,19 @@ public class CampaignTools {
         return "Updated character: " + character.getName();
     }
 
-    @Tool("List all characters in a campaign")
-    public String listCharacters(String campaignId) {
-        List<Character> characters = campaignRepository.findCharactersByCampaignId(campaignId);
+    @Tool("List all characters in a story thread")
+    public String listCharacters(String storyThreadId) {
+        List<Character> characters = storyRepository.findCharactersByStoryThreadId(storyThreadId);
 
         if (characters.isEmpty()) {
-            return "No characters found in campaign";
+            return "No characters found in story thread";
         }
         return Templates.characterList(characters).render();
     }
 
     @Tool("Find characters by name (partial match, may return multiple results)")
-    public String findCharacter(String campaignId, String name) {
-        List<Character> characters = campaignRepository.findCharactersByNameContaining(campaignId, name);
+    public String findCharacter(String storyThreadId, String name) {
+        List<Character> characters = storyRepository.findCharactersByNameContaining(storyThreadId, name);
 
         if (characters.isEmpty()) {
             return "No character found with name containing: " + name;
@@ -85,7 +85,7 @@ public class CampaignTools {
 
     @Tool("Get detailed information about a specific character by ID")
     public String getCharacterDetail(String characterId) {
-        Character character = campaignRepository.findCharacterById(characterId);
+        Character character = storyRepository.findCharacterById(characterId);
         if (character == null) {
             return "Character not found with ID: " + characterId;
         }
@@ -93,12 +93,12 @@ public class CampaignTools {
     }
 
     @Tool("""
-            Create a new location (CITY, REGION, BUILDING, DUNGEON, etc.) in the campaign.
+            Create a new location (CITY, REGION, BUILDING, DUNGEON, etc.) in the story thread.
             Summary should be brief (5-10 words) for quick identification.
             Description can be detailed narrative.
             """)
-    public String createLocation(String campaignId, String type, String name, String summary, String description) {
-        Location location = campaignRepository.createLocation(campaignId, type, name, summary, description);
+    public String createLocation(String storyThreadId, String type, String name, String summary, String description) {
+        Location location = storyRepository.createLocation(storyThreadId, type, name, summary, description);
         return "Created location: " + location.getName() + " (ID: " + location.getId() + ")";
     }
 
@@ -107,26 +107,26 @@ public class CampaignTools {
             All fields except ID can be updated.
             """)
     public String updateLocation(String locationId, String name, String summary, String description) {
-        Location location = campaignRepository.updateLocation(locationId, name, summary, description);
+        Location location = storyRepository.updateLocation(locationId, name, summary, description);
         if (location == null) {
             return "Error: Location not found with ID: " + locationId;
         }
         return "Updated location: " + location.getName();
     }
 
-    @Tool("List all locations in a campaign")
-    public String listLocations(String campaignId) {
-        List<Location> locations = campaignRepository.findLocationsByCampaignId(campaignId);
+    @Tool("List all locations in a story thread")
+    public String listLocations(String storyThreadId) {
+        List<Location> locations = storyRepository.findLocationsByStoryThreadId(storyThreadId);
 
         if (locations.isEmpty()) {
-            return "No locations found in campaign";
+            return "No locations found in story thread";
         }
         return Templates.locationList(locations).render();
     }
 
     @Tool("Find locations by name (partial match, may return multiple results)")
-    public String findLocation(String campaignId, String name) {
-        List<Location> locations = campaignRepository.findLocationsByNameContaining(campaignId, name);
+    public String findLocation(String storyThreadId, String name) {
+        List<Location> locations = storyRepository.findLocationsByNameContaining(storyThreadId, name);
 
         if (locations.isEmpty()) {
             return "No location found with name containing: " + name;
@@ -141,7 +141,7 @@ public class CampaignTools {
 
     @Tool("Get detailed information about a specific location by ID")
     public String getLocationDetail(String locationId) {
-        Location location = campaignRepository.findLocationById(locationId);
+        Location location = storyRepository.findLocationById(locationId);
         if (location == null) {
             return "Location not found with ID: " + locationId;
         }
@@ -151,7 +151,7 @@ public class CampaignTools {
     @Tool("Create a relationship between two characters")
     public String createRelationship(String fromCharacterId, String toCharacterId,
             String relationshipType, String description) {
-        var relationship = campaignRepository.createRelationship(fromCharacterId, toCharacterId, relationshipType,
+        var relationship = storyRepository.createRelationship(fromCharacterId, toCharacterId, relationshipType,
                 description);
         if (relationship == null) {
             return "Error: Could not create relationship (check that both character IDs exist)";
@@ -161,7 +161,7 @@ public class CampaignTools {
 
     @Tool("Find all relationships for a character - shows who they know and how")
     public String getCharacterRelationships(String characterId) {
-        List<CharacterRelationship> relationships = campaignRepository.findRelationshipsByCharacterId(characterId);
+        List<CharacterRelationship> relationships = storyRepository.findRelationshipsByCharacterId(characterId);
         if (relationships.isEmpty()) {
             return "No relationships found for character: " + characterId;
         }
@@ -183,11 +183,11 @@ public class CampaignTools {
         return result.toString();
     }
 
-    @Tool("Get the relationship network for a campaign - shows all character connections")
-    public String getCampaignNetwork(String campaignId) {
-        List<CharacterRelationship> relationships = campaignRepository.findRelationshipsByCampaignId(campaignId);
+    @Tool("Get the relationship network for a story thread - shows all character connections")
+    public String getStoryNetwork(String storyThreadId) {
+        List<CharacterRelationship> relationships = storyRepository.findRelationshipsByStoryThreadId(storyThreadId);
         if (relationships.isEmpty()) {
-            return "No relationships found in campaign: " + campaignId;
+            return "No relationships found in story thread: " + storyThreadId;
         }
 
         StringBuilder result = new StringBuilder();
@@ -203,7 +203,7 @@ public class CampaignTools {
 
     @Tool("Find characters connected to a location - who has been there")
     public String getLocationConnections(String locationId) {
-        List<Character> characters = campaignRepository.findCharactersByLocation(locationId);
+        List<Character> characters = storyRepository.findCharactersByLocation(locationId);
         if (characters.isEmpty()) {
             return "No characters found connected to location: " + locationId;
         }
@@ -219,14 +219,14 @@ public class CampaignTools {
 
     @Tool("Find shared history between two characters - events they both participated in")
     public String getSharedHistory(String character1Id, String character2Id) {
-        List<CampaignEvent> events = campaignRepository.findSharedEvents(character1Id, character2Id);
+        List<StoryEvent> events = storyRepository.findSharedEvents(character1Id, character2Id);
         if (events.isEmpty()) {
             return "No shared events found between these characters.";
         }
 
         StringBuilder result = new StringBuilder();
         result.append("Shared events:\n");
-        for (CampaignEvent event : events) {
+        for (StoryEvent event : events) {
             result.append(String.format("- %s", event.getDescription()));
             if (event.getLocation() != null) {
                 result.append(String.format(" (at %s)", event.getLocation().getName()));
@@ -236,8 +236,8 @@ public class CampaignTools {
         return result.toString();
     }
 
-    @Tool("List all campaign IDs that have data")
-    public List<String> getCampaignIds() {
-        return campaignRepository.getCampaignIds();
+    @Tool("List all story thread IDs that have data")
+    public List<String> getStoryThreadIds() {
+        return storyRepository.getStoryThreadIds();
     }
 }
