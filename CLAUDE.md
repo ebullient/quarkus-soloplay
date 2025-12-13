@@ -70,6 +70,28 @@ Act as a pair programming partner with these responsibilities:
 - All AI responses go through ResponseAugmenter
 - Converts markdown → HTML for display
 
+**Neo4j OGM Session Management:**
+
+- Neo4j OGM sessions are opened via `sessionFactory.openSession()` WITHOUT explicit closing
+- Connection pooling and lifecycle are managed by the extension
+- This is the documented pattern - see [movies-java-quarkus example](https://github.com/sdaschner/movies-java-quarkus)
+- Example from official pattern:
+  ```java
+  @ApplicationScoped
+  public class MovieRepository {
+      @Inject SessionFactory sessionFactory;
+      
+      public List<Movie> findAll() {
+          Session session = sessionFactory.openSession();
+          return session.loadAll(Movie.class);
+          // No session.close() needed
+      }
+  }
+  ```
+- Read-only queries: Open session, execute query, return results (no transaction needed)
+- Write operations: Use `session.beginTransaction()`, commit/rollback as needed, close transaction
+- The CampaignRepository follows this pattern correctly
+
 ## Known Issues
 
 - [CampaignResource.java:72](src/main/java/dev/ebullient/soloplay/CampaignResource.java:72) - Missing return statement in `loadSetting()` after the for loop
