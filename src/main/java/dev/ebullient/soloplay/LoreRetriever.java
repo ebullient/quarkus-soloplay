@@ -14,10 +14,10 @@ import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 
 @ApplicationScoped
-public class SettingRetriever implements Supplier<RetrievalAugmentor> {
+public class LoreRetriever implements Supplier<RetrievalAugmentor> {
     private final RetrievalAugmentor augmentor;
 
-    public SettingRetriever(
+    public LoreRetriever(
             EmbeddingStore<TextSegment> store,
             EmbeddingModel model,
             @ConfigProperty(name = "campaign.setting.maxResults", defaultValue = "5") int maxResults) {

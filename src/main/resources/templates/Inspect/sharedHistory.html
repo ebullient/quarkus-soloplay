@@ -75,10 +75,12 @@
                     {#for event in sharedEvents}
                         <div class="event-card">
                             <div class="event-header">
-                                <span class="event-type">{event.type}</span>
+                                {#if event.tags}
+                                <span class="event-type">{#each event.tags}{it}{#if it_hasNext}, {/if}{/each}</span>
+                                {/if}
                                 <span class="event-timestamp">{event.timestamp}</span>
                             </div>
-                            
+
                             <div class="event-content">
                                 <p class="event-description">{event.description}</p>
                                 
@@ -91,9 +93,9 @@
                                     </div>
                                 {/if}
                                 
-                                {#if event.storyDay}
+                                {#if event.day}
                                     <div class="event-timing">
-                                        <strong>Campaign Day:</strong> {event.storyDay}
+                                        <strong>Campaign Day:</strong> {event.day}
                                         {#if event.inWorldDate}
                                             <span class="in-world-date">({event.inWorldDate})</span>
                                         {/if}

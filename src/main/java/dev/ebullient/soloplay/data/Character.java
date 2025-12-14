@@ -4,13 +4,13 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.neo4j.ogm.annotation.GeneratedValue;
 import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.NodeEntity;
-import org.neo4j.ogm.id.UuidStrategy;
 
 /**
  * Represents a PC or NPC in the campaign.
+ * <p>
+ * Uses composite slug-based ID: "{storyThreadSlug}:{characterSlug}"
  * <p>
  * Characters use a tag-based classification system instead of rigid enums.
  * Common tags include:
@@ -25,15 +25,16 @@ import org.neo4j.ogm.id.UuidStrategy;
 @NodeEntity("Character")
 public class Character {
     @Id
-    @GeneratedValue(strategy = UuidStrategy.class)
-    private String id;
+    private String id; // Composite: "{storyThreadSlug}:{characterSlug}"
+
+    private String slug; // Character slug part (e.g., "thorin-oakenshield", "tavern-guard")
+    private String storyThreadId; // Story thread slug (e.g., "summer-adventure")
+
     private Instant createdAt;
     private Instant updatedAt;
 
-    private String storyThreadId;
-
     private List<String> tags;
-    private String name;
+    private String name; // Display name (mutable, e.g., "Thorin Oakenshield")
     private String summary; // Short, stable identifier (e.g., "Aged wizard", "Young warrior")
     private String description; // Full narrative that can evolve over time
     private String characterClass; // e.g., "Fighter", "Wizard"
@@ -46,12 +47,26 @@ public class Character {
         this.tags = new ArrayList<>();
     }
 
-    public Character(String storyThreadId, String name) {
+    /**
+     * Create a character with a specific slug.
+     * This is the preferred constructor when the AI provides a meaningful slug.
+     */
+    public Character(String storyThreadId, String slug, String name) {
         this();
         this.storyThreadId = storyThreadId;
+        this.slug = slug;
         this.name = name;
+        this.id = storyThreadId + ":" + slug;
         // Default to NPC if no tags specified
         this.tags.add("npc");
+    }
+
+    /**
+     * Create a character with auto-generated slug from name.
+     * Use this when no specific slug is provided.
+     */
+    public Character(String storyThreadId, String name) {
+        this(storyThreadId, StoryThread.slugify(name), name);
     }
 
     // Getters and setters
@@ -63,12 +78,26 @@ public class Character {
         this.id = id;
     }
 
+    public String getSlug() {
+        return slug;
+    }
+
+    public void setSlug(String slug) {
+        this.slug = slug;
+        if (this.storyThreadId != null) {
+            this.id = this.storyThreadId + ":" + slug;
+        }
+    }
+
     public String getStoryThreadId() {
         return storyThreadId;
     }
 
     public void setStoryThreadId(String storyThreadId) {
         this.storyThreadId = storyThreadId;
+        if (this.slug != null) {
+            this.id = storyThreadId + ":" + this.slug;
+        }
     }
 
     public List<String> getTags() {
@@ -148,6 +177,7 @@ public class Character {
 
     public void setName(String name) {
         this.name = name;
+        // Note: slug is NOT updated when name changes (slug is immutable)
     }
 
     public String getSummary() {
@@ -208,6 +238,6 @@ public class Character {
     }
 
     public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
+        this.updatedAt = Instant.now();
     }
 }

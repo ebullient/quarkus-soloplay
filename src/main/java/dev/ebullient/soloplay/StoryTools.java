@@ -36,8 +36,16 @@ public class StoryTools {
 
     @Tool("""
             Create a new character in the story thread with optional tags.
+
+            IMPORTANT: Choose meaningful names that will create good identifiers:
+            - For named NPCs: use full names (e.g., "Thorin Oakenshield", "Gandalf the Grey")
+            - For generic NPCs: include location or distinguishing feature (e.g., "Tavern Guard", "North Gate Guard", "Scarred Bartender")
+
+            The name will be converted to a slug for the ID: "{storyThread}:{name-as-slug}"
+            Example: "Thorin Oakenshield" → ID: "summer-adventure:thorin-oakenshield"
+
             Summary should be brief (5-10 words) for quick identification.
-            Description can be detailed narrative.
+            Description can be detailed narrative and will evolve over time.
 
             Common tags:
             - Control: "player-controlled", "npc" (default if no tags specified)
@@ -94,43 +102,10 @@ public class StoryTools {
                 + "\nCurrent tags: " + String.join(", ", character.getTags());
     }
 
-    @Tool("List all characters in a story thread")
-    public String listCharacters(String storyThreadId) {
-        List<Character> characters = storyRepository.findCharactersByStoryThreadId(storyThreadId);
-
-        if (characters.isEmpty()) {
-            return "No characters found in story thread";
-        }
-        return Templates.characterList(characters).render();
-    }
-
-    @Tool("Find characters by name (partial match, may return multiple results)")
-    public String findCharacter(String storyThreadId, String name) {
-        List<Character> characters = storyRepository.findCharactersByNameContaining(storyThreadId, name);
-
-        if (characters.isEmpty()) {
-            return "No character found with name containing: " + name;
-        }
-
-        if (characters.size() == 1) {
-            return Templates.characterDetail(characters.get(0)).render();
-        } else {
-            return Templates.characterList(characters).render();
-        }
-    }
-
-    @Tool("Get detailed information about a specific character by ID")
-    public String getCharacterDetail(String characterId) {
-        Character character = storyRepository.findCharacterById(characterId);
-        if (character == null) {
-            return "Character not found with ID: " + characterId;
-        }
-        return Templates.characterDetail(character).render();
-    }
-
     @Tool("""
-            Find characters that have ANY of the specified tags (OR logic).
-            Example: findCharactersByTags(threadId, ["merchant", "quest-giver"]) finds merchants OR quest-givers.
+            Find characters by tags. Returns characters that have ANY of the specified tags.
+            For example: findCharactersByTags(storyThreadId, ["player-controlled", "companion"])
+            will return all PCs and companions.
             """)
     public String findCharactersByTags(String storyThreadId, List<String> tags) {
         List<Character> characters = storyRepository.findCharactersByAnyTag(storyThreadId, tags);
@@ -141,90 +116,58 @@ public class StoryTools {
     }
 
     @Tool("""
-            Get all player-controlled characters (PCs) in the story thread.
+            Get detailed information about a specific character including relationships and recent events.
             """)
-    public String getPlayerCharacters(String storyThreadId) {
-        List<Character> characters = storyRepository.findCharactersByAnyTag(storyThreadId,
-                List.of("player-controlled"));
-        if (characters.isEmpty()) {
-            return "No player-controlled characters found";
-        }
-        return Templates.characterList(characters).render();
-    }
-
-    @Tool("""
-            Get all party members (player-controlled characters and companions).
-            """)
-    public String getPartyMembers(String storyThreadId) {
-        List<Character> characters = storyRepository.findCharactersByAnyTag(storyThreadId,
-                List.of("player-controlled", "companion"));
-        if (characters.isEmpty()) {
-            return "No party members found";
-        }
-        return Templates.characterList(characters).render();
-    }
-
-    @Tool("""
-            Add a character to the party temporarily (adds "temporary" tag).
-            Useful for NPCs joining for combat or a single quest.
-            """)
-    public String addTemporaryPartyMember(String characterId) {
-        return addCharacterTags(characterId, List.of("temporary", "companion"));
-    }
-
-    @Tool("""
-            Remove a character from temporary party status (removes "temporary" and "companion" tags).
-            """)
-    public String removeTemporaryPartyMember(String characterId) {
-        return removeCharacterTags(characterId, List.of("temporary", "companion"));
-    }
-
-    @Tool("""
-            Transfer character control between player and GM.
-            If playerControlled is true, removes "npc" and adds "player-controlled".
-            If false, removes "player-controlled" and adds "npc".
-            """)
-    public String setCharacterControl(String characterId, boolean playerControlled) {
+    public String getCharacterDetail(String characterId) {
         Character character = storyRepository.findCharacterById(characterId);
         if (character == null) {
             return "Error: Character not found with ID: " + characterId;
         }
-
-        if (playerControlled) {
-            storyRepository.removeCharacterTags(characterId, List.of("npc"));
-            character = storyRepository.addCharacterTags(characterId, List.of("player-controlled"));
-            return character.getName() + " is now player-controlled";
-        } else {
-            storyRepository.removeCharacterTags(characterId, List.of("player-controlled"));
-            character = storyRepository.addCharacterTags(characterId, List.of("npc"));
-            return character.getName() + " is now GM-controlled (NPC)";
-        }
+        return Templates.characterDetail(character).render();
     }
 
     @Tool("""
-            Get all quest-givers in the story thread.
+            Transfer control of a character between player and GM.
+            Use this when a companion joins or leaves the party, or when converting an NPC to a PC.
+            Control options: "player" or "gm"
             """)
-    public String getQuestGivers(String storyThreadId) {
-        List<Character> characters = storyRepository.findCharactersByAnyTag(storyThreadId,
-                List.of("quest-giver"));
+    public String setCharacterControl(String characterId, String control) {
+        Character character = storyRepository.setCharacterControl(characterId, control);
+        if (character == null) {
+            return "Error: Character not found with ID: " + characterId;
+        }
+        boolean isPlayerControlled = character.hasTag("player-controlled");
+        return "Character " + character.getName() + " is now " +
+                (isPlayerControlled ? "player-controlled" : "GM-controlled");
+    }
+
+    @Tool("""
+            Get all player characters (PCs) in the story thread.
+            """)
+    public String getPlayerCharacters(String storyThreadId) {
+        List<Character> characters = storyRepository.getPlayerCharacters(storyThreadId);
         if (characters.isEmpty()) {
-            return "No quest-givers found";
+            return "No player characters found in this story.";
         }
         return Templates.characterList(characters).render();
     }
 
     @Tool("""
+            Get all party members (PCs and companions) in the story thread.
+            """)
+    public String getPartyMembers(String storyThreadId) {
+        List<Character> characters = storyRepository.getPartyMembers(storyThreadId);
+        if (characters.isEmpty()) {
+            return "No party members found in this story.";
+        }
+        return Templates.characterList(characters).render();
+    }
+
+    // ===== LOCATION METHODS =====
+
+    @Tool("""
             Create a new location in the story thread with optional tags.
-            Summary should be brief (5-10 words) for quick identification.
-            Description can be detailed narrative.
-
-            Common tags:
-            - Type: "city", "town", "village", "dungeon", "wilderness", "building", "region", "plane"
-            - Status: "destroyed", "abandoned", "hidden", "active"
-            - Features: "fortified", "magical", "haunted", "sacred", "cursed"
-            - Access: "public", "restricted", "secret", "guarded"
-
-            Tags parameter should be a list like: ["city", "fortified", "active"]
+            Location tags examples: "city", "dungeon", "wilderness", "tavern", "destroyed", "hidden", etc.
             """)
     public String createLocation(String storyThreadId, String name, String summary, String description,
             List<String> tags) {
@@ -234,9 +177,20 @@ public class StoryTools {
     }
 
     @Tool("""
-            Add tags to a location. Tags are case-insensitive and automatically normalized.
-            Common tags: "city", "dungeon", "fortified", "magical", "abandoned", etc.
-            Can also use prefixed tags like "faction:thieves-guild" or "climate:tropical".
+            Update an existing location's basic information.
+            """)
+    public String updateLocation(String locationId, String name, String summary, String description) {
+        Location location = storyRepository.updateLocation(locationId, name, summary, description);
+        if (location == null) {
+            return "Error: Location not found with ID: " + locationId;
+        }
+        return "Updated location: " + location.getName();
+    }
+
+    @Tool("""
+            Add tags to a location.
+            Common location tags: "city", "town", "dungeon", "wilderness", "tavern", "shop", "temple",
+            "destroyed", "abandoned", "hidden", "fortified", "sacred", etc.
             """)
     public String addLocationTags(String locationId, List<String> tags) {
         Location location = storyRepository.addLocationTags(locationId, tags);
@@ -260,8 +214,7 @@ public class StoryTools {
     }
 
     @Tool("""
-            Find locations that have ANY of the specified tags (OR logic).
-            Example: findLocationsByTags(threadId, ["city", "town"]) finds cities OR towns.
+            Find locations by tags. Returns locations that have ANY of the specified tags.
             """)
     public String findLocationsByTags(String storyThreadId, List<String> tags) {
         List<Location> locations = storyRepository.findLocationsByAnyTag(storyThreadId, tags);
@@ -272,141 +225,175 @@ public class StoryTools {
     }
 
     @Tool("""
-            Update an existing location's information.
-            All fields except ID can be updated.
+            Create a directional connection between two locations.
+            Direction examples: "north", "south", "east", "west", "up", "down", "in", "through"
+            Description example: "A winding forest path" or "Stone stairs leading down"
             """)
-    public String updateLocation(String locationId, String name, String summary, String description) {
-        Location location = storyRepository.updateLocation(locationId, name, summary, description);
-        if (location == null) {
-            return "Error: Location not found with ID: " + locationId;
-        }
-        return "Updated location: " + location.getName();
+    public String connectLocations(String fromLocationId, String toLocationId, String direction, String description) {
+        storyRepository.connectLocations(fromLocationId, toLocationId, direction, description);
+        return "Connected locations with direction: " + direction;
     }
 
-    @Tool("List all locations in a story thread")
-    public String listLocations(String storyThreadId) {
-        List<Location> locations = storyRepository.findLocationsByStoryThreadId(storyThreadId);
+    // ===== STORY EVENT METHODS =====
 
-        if (locations.isEmpty()) {
-            return "No locations found in story thread";
-        }
-        return Templates.locationList(locations).render();
+    @Tool("""
+            Create a new story event with optional participants and locations.
+            Event tags examples: "combat", "social", "exploration", "quest-start", "character-death", etc.
+            """)
+    public String createEvent(String storyThreadId, String title, String description, Long day,
+            List<String> participantIds, List<String> locationIds, List<String> tags) {
+        StoryEvent event = storyRepository.createEvent(storyThreadId, title, description, day,
+                participantIds, locationIds, tags);
+        String tagInfo = tags != null && !tags.isEmpty() ? " with tags: " + String.join(", ", tags) : "";
+        return "Created event: " + event.getTitle() + " (Day " + event.getDay() + ")" + tagInfo;
     }
 
-    @Tool("Find locations by name (partial match, may return multiple results)")
-    public String findLocation(String storyThreadId, String name) {
-        List<Location> locations = storyRepository.findLocationsByNameContaining(storyThreadId, name);
-
-        if (locations.isEmpty()) {
-            return "No location found with name containing: " + name;
+    @Tool("""
+            Find events by tags. Returns events that have ANY of the specified tags.
+            """)
+    public String findEventsByTags(String storyThreadId, List<String> tags) {
+        List<StoryEvent> events = storyRepository.findEventsByAnyTag(storyThreadId, tags);
+        if (events.isEmpty()) {
+            return "No events found with tags: " + String.join(", ", tags);
         }
-
-        if (locations.size() == 1) {
-            return Templates.locationDetail(locations.get(0)).render();
-        } else {
-            return Templates.locationList(locations).render();
+        StringBuilder result = new StringBuilder("Found " + events.size() + " events:\n");
+        for (StoryEvent event : events) {
+            result.append("- Day ").append(event.getDay()).append(": ").append(event.getTitle()).append("\n");
         }
+        return result.toString();
     }
 
-    @Tool("Get detailed information about a specific location by ID")
-    public String getLocationDetail(String locationId) {
-        Location location = storyRepository.findLocationById(locationId);
-        if (location == null) {
-            return "Location not found with ID: " + locationId;
-        }
-        return Templates.locationDetail(location).render();
+    // ===== RELATIONSHIP METHODS =====
+
+    @Tool("""
+            Create a relationship between two characters.
+            Relationship tags examples: "friend", "enemy", "ally", "family", "mentor", "lover", "rival", etc.
+            Multiple tags can express complex relationships: ["ally", "friend", "trusts"]
+            """)
+    public String createRelationship(String character1Id, String character2Id, List<String> tags) {
+        storyRepository.createRelationship(character1Id, character2Id, tags);
+        String tagInfo = tags != null && !tags.isEmpty() ? " (" + String.join(", ", tags) + ")" : "";
+        return "Created relationship between characters" + tagInfo;
     }
 
-    @Tool("Create a relationship between two characters")
-    public String createRelationship(String fromCharacterId, String toCharacterId,
-            String relationshipType, String description) {
-        var relationship = storyRepository.createRelationship(fromCharacterId, toCharacterId, relationshipType,
-                description);
-        if (relationship == null) {
-            return "Error: Could not create relationship (check that both character IDs exist)";
-        }
-        return "Created relationship between characters";
-    }
-
-    @Tool("Find all relationships for a character - shows who they know and how")
+    @Tool("""
+            Get all relationships for a specific character.
+            Returns formatted information about who this character is connected to and how.
+            """)
     public String getCharacterRelationships(String characterId) {
         List<CharacterRelationship> relationships = storyRepository.findRelationshipsByCharacterId(characterId);
         if (relationships.isEmpty()) {
-            return "No relationships found for character: " + characterId;
+            return "No relationships found for this character.";
         }
 
+        Character character = storyRepository.findCharacterById(characterId);
         StringBuilder result = new StringBuilder();
-        result.append("Relationships for character:\n");
-        for (CharacterRelationship rel : relationships) {
-            String fromName = rel.getFrom().getName();
-            String toName = rel.getTo().getName();
-            String type = rel.getType().toString();
-            String desc = rel.getDescription() != null ? rel.getDescription() : "";
+        result.append(character.getName()).append("'s relationships:\n");
 
-            result.append(String.format("- %s %s %s", fromName, type, toName));
-            if (!desc.isEmpty()) {
-                result.append(String.format(" (%s)", desc));
+        for (CharacterRelationship rel : relationships) {
+            Character other = rel.getCharacter1().getId().equals(characterId)
+                    ? rel.getCharacter2()
+                    : rel.getCharacter1();
+            result.append("- ").append(other.getName());
+            if (rel.getTags() != null && !rel.getTags().isEmpty()) {
+                result.append(" (").append(String.join(", ", rel.getTags())).append(")");
             }
             result.append("\n");
         }
+
         return result.toString();
     }
 
-    @Tool("Get the relationship network for a story thread - shows all character connections")
+    // ===== QUERY METHODS =====
+
+    @Tool("""
+            Get a comprehensive network view of the story showing characters, locations, and their connections.
+            This provides a high-level overview of the current story state.
+            """)
     public String getStoryNetwork(String storyThreadId) {
-        List<CharacterRelationship> relationships = storyRepository.findRelationshipsByStoryThreadId(storyThreadId);
-        if (relationships.isEmpty()) {
-            return "No relationships found in story thread: " + storyThreadId;
-        }
+        List<Character> characters = storyRepository.findCharactersByStoryThreadId(storyThreadId);
+        List<Location> locations = storyRepository.findLocationsByStoryThreadId(storyThreadId);
+        List<StoryEvent> recentEvents = storyRepository.findRecentEvents(storyThreadId, 5);
 
         StringBuilder result = new StringBuilder();
-        result.append("Character relationship network:\n");
-        for (CharacterRelationship rel : relationships) {
-            String fromName = rel.getFrom().getName();
-            String toName = rel.getTo().getName();
-            String type = rel.getType().toString();
-            result.append(String.format("- %s %s %s\n", fromName, type, toName));
+        result.append("=== STORY NETWORK ===\n\n");
+
+        result.append("Characters (").append(characters.size()).append("):\n");
+        for (Character c : characters) {
+            result.append("- ").append(c.getName());
+            if (c.getSummary() != null) {
+                result.append(" (").append(c.getSummary()).append(")");
+            }
+            result.append("\n");
         }
+
+        result.append("\nLocations (").append(locations.size()).append("):\n");
+        for (Location l : locations) {
+            result.append("- ").append(l.getName());
+            if (l.getSummary() != null) {
+                result.append(" (").append(l.getSummary()).append(")");
+            }
+            result.append("\n");
+        }
+
+        if (!recentEvents.isEmpty()) {
+            result.append("\nRecent Events:\n");
+            for (StoryEvent e : recentEvents) {
+                result.append("- Day ").append(e.getDay()).append(": ").append(e.getTitle()).append("\n");
+            }
+        }
+
         return result.toString();
     }
 
-    @Tool("Find characters connected to a location - who has been there")
+    @Tool("""
+            Get characters associated with a specific location.
+            Useful for knowing who is present at a location or who has connections to it.
+            """)
     public String getLocationConnections(String locationId) {
         List<Character> characters = storyRepository.findCharactersByLocation(locationId);
+        Location location = storyRepository.findLocationById(locationId);
+
+        if (location == null) {
+            return "Error: Location not found with ID: " + locationId;
+        }
+
         if (characters.isEmpty()) {
-            return "No characters found connected to location: " + locationId;
+            return "No character connections found for " + location.getName();
         }
 
         StringBuilder result = new StringBuilder();
-        result.append("Characters connected to this location:\n");
-        for (Character character : characters) {
-            result.append(String.format("- %s (%s)\n", character.getName(),
-                    character.getSummary() != null ? character.getSummary() : "no description"));
+        result.append("Characters connected to ").append(location.getName()).append(":\n");
+        for (Character c : characters) {
+            result.append("- ").append(c.getName()).append("\n");
         }
+
         return result.toString();
     }
 
-    @Tool("Find shared history between two characters - events they both participated in")
+    @Tool("""
+            Get shared history between two characters - events they both participated in.
+            Useful for understanding their relationship context.
+            """)
     public String getSharedHistory(String character1Id, String character2Id) {
         List<StoryEvent> events = storyRepository.findSharedEvents(character1Id, character2Id);
+
         if (events.isEmpty()) {
-            return "No shared events found between these characters.";
+            return "No shared history found between these characters.";
         }
+
+        Character char1 = storyRepository.findCharacterById(character1Id);
+        Character char2 = storyRepository.findCharacterById(character2Id);
 
         StringBuilder result = new StringBuilder();
-        result.append("Shared events:\n");
-        for (StoryEvent event : events) {
-            result.append(String.format("- %s", event.getDescription()));
-            if (event.getLocation() != null) {
-                result.append(String.format(" (at %s)", event.getLocation().getName()));
-            }
-            result.append("\n");
-        }
-        return result.toString();
-    }
+        result.append("Shared history between ").append(char1.getName())
+                .append(" and ").append(char2.getName()).append(":\n");
 
-    @Tool("List all story thread IDs that have data")
-    public List<String> getStoryThreadIds() {
-        return storyRepository.getStoryThreadIds();
+        for (StoryEvent event : events) {
+            result.append("- Day ").append(event.getDay()).append(": ")
+                    .append(event.getTitle()).append("\n");
+        }
+
+        return result.toString();
     }
 }

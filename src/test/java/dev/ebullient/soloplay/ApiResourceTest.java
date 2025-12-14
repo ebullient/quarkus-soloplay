@@ -8,14 +8,14 @@ import org.junit.jupiter.api.Test;
 import io.quarkus.test.junit.QuarkusTest;
 
 @QuarkusTest
-class CampaignResourceTest {
+class ApiResourceTest {
 
     @Test
     void testChatEndpointExists() {
         // Test GET endpoint with query parameter
         given()
                 .queryParam("question", "test")
-                .when().get("/campaign/chat")
+                .when().get("/api/chat")
                 .then()
                 .statusCode(200)
                 .body(notNullValue());
@@ -27,7 +27,7 @@ class CampaignResourceTest {
         given()
                 .contentType("text/plain")
                 .body("test question")
-                .when().post("/campaign/chat")
+                .when().post("/api/chat")
                 .then()
                 .statusCode(200)
                 .body(notNullValue());
@@ -38,7 +38,7 @@ class CampaignResourceTest {
         // Test lore endpoint with query parameter
         given()
                 .queryParam("question", "test lore question")
-                .when().get("/campaign/lore")
+                .when().get("/api/lore")
                 .then()
                 .statusCode(200)
                 .body(notNullValue());
@@ -50,7 +50,7 @@ class CampaignResourceTest {
         given()
                 .contentType("text/plain")
                 .body("test question")
-                .when().post("/campaign/lore")
+                .when().post("/api/lore")
                 .then()
                 .statusCode(200)
                 .body(notNullValue());

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -53,7 +54,7 @@ public class IngestService {
     EmbeddingModel embeddingModel; // Ollama nomic-embed-text
 
     @Inject
-    SettingAssistant settingAssistant; // For RAG queries regarding the setting
+    LoreAssistant settingAssistant; // For RAG queries regarding the setting
 
     public void loadSetting(String settingName, String filename, String content) {
         if (content.startsWith(TOOLS_DOC_SEPARATOR)) {
@@ -170,7 +171,13 @@ public class IngestService {
             // Convert to Map<String, String> for metadata
             Map<String, String> result = new HashMap<>();
             for (Map.Entry<String, Object> entry : rawMap.entrySet()) {
-                if (entry.getValue() != null) {
+                // Handle lists as comma-delimited strings
+                if (entry.getValue() instanceof List<?> list) {
+                    result.put(entry.getKey(),
+                            list.stream()
+                                    .map(Object::toString)
+                                    .collect(Collectors.joining(",")));
+                } else {
                     result.put(entry.getKey(), entry.getValue().toString());
                 }
             }

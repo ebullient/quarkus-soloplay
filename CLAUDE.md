@@ -26,8 +26,10 @@ Act as a pair programming partner with these responsibilities:
 
 **Key Files:**
 
-- [CampaignResource.java](src/main/java/dev/ebullient/soloplay/CampaignResource.java) - REST endpoints
-- [CampaignService.java](src/main/java/dev/ebullient/soloplay/CampaignService.java) - Document processing & embeddings
+- [ChatResource.java](src/main/java/dev/ebullient/soloplay/ChatResource.java) - Generic LLM chat API (/api/chat)
+- [LoreResource.java](src/main/java/dev/ebullient/soloplay/LoreResource.java) - RAG lore query API (/api/lore)
+- [StoryResource.java](src/main/java/dev/ebullient/soloplay/StoryResource.java) - Story-specific API (/api/story)
+- [IngestService.java](src/main/java/dev/ebullient/soloplay/IngestService.java) - Document processing & embeddings
 - [ChatAssistant.java](src/main/java/dev/ebullient/soloplay/ChatAssistant.java) - AI chat interface
 - [SettingAssistant.java](src/main/java/dev/ebullient/soloplay/SettingAssistant.java) - RAG lore queries
 - [StoryTools.java](src/main/java/dev/ebullient/soloplay/StoryTools.java) - AI tools for character/location/event management
@@ -44,7 +46,7 @@ Act as a pair programming partner with these responsibilities:
 
 **Understand the Document Processing Pipeline:**
 
-1. Files uploaded via multipart form → CampaignService
+1. Files uploaded via multipart form → IngestService
 2. Content parsed (YAML frontmatter extracted, text chunked)
 3. Embeddings generated via Ollama's nomic-embed-text
 4. Stored in Neo4j with metadata
@@ -69,7 +71,7 @@ Act as a pair programming partner with these responsibilities:
 
 **Tag-Based Entity System:**
 
-Both Characters and Locations use a flexible tag-based classification instead of rigid enums. Tags are case-insensitive and normalized to lowercase. Entities can have multiple tags.
+All primary entities (Characters, Locations, Events, Relationships) use a flexible tag-based classification instead of rigid enums. Tags are case-insensitive and normalized to lowercase. Entities can have multiple tags.
 
 **Character Tags:**
 
@@ -102,6 +104,38 @@ Location tag operations:
 - `addLocationTags()` / `removeLocationTags()` - manage tags
 - `findLocationsByTags()` - find by ANY tag (OR)
 
+**Event Tags:**
+
+- **Activity tags**: `"combat"`, `"social"`, `"exploration"`, `"rest"`, `"travel"`
+- **Quest tags**: `"quest-start"`, `"quest-complete"`, `"quest-failed"`, `"clue-discovered"`
+- **Character tags**: `"character-death"`, `"level-up"`, `"character-introduced"`, `"character-departed"`
+- **Location tags**: `"location-discovered"`, `"location-entered"`, `"location-left"`
+- **Item tags**: `"item-acquired"`, `"item-lost"`, `"item-used"`, `"treasure-found"`
+- **Narrative tags**: `"plot-twist"`, `"revelation"`, `"decision-made"`, `"consequence"`
+- **Prefixed tags**: `"faction:thieves-guild"`, `"tone:dramatic"`, `"importance:critical"`
+
+Event tag operations:
+
+- `createEvent()` - accepts optional tags list
+- `addEventTags()` / `removeEventTags()` - manage tags
+- `findEventsByTags()` - find by ANY tag (OR)
+
+**Relationship Tags:**
+
+- **Social tags**: `"knows"`, `"ally"`, `"enemy"`, `"friend"`, `"rival"`, `"acquaintance"`
+- **Family tags**: `"family"`, `"parent"`, `"child"`, `"sibling"`, `"spouse"`, `"ancestor"`
+- **Professional tags**: `"mentor"`, `"student"`, `"employer"`, `"employee"`, `"colleague"`, `"business-partner"`
+- **Romantic tags**: `"romantic"`, `"lover"`, `"ex-lover"`, `"courting"`, `"married"`
+- **Organizational tags**: `"member-of"`, `"leader-of"`, `"subordinate"`, `"peer"`
+- **Emotional tags**: `"trusts"`, `"distrusts"`, `"fears"`, `"respects"`, `"admires"`, `"despises"`
+- **Prefixed tags**: `"faction:thieves-guild"`, `"status:secret"`, `"intensity:strong"`
+
+Relationship tag operations:
+
+- `createRelationship()` - accepts optional tags list
+- `addRelationshipTags()` / `removeRelationshipTags()` - manage tags
+- Relationships can have multiple dimensions (e.g., "ally" + "friend" + "trusts")
+
 **Response Augmentation:**
 
 - All AI responses go through ResponseAugmenter
@@ -131,9 +165,11 @@ Location tag operations:
 - Write operations: Use `session.beginTransaction()`, commit/rollback as needed, close transaction
 - The CampaignRepository follows this pattern correctly
 
-## Known Issues
+**Renarde MVC**
 
-- [CampaignResource.java:72](src/main/java/dev/ebullient/soloplay/CampaignResource.java:72) - Missing return statement in `loadSetting()` after the for loop
+- Controllers: https://docs.quarkiverse.io/quarkus-renarde/dev/concepts.html#controllers
+- Flash scope: https://docs.quarkiverse.io/quarkus-renarde/dev/advanced.html#flash_scope
+- Redirects: https://docs.quarkiverse.io/quarkus-renarde/dev/advanced.html#routing
 
 ## When Making Changes
 

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Story Threads - Solo Play</title>
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/inspector.css">
+</head>
+<body>
+    <header>
+        <h1>Solo Play - Story Threads</h1>
+        <p>Select a story to continue or create a new adventure</p>
+    </header>
+
+    <main>
+        {#if flash:success}
+        <div class="flash success">{flash:success}</div>
+        {/if}
+        {#if flash:error}
+        <div class="flash error">{flash:error}</div>
+        {/if}
+
+        <div class="story-threads-container">
+            {#if threads.isEmpty()}
+                <div class="empty-state">
+                    <h2>No Story Threads Yet</h2>
+                    <p>Create your first adventure to begin your solo play journey!</p>
+                    <a href="/story/create" class="btn btn-primary">Create New Story Thread</a>
+                </div>
+            {#else}
+                <div class="actions">
+                    <a href="/story/create" class="btn btn-primary">Create New Story Thread</a>
+                </div>
+
+                <div class="story-threads-grid">
+                    {#for thread in threads}
+                        <div class="story-card">
+                            <div class="story-header">
+                                <h2>{thread.name}</h2>
+                                <span class="badge status-badge">{thread.status}</span>
+                            </div>
+
+                            <div class="story-details">
+                                <div class="detail-item">
+                                    <strong>Setting:</strong> {thread.settingName}
+                                </div>
+                                {#if thread.adventureName}
+                                <div class="detail-item">
+                                    <strong>Adventure:</strong> {thread.adventureName}
+                                    <span class="badge">{thread.followingMode}</span>
+                                </div>
+                                {/if}
+                                <div class="detail-item">
+                                    <strong>Current Day:</strong> {thread.currentDay}
+                                </div>
+                                {#if thread.currentSituation}
+                                <div class="detail-item situation">
+                                    <strong>Current Situation:</strong>
+                                    <p>{thread.currentSituation}</p>
+                                </div>
+                                {/if}
+                                <div class="detail-item">
+                                    <strong>Last Played:</strong>
+                                    {#if thread.lastPlayedAt}
+                                        {thread.lastPlayedAt.toString()}
+                                    {#else}
+                                        Never
+                                    {/if}
+                                </div>
+                            </div>
+
+                            <div class="story-actions">
+                                <a href="/story/{thread.id}/play" class="btn btn-primary">Play</a>
+                                <a href="/story/{thread.id}/configure" class="btn btn-secondary">Configure</a>
+                                <a href="/inspect?storyThreadId={thread.id}" class="btn btn-secondary">Inspect</a>
+                            </div>
+                        </div>
+                    {/for}
+                </div>
+            {/if}
+        </div>
+    </main>
+</body>
+</html>

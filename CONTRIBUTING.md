@@ -108,9 +108,9 @@ These are plain Java interfaces annotated with `@RegisterAiService`. Quarkus Lan
 
 ### Document Processing Pipeline
 
-**CampaignService** handles document ingestion:
+**IngestService** handles document ingestion:
 
-1. **Upload**: Accepts markdown files via multipart form data
+1. **Upload**: Accepts markdown files via multipart form data (through web UI at `/ingest`)
 2. **Parse**: Handles two formats:
    - Structured markdown with YAML frontmatter and section headers
    - Plain text with recursive chunking
@@ -119,11 +119,16 @@ These are plain Java interfaces annotated with `@RegisterAiService`. Quarkus Lan
 
 ### REST API
 
-**CampaignResource** provides three endpoints:
+The API is organized into three main areas:
 
-- `GET/POST /campaign/chat` - Direct LLM chat (no retrieval)
-- `POST /campaign/load-setting` - Upload campaign documents
-- `GET/POST /campaign/lore` - RAG queries with embedding retrieval
+- **ChatResource** (`/api/chat`) - Generic LLM chat (setting-independent)
+    - `GET/POST /api/chat` - Direct LLM chat (no retrieval)
+
+- **LoreResource** (`/api/lore`) - RAG queries against ingested documents
+    - `GET/POST /api/lore` - RAG queries with embedding retrieval
+
+- **StoryResource** (`/api/story`) - Story-specific operations
+    - `GET /api/story/list` - List story thread IDs
 
 All responses are converted from markdown to HTML.
 
@@ -181,10 +186,6 @@ Quarkus configuration follows standard patterns:
 - `application.properties` for default settings
 - Environment variables or system properties for overrides
 - `@ConfigProperty` for injection
-
-## Known Issues
-
-- **CampaignResource.loadSetting()**: Missing return statement at line 72 after the file processing loop
 
 ## AI-Assisted Contributions
 

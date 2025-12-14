@@ -26,7 +26,7 @@ import io.quarkus.qute.TemplateInstance;
  * but.. SPOILERS!
  */
 @Path("/inspect")
-public class StoryData extends Controller {
+public class Inspect extends Controller {
 
     @Inject
     StoryRepository storyRepository;
@@ -101,8 +101,7 @@ public class StoryData extends Controller {
     public TemplateInstance characterDetail(@RestPath String id) {
         Character character = storyRepository.findCharacterById(id);
         if (character == null) {
-            notFound();
-            return null; // This line is never reached, but needed for compilation
+            notFound(); // throws w/ 404
         }
         return Templates.characterDetail(character);
     }
@@ -129,8 +128,7 @@ public class StoryData extends Controller {
     public TemplateInstance locationDetail(@RestPath String id) {
         Location location = storyRepository.findLocationById(id);
         if (location == null) {
-            notFound();
-            return null; // This line is never reached, but needed for compilation
+            notFound(); // throws w/ 404
         }
         return Templates.locationDetail(location);
     }
@@ -157,8 +155,7 @@ public class StoryData extends Controller {
     public TemplateInstance characterRelationships(@RestPath String id) {
         Character character = storyRepository.findCharacterById(id);
         if (character == null) {
-            notFound();
-            return null;
+            notFound(); // throws w/ 404
         }
         List<CharacterRelationship> relationships = storyRepository.findRelationshipsByCharacterId(id);
         return Templates.characterRelationships(character, relationships);
@@ -172,8 +169,7 @@ public class StoryData extends Controller {
     public TemplateInstance locationConnections(@RestPath String id) {
         Location location = storyRepository.findLocationById(id);
         if (location == null) {
-            notFound();
-            return null;
+            notFound(); // throws w/ 404
         }
         List<Character> connectedCharacters = storyRepository.findCharactersByLocation(id);
         return Templates.locationConnections(location, connectedCharacters);
@@ -186,14 +182,12 @@ public class StoryData extends Controller {
     @Path("/shared-history")
     public TemplateInstance sharedHistory(@RestQuery String char1Id, @RestQuery String char2Id) {
         if (char1Id == null || char2Id == null) {
-            badRequest();
-            return null;
+            badRequest(); // throws w/ 400
         }
         Character char1 = storyRepository.findCharacterById(char1Id);
         Character char2 = storyRepository.findCharacterById(char2Id);
         if (char1 == null || char2 == null) {
-            notFound();
-            return null;
+            notFound(); // throws w/ 404
         }
         List<StoryEvent> sharedEvents = storyRepository.findSharedEvents(char1Id, char2Id);
         return Templates.sharedHistory(char1, char2, sharedEvents);
@@ -242,8 +236,7 @@ public class StoryData extends Controller {
     @Path("/ai/shared-history")
     public TemplateInstance aiSharedHistory(@RestQuery String char1Id, @RestQuery String char2Id) {
         if (char1Id == null || char2Id == null) {
-            badRequest();
-            return null;
+            badRequest(); // throws w/ 400
         }
         String output = storyTools.getSharedHistory(char1Id, char2Id);
         return Templates.aiToolOutput("Shared History", output);

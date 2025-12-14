@@ -6,7 +6,7 @@
     <title>My Game - Campaign Data</title>
     <link rel="stylesheet" href="/styles.css">
     <link rel="stylesheet" href="/inspector.css">
-    <script src="/campaign-selector.js"></script>
+    <script src="/api-selector.js"></script>
 </head>
 <body>
     <header>
@@ -18,10 +18,10 @@
             <div class="header-controls">
                 <div class="campaign-selector">
                     <label for="campaign-input">Campaign:</label>
-                    <input 
-                        id="campaign-input" 
-                        class="campaign-input" 
-                        type="text" 
+                    <input
+                        id="campaign-input"
+                        class="campaign-input"
+                        type="text"
                         placeholder="Type or select campaign..."
                         list="campaign-datalist"
                         autocomplete="off"
@@ -49,37 +49,37 @@
     <main>
         <div class="data-overview">
             <h2>Campaign Data Overview</h2>
-            
+
             <div class="data-sections">
                 <div class="data-section">
                     <h3>Characters</h3>
                     <p>Manage NPCs, PCs, and other important figures in your campaign.</p>
                     <a href="/inspect/characters?storyThreadId={storyThreadId}" class="btn btn-primary">View Characters</a>
                 </div>
-                
+
                 <div class="data-section">
                     <h3>Locations</h3>
                     <p>Explore cities, regions, and other important places.</p>
                     <a href="/inspect/locations?storyThreadId={storyThreadId}" class="btn btn-primary">View Locations</a>
                 </div>
-                
+
                 <div class="data-section">
                     <h3>Events & Timeline</h3>
                     <p>Track important events and campaign milestones.</p>
                     <a href="/inspect/events?storyThreadId={storyThreadId}" class="btn btn-secondary">Coming Soon</a>
                 </div>
-                
+
                 <div class="data-section">
                     <h3>Relationships</h3>
                     <p>Explore connections between characters and factions.</p>
                     <a href="/inspect/relationships?storyThreadId={storyThreadId}" class="btn btn-primary">View Relationships</a>
                 </div>
-                
+
                 <div class="data-section ai-inspection">
                     <h3>🤖 AI Tool Inspection</h3>
                     <p>See exactly what the AI agents see when they query campaign data.</p>
                     <div class="ai-tools-grid">
-                        <a href="/inspect/ai/campaign-network?storyThreadId={storyThreadId}" class="btn btn-ai btn-sm">
+                        <a href="/inspect/ai/api-network?storyThreadId={storyThreadId}" class="btn btn-ai btn-sm">
                             Campaign Network
                         </a>
                     </div>

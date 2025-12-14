@@ -4,14 +4,14 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.neo4j.ogm.annotation.GeneratedValue;
 import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Relationship;
-import org.neo4j.ogm.id.UuidStrategy;
 
 /**
  * Represents a location in the campaign world.
+ * <p>
+ * Uses composite slug-based ID: "{storyThreadSlug}:{locationSlug}"
  * <p>
  * Locations use a tag-based classification system instead of rigid enums.
  * Common tags include:
@@ -26,9 +26,10 @@ import org.neo4j.ogm.id.UuidStrategy;
 @NodeEntity("Location")
 public class Location {
     @Id
-    @GeneratedValue(strategy = UuidStrategy.class)
-    private String id;
-    private String storyThreadId;
+    private String id; // Composite: "{storyThreadSlug}:{locationSlug}"
+
+    private String slug; // Location slug part (e.g., "prancing-pony", "moria-gate")
+    private String storyThreadId; // Story thread slug (e.g., "summer-adventure")
     private Instant createdAt;
     private Instant updatedAt;
 
@@ -47,10 +48,15 @@ public class Location {
         this.tags = new ArrayList<>();
     }
 
+    /**
+     * Create a location with auto-generated slug from name.
+     */
     public Location(String storyThreadId, String name) {
         this();
         this.storyThreadId = storyThreadId;
+        this.slug = StoryThread.slugify(name);
         this.name = name;
+        this.id = storyThreadId + ":" + this.slug;
     }
 
     // Getters and setters
@@ -62,12 +68,26 @@ public class Location {
         this.id = id;
     }
 
+    public String getSlug() {
+        return slug;
+    }
+
+    public void setSlug(String slug) {
+        this.slug = slug;
+        if (this.storyThreadId != null) {
+            this.id = this.storyThreadId + ":" + slug;
+        }
+    }
+
     public String getStoryThreadId() {
         return storyThreadId;
     }
 
     public void setStoryThreadId(String storyThreadId) {
         this.storyThreadId = storyThreadId;
+        if (this.slug != null) {
+            this.id = storyThreadId + ":" + this.slug;
+        }
     }
 
     public List<String> getTags() {
@@ -147,6 +167,7 @@ public class Location {
 
     public void setName(String name) {
         this.name = name;
+        // Note: slug is NOT updated when name changes (slug is immutable)
     }
 
     public String getSummary() {

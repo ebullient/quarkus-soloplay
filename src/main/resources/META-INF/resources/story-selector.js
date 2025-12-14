@@ -5,7 +5,7 @@
 class StorySelector {
     constructor() {
         this.currentStoryThread = this.getCurrentStoryThread();
-        this.apiEndpoint = '/campaign/list';
+        this.apiEndpoint = '/api/list';
 
         // Wait for DOM to be ready before initializing
         if (document.readyState === 'loading') {

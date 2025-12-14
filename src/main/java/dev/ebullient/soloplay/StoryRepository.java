@@ -49,7 +49,8 @@ public class StoryRepository {
     // ===== CHARACTER METHODS =====
 
     /**
-     * Create a new character in the story thread with tags.
+     * Create a new character in the story thread with optional tags.
+     * Slug is auto-generated from the name.
      */
     public Character createCharacter(String storyThreadId, String name, String summary, String description,
             List<String> tags) {
@@ -92,22 +93,27 @@ public class StoryRepository {
         try {
             Character character = session.load(Character.class, characterId);
             if (character == null) {
-                transaction.rollback();
                 return null;
             }
 
-            if (isPresent(name))
+            if (isPresent(name)) {
                 character.setName(name);
-            if (isPresent(summary))
+            }
+            if (isPresent(summary)) {
                 character.setSummary(summary);
-            if (isPresent(description))
+            }
+            if (isPresent(description)) {
                 character.setDescription(description);
-            if (isPresent(characterClass))
+            }
+            if (isPresent(characterClass)) {
                 character.setCharacterClass(characterClass);
-            if (isPresent(level))
+            }
+            if (isPresent(level)) {
                 character.setLevel(level);
-            if (isPresent(alignment))
+            }
+            if (isPresent(alignment)) {
                 character.setAlignment(alignment);
+            }
 
             session.save(character);
             transaction.commit();
@@ -121,34 +127,6 @@ public class StoryRepository {
     }
 
     /**
-     * Find all characters for a story thread.
-     */
-    public List<Character> findCharactersByStoryThreadId(String storyThreadId) {
-        var session = sessionFactory.openSession();
-        return toList(session.query(Character.class,
-                "MATCH (c:Character) WHERE c.storyThreadId = $storyThreadId RETURN c ORDER BY c.name",
-                Map.of("storyThreadId", storyThreadId)));
-    }
-
-    /**
-     * Find characters by name (partial match).
-     */
-    public List<Character> findCharactersByNameContaining(String storyThreadId, String name) {
-        var session = sessionFactory.openSession();
-        return toList(session.query(Character.class,
-                "MATCH (c:Character) WHERE c.storyThreadId = $storyThreadId AND c.name CONTAINS $name RETURN c",
-                Map.of("storyThreadId", storyThreadId, "name", name)));
-    }
-
-    /**
-     * Find a character by ID.
-     */
-    public Character findCharacterById(String characterId) {
-        var session = sessionFactory.openSession();
-        return session.load(Character.class, characterId);
-    }
-
-    /**
      * Add tags to a character.
      */
     public Character addCharacterTags(String characterId, List<String> tags) {
@@ -158,11 +136,11 @@ public class StoryRepository {
         try {
             Character character = session.load(Character.class, characterId);
             if (character == null) {
-                transaction.rollback();
                 return null;
             }
 
             tags.forEach(character::addTag);
+
             session.save(character);
             transaction.commit();
             return character;
@@ -184,11 +162,11 @@ public class StoryRepository {
         try {
             Character character = session.load(Character.class, characterId);
             if (character == null) {
-                transaction.rollback();
                 return null;
             }
 
             tags.forEach(character::removeTag);
+
             session.save(character);
             transaction.commit();
             return character;
@@ -201,57 +179,135 @@ public class StoryRepository {
     }
 
     /**
-     * Find characters that have ANY of the specified tags (OR).
+     * Find a character by ID.
      */
-    public List<Character> findCharactersByAnyTag(String storyThreadId, List<String> tags) {
+    public Character findCharacterById(String characterId) {
         var session = sessionFactory.openSession();
-        String cypher = """
-                MATCH (c:Character)
-                WHERE c.storyThreadId = $storyThreadId
-                  AND any(tag IN $tags WHERE tag IN c.tags)
-                RETURN c
-                ORDER BY c.name
-                """;
-        return toList(session.query(Character.class, cypher,
-                Map.of("storyThreadId", storyThreadId, "tags", tags)));
+        return session.load(Character.class, characterId);
     }
 
     /**
-     * Find characters that have ALL of the specified tags (AND).
+     * Find all characters in a story thread.
+     */
+    public List<Character> findCharactersByStoryThreadId(String storyThreadId) {
+        String cypher = """
+                MATCH (c:Character)
+                WHERE c.storyThreadId = $storyThreadId
+                RETURN c
+                ORDER BY c.createdAt
+                """;
+        var session = sessionFactory.openSession();
+        return toList(session.query(Character.class, cypher, Map.of("storyThreadId", storyThreadId)));
+    }
+
+    /**
+     * Find characters that have ANY of the specified tags.
+     */
+    public List<Character> findCharactersByAnyTag(String storyThreadId, List<String> tags) {
+        // Normalize tags to lowercase for case-insensitive matching
+        List<String> normalizedTags = tags.stream()
+                .map(t -> t.trim().toLowerCase())
+                .toList();
+
+        String cypher = """
+                MATCH (c:Character)
+                WHERE c.storyThreadId = $storyThreadId
+                  AND any(tag IN c.tags WHERE tag IN $tags)
+                RETURN c
+                ORDER BY c.createdAt
+                """;
+        var session = sessionFactory.openSession();
+        return toList(session.query(Character.class, cypher,
+                Map.of("storyThreadId", storyThreadId, "tags", normalizedTags)));
+    }
+
+    /**
+     * Find characters that have ALL of the specified tags.
      */
     public List<Character> findCharactersByAllTags(String storyThreadId, List<String> tags) {
-        var session = sessionFactory.openSession();
+        List<String> normalizedTags = tags.stream()
+                .map(t -> t.trim().toLowerCase())
+                .toList();
+
         String cypher = """
                 MATCH (c:Character)
                 WHERE c.storyThreadId = $storyThreadId
                   AND all(tag IN $tags WHERE tag IN c.tags)
                 RETURN c
-                ORDER BY c.name
+                ORDER BY c.createdAt
                 """;
+        var session = sessionFactory.openSession();
         return toList(session.query(Character.class, cypher,
-                Map.of("storyThreadId", storyThreadId, "tags", tags)));
+                Map.of("storyThreadId", storyThreadId, "tags", normalizedTags)));
     }
 
     /**
-     * Find characters that do NOT have any of the specified tags.
+     * Transfer control of a character between player and GM.
      */
-    public List<Character> findCharactersExcludingTags(String storyThreadId, List<String> excludeTags) {
+    public Character setCharacterControl(String characterId, String control) {
         var session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+
+        try {
+            Character character = session.load(Character.class, characterId);
+            if (character == null) {
+                return null;
+            }
+
+            // Remove existing control tags
+            character.removeTag("player-controlled");
+            character.removeTag("npc");
+
+            // Add appropriate control tag
+            if ("player".equalsIgnoreCase(control)) {
+                character.addTag("player-controlled");
+            } else {
+                character.addTag("npc");
+            }
+
+            session.save(character);
+            transaction.commit();
+            return character;
+        } catch (Exception e) {
+            transaction.rollback();
+            throw e;
+        } finally {
+            transaction.close();
+        }
+    }
+
+    /**
+     * Get all player characters in a story thread.
+     */
+    public List<Character> getPlayerCharacters(String storyThreadId) {
+        return findCharactersByAnyTag(storyThreadId, List.of("player-controlled"));
+    }
+
+    /**
+     * Get all party members (PCs and companions) in a story thread.
+     */
+    public List<Character> getPartyMembers(String storyThreadId) {
+        return findCharactersByAnyTag(storyThreadId, List.of("player-controlled", "companion"));
+    }
+
+    /**
+     * Find characters associated with a location.
+     */
+    public List<Character> findCharactersByLocation(String locationId) {
         String cypher = """
-                MATCH (c:Character)
-                WHERE c.storyThreadId = $storyThreadId
-                  AND none(tag IN $excludeTags WHERE tag IN c.tags)
+                MATCH (c:Character)-[r:AT_LOCATION]->(l:Location)
+                WHERE l.id = $locationId
                 RETURN c
-                ORDER BY c.name
+                ORDER BY c.createdAt
                 """;
-        return toList(session.query(Character.class, cypher,
-                Map.of("storyThreadId", storyThreadId, "excludeTags", excludeTags)));
+        var session = sessionFactory.openSession();
+        return toList(session.query(Character.class, cypher, Map.of("locationId", locationId)));
     }
 
     // ===== LOCATION METHODS =====
 
     /**
-     * Create a new location in the story thread with tags.
+     * Create a new location in the story thread.
      */
     public Location createLocation(String storyThreadId, String name, String summary, String description,
             List<String> tags) {
@@ -291,16 +347,18 @@ public class StoryRepository {
         try {
             Location location = session.load(Location.class, locationId);
             if (location == null) {
-                transaction.rollback();
                 return null;
             }
 
-            if (isPresent(name))
+            if (isPresent(name)) {
                 location.setName(name);
-            if (isPresent(summary))
+            }
+            if (isPresent(summary)) {
                 location.setSummary(summary);
-            if (isPresent(description))
+            }
+            if (isPresent(description)) {
                 location.setDescription(description);
+            }
 
             session.save(location);
             transaction.commit();
@@ -314,34 +372,6 @@ public class StoryRepository {
     }
 
     /**
-     * Find all locations for a story thread.
-     */
-    public List<Location> findLocationsByStoryThreadId(String storyThreadId) {
-        var session = sessionFactory.openSession();
-        return toList(session.query(Location.class,
-                "MATCH (l:Location) WHERE l.storyThreadId = $storyThreadId RETURN l ORDER BY l.name",
-                Map.of("storyThreadId", storyThreadId)));
-    }
-
-    /**
-     * Find locations by name (partial match).
-     */
-    public List<Location> findLocationsByNameContaining(String storyThreadId, String name) {
-        var session = sessionFactory.openSession();
-        return toList(session.query(Location.class,
-                "MATCH (l:Location) WHERE l.storyThreadId = $storyThreadId AND l.name CONTAINS $name RETURN l",
-                Map.of("storyThreadId", storyThreadId, "name", name)));
-    }
-
-    /**
-     * Find a location by ID.
-     */
-    public Location findLocationById(String locationId) {
-        var session = sessionFactory.openSession();
-        return session.load(Location.class, locationId);
-    }
-
-    /**
      * Add tags to a location.
      */
     public Location addLocationTags(String locationId, List<String> tags) {
@@ -351,11 +381,11 @@ public class StoryRepository {
         try {
             Location location = session.load(Location.class, locationId);
             if (location == null) {
-                transaction.rollback();
                 return null;
             }
 
             tags.forEach(location::addTag);
+
             session.save(location);
             transaction.commit();
             return location;
@@ -377,11 +407,11 @@ public class StoryRepository {
         try {
             Location location = session.load(Location.class, locationId);
             if (location == null) {
-                transaction.rollback();
                 return null;
             }
 
             tags.forEach(location::removeTag);
+
             session.save(location);
             transaction.commit();
             return location;
@@ -394,128 +424,200 @@ public class StoryRepository {
     }
 
     /**
-     * Find locations that have ANY of the specified tags (OR).
+     * Find a location by ID.
+     */
+    public Location findLocationById(String locationId) {
+        var session = sessionFactory.openSession();
+        return session.load(Location.class, locationId);
+    }
+
+    /**
+     * Find all locations in a story thread.
+     */
+    public List<Location> findLocationsByStoryThreadId(String storyThreadId) {
+        String cypher = """
+                MATCH (l:Location)
+                WHERE l.storyThreadId = $storyThreadId
+                RETURN l
+                ORDER BY l.createdAt
+                """;
+        var session = sessionFactory.openSession();
+        return toList(session.query(Location.class, cypher, Map.of("storyThreadId", storyThreadId)));
+    }
+
+    /**
+     * Find locations that have ANY of the specified tags.
      */
     public List<Location> findLocationsByAnyTag(String storyThreadId, List<String> tags) {
-        var session = sessionFactory.openSession();
+        List<String> normalizedTags = tags.stream()
+                .map(t -> t.trim().toLowerCase())
+                .toList();
+
         String cypher = """
                 MATCH (l:Location)
                 WHERE l.storyThreadId = $storyThreadId
-                  AND any(tag IN $tags WHERE tag IN l.tags)
+                  AND any(tag IN l.tags WHERE tag IN $tags)
                 RETURN l
-                ORDER BY l.name
+                ORDER BY l.createdAt
                 """;
+        var session = sessionFactory.openSession();
         return toList(session.query(Location.class, cypher,
-                Map.of("storyThreadId", storyThreadId, "tags", tags)));
+                Map.of("storyThreadId", storyThreadId, "tags", normalizedTags)));
     }
 
     /**
-     * Find locations that have ALL of the specified tags (AND).
+     * Connect two locations with a directional relationship.
      */
-    public List<Location> findLocationsByAllTags(String storyThreadId, List<String> tags) {
-        var session = sessionFactory.openSession();
+    public void connectLocations(String fromLocationId, String toLocationId, String direction, String description) {
         String cypher = """
-                MATCH (l:Location)
-                WHERE l.storyThreadId = $storyThreadId
-                  AND all(tag IN $tags WHERE tag IN l.tags)
-                RETURN l
-                ORDER BY l.name
-                """;
-        return toList(session.query(Location.class, cypher,
-                Map.of("storyThreadId", storyThreadId, "tags", tags)));
-    }
-
-    /**
-     * Find locations that do NOT have any of the specified tags.
-     */
-    public List<Location> findLocationsExcludingTags(String storyThreadId, List<String> excludeTags) {
-        var session = sessionFactory.openSession();
-        String cypher = """
-                MATCH (l:Location)
-                WHERE l.storyThreadId = $storyThreadId
-                  AND none(tag IN $excludeTags WHERE tag IN l.tags)
-                RETURN l
-                ORDER BY l.name
-                """;
-        return toList(session.query(Location.class, cypher,
-                Map.of("storyThreadId", storyThreadId, "excludeTags", excludeTags)));
-    }
-
-    // ===== RELATIONSHIP METHODS =====
-
-    /**
-     * Find all relationships for a character (both incoming and outgoing).
-     */
-    public List<CharacterRelationship> findRelationshipsByCharacterId(String characterId) {
-        String cypher = """
-                MATCH (c:Character {id: $characterId})-[r]-(other:Character)
-                RETURN r, startNode(r), endNode(r)
+                MATCH (from:Location {id: $fromId})
+                MATCH (to:Location {id: $toId})
+                CREATE (from)-[r:CONNECTS {direction: $direction, description: $description}]->(to)
                 """;
         var session = sessionFactory.openSession();
-        return toList(session.query(CharacterRelationship.class, cypher, Map.of("characterId", characterId)));
+        Transaction transaction = session.beginTransaction();
+
+        try {
+            session.query(cypher, Map.of(
+                    "fromId", fromLocationId,
+                    "toId", toLocationId,
+                    "direction", direction,
+                    "description", description));
+            transaction.commit();
+        } catch (Exception e) {
+            transaction.rollback();
+            throw e;
+        } finally {
+            transaction.close();
+        }
+    }
+
+    // ===== STORY EVENT METHODS =====
+
+    /**
+     * Create a new story event.
+     */
+    public StoryEvent createEvent(String storyThreadId, String title, String description, Long day,
+            List<String> participantIds, List<String> locationIds, List<String> tags) {
+        var session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+
+        try {
+            StoryEvent event = new StoryEvent(storyThreadId, title);
+            if (isPresent(description)) {
+                event.setDescription(description);
+            }
+            if (day != null) {
+                event.setDay(day);
+            }
+            if (tags != null && !tags.isEmpty()) {
+                tags.forEach(event::addTag);
+            }
+
+            session.save(event);
+
+            // Create relationships to participants and locations
+            if (participantIds != null && !participantIds.isEmpty()) {
+                for (String participantId : participantIds) {
+                    String cypher = """
+                            MATCH (e:StoryEvent {id: $eventId})
+                            MATCH (c:Character {id: $characterId})
+                            CREATE (c)-[:PARTICIPATED_IN]->(e)
+                            """;
+                    session.query(cypher, Map.of("eventId", event.getId(), "characterId", participantId));
+                }
+            }
+
+            if (locationIds != null && !locationIds.isEmpty()) {
+                for (String locationId : locationIds) {
+                    String cypher = """
+                            MATCH (e:StoryEvent {id: $eventId})
+                            MATCH (l:Location {id: $locationId})
+                            CREATE (e)-[:OCCURRED_AT]->(l)
+                            """;
+                    session.query(cypher, Map.of("eventId", event.getId(), "locationId", locationId));
+                }
+            }
+
+            transaction.commit();
+            return event;
+        } catch (Exception e) {
+            transaction.rollback();
+            throw e;
+        } finally {
+            transaction.close();
+        }
     }
 
     /**
-     * Find relationships between characters in a story thread (for network analysis).
+     * Find events by tags.
      */
-    public List<CharacterRelationship> findRelationshipsByStoryThreadId(String storyThreadId) {
+    public List<StoryEvent> findEventsByAnyTag(String storyThreadId, List<String> tags) {
+        List<String> normalizedTags = tags.stream()
+                .map(t -> t.trim().toLowerCase())
+                .toList();
+
         String cypher = """
-                MATCH (from:Character {storyThreadId: $storyThreadId})-[r]-(to:Character {storyThreadId: $storyThreadId})
-                RETURN r, startNode(r), endNode(r)
-                ORDER BY r.since DESC
+                MATCH (e:StoryEvent)
+                WHERE e.storyThreadId = $storyThreadId
+                  AND any(tag IN e.tags WHERE tag IN $tags)
+                RETURN e
+                ORDER BY e.day DESC, e.createdAt DESC
                 """;
         var session = sessionFactory.openSession();
-        return toList(session.query(CharacterRelationship.class, cypher, Map.of("storyThreadId", storyThreadId)));
+        return toList(session.query(StoryEvent.class, cypher,
+                Map.of("storyThreadId", storyThreadId, "tags", normalizedTags)));
     }
 
     /**
-     * Find characters connected to a location (who have been there or live there).
+     * Find recent events in a story thread.
      */
-    public List<Character> findCharactersByLocation(String locationId) {
+    public List<StoryEvent> findRecentEvents(String storyThreadId, int limit) {
         String cypher = """
-                MATCH (loc:Location {id: $locationId})-[:OCCURRED_AT]-(e:Event)-[:PARTICIPATED_IN]-(c:Character)
-                RETURN DISTINCT c
-                ORDER BY c.name
+                MATCH (e:StoryEvent)
+                WHERE e.storyThreadId = $storyThreadId
+                RETURN e
+                ORDER BY e.day DESC, e.createdAt DESC
+                LIMIT $limit
                 """;
         var session = sessionFactory.openSession();
-        return toList(session.query(Character.class, cypher, Map.of("locationId", locationId)));
+        return toList(session.query(StoryEvent.class, cypher,
+                Map.of("storyThreadId", storyThreadId, "limit", limit)));
     }
 
     /**
-     * Find events that multiple characters participated in together.
+     * Find shared events between two characters.
      */
     public List<StoryEvent> findSharedEvents(String character1Id, String character2Id) {
         String cypher = """
-                MATCH (c1:Character {id: $char1Id})-[:PARTICIPATED_IN]-(e:Event)-[:PARTICIPATED_IN]-(c2:Character {id: $char2Id})
+                MATCH (c1:Character {id: $char1Id})-[:PARTICIPATED_IN]->(e:StoryEvent)<-[:PARTICIPATED_IN]-(c2:Character {id: $char2Id})
                 RETURN e
-                ORDER BY e.timestamp DESC
+                ORDER BY e.day DESC, e.createdAt DESC
                 """;
         var session = sessionFactory.openSession();
         return toList(session.query(StoryEvent.class, cypher,
                 Map.of("char1Id", character1Id, "char2Id", character2Id)));
     }
 
+    // ===== RELATIONSHIP METHODS =====
+
     /**
      * Create a relationship between two characters.
      */
-    public CharacterRelationship createRelationship(String fromCharacterId, String toCharacterId,
-            String relationshipType, String description) {
+    public CharacterRelationship createRelationship(String character1Id, String character2Id, List<String> tags) {
         var session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
 
         try {
-            Character fromCharacter = session.load(Character.class, fromCharacterId);
-            Character toCharacter = session.load(Character.class, toCharacterId);
+            CharacterRelationship relationship = new CharacterRelationship();
+            Character char1 = session.load(Character.class, character1Id);
+            Character char2 = session.load(Character.class, character2Id);
 
-            if (fromCharacter == null || toCharacter == null) {
-                transaction.rollback();
-                return null;
-            }
+            relationship.setCharacter1(char1);
+            relationship.setCharacter2(char2);
 
-            CharacterRelationship relationship = new CharacterRelationship(fromCharacter, toCharacter,
-                    CharacterRelationship.RelationType.valueOf(relationshipType));
-            if (isPresent(description)) {
-                relationship.setDescription(description);
+            if (tags != null && !tags.isEmpty()) {
+                tags.forEach(relationship::addTag);
             }
 
             session.save(relationship);
@@ -529,47 +631,43 @@ public class StoryRepository {
         }
     }
 
-    // ===== EVENT METHODS =====
+    /**
+     * Find all relationships for a character.
+     */
+    public List<CharacterRelationship> findRelationshipsByCharacterId(String characterId) {
+        String cypher = """
+                MATCH (c:Character {id: $characterId})-[r:HAS_RELATIONSHIP]-(other:Character)
+                RETURN r
+                """;
+        var session = sessionFactory.openSession();
+        return toList(session.query(CharacterRelationship.class, cypher, Map.of("characterId", characterId)));
+    }
 
     /**
-     * Create a story event.
+     * Find all relationships in a story thread.
      */
-    public StoryEvent createEvent(String storyThreadId, String eventType, String title, String description) {
+    public List<CharacterRelationship> findRelationshipsByStoryThreadId(String storyThreadId) {
+        String cypher = """
+                MATCH (c1:Character)-[r:HAS_RELATIONSHIP]-(c2:Character)
+                WHERE c1.storyThreadId = $storyThreadId
+                RETURN r
+                """;
         var session = sessionFactory.openSession();
-        Transaction transaction = session.beginTransaction();
-
-        try {
-            StoryEvent event = new StoryEvent(storyThreadId, title, description);
-            event.setType(StoryEvent.EventType.valueOf(eventType));
-            if (isPresent(description)) {
-                event.setDescription(description);
-            }
-
-            session.save(event);
-            transaction.commit();
-            return event;
-        } catch (Exception e) {
-            transaction.rollback();
-            throw e;
-        } finally {
-            transaction.close();
-        }
+        return toList(session.query(CharacterRelationship.class, cypher, Map.of("storyThreadId", storyThreadId)));
     }
 
     // ===== STORY THREAD METHODS =====
 
     /**
-     * Create a new story thread.
+     * Save a story thread.
      */
-    public StoryThread createStoryThread(String name, String settingName) {
+    public void saveStoryThread(StoryThread thread) {
         var session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
 
         try {
-            StoryThread storyThread = new StoryThread(name, settingName);
-            session.save(storyThread);
+            session.save(thread);
             transaction.commit();
-            return storyThread;
         } catch (Exception e) {
             transaction.rollback();
             throw e;
@@ -579,11 +677,18 @@ public class StoryRepository {
     }
 
     /**
-     * Find a story thread by ID.
+     * Find a story thread by slug (primary ID).
      */
-    public StoryThread findStoryThreadById(String id) {
+    public StoryThread findStoryThreadBySlug(String slug) {
         var session = sessionFactory.openSession();
-        return session.load(StoryThread.class, id);
+        return session.load(StoryThread.class, slug);
+    }
+
+    /**
+     * Alias for findStoryThreadBySlug for backwards compatibility.
+     */
+    public StoryThread findStoryThreadById(String slug) {
+        return findStoryThreadBySlug(slug);
     }
 
     /**

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configure {thread.name} - Solo Play</title>
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/inspector.css">
+</head>
+<body>
+    <header>
+        <h1>Configure Story Thread</h1>
+        <p>Update settings for: {thread.name}</p>
+    </header>
+
+    <nav>
+        <a href="/story">← Back to Story Threads</a>
+    </nav>
+
+    <main>
+        {#if flash:success}
+        <div class="flash success">{flash:success}</div>
+        {/if}
+        {#if flash:error}
+        <div class="flash error">{flash:error}</div>
+        {/if}
+
+        <form action="/story/{thread.id}/configure" method="POST" class="story-form">
+            <div class="form-section">
+                <h2>Basic Information</h2>
+
+                <div class="form-group">
+                    <label for="name">Story Thread Name *</label>
+                    <input type="text" id="name" name="name" required
+                           value="{thread.name}"
+                           autocomplete="off">
+                </div>
+
+                <div class="form-group">
+                    <label for="settingName">Setting Name *</label>
+                    <input type="text" id="settingName" name="settingName" required
+                           value="{thread.settingName}"
+                           autocomplete="off">
+                    <small>Must match the setting name used when ingesting lore documents</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="status">Status</label>
+                    <select id="status" name="status">
+                        <option value="ACTIVE">Active</option>
+                        <option value="PAUSED">Paused</option>
+                        <option value="COMPLETED">Completed</option>
+                        <option value="ABANDONED">Abandoned</option>
+                    </select>
+                    <small>Current status: {thread.status}</small>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h2>Adventure Context</h2>
+
+                <div class="form-group">
+                    <label for="adventureName">Adventure Name</label>
+                    <input type="text" id="adventureName" name="adventureName"
+                           value="{thread.adventureName ?: ''}"
+                           autocomplete="off">
+                </div>
+
+                <div class="form-group">
+                    <label for="adventureDescription">Adventure Description</label>
+                    <textarea id="adventureDescription" name="adventureDescription"
+                              rows="3">{thread.adventureDescription ?: ''}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="followingMode">Following Mode</label>
+                    <select id="followingMode" name="followingMode">
+                        <option value="LOOSE">Loose - Use as inspiration, player drives story</option>
+                        <option value="STRICT">Strict - Follow adventure beats and structure</option>
+                        <option value="INSPIRATION">Inspiration - Reference only when asked</option>
+                    </select>
+                    <small>Current mode: {thread.followingMode}</small>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h2>Current State</h2>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <strong>Created:</strong>
+                        {thread.createdAt}
+                    </div>
+                    <div class="info-item">
+                        <strong>Last Played:</strong>
+                        {thread.lastPlayedAt}
+                    </div>
+                    <div class="info-item">
+                        <strong>Current Day:</strong>
+                        {thread.currentDay}
+                    </div>
+                </div>
+                {#if thread.currentSituation}
+                <div class="form-group">
+                    <strong>Current Situation:</strong>
+                    <p class="current-situation">{thread.currentSituation}</p>
+                </div>
+                {/if}
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <a href="/story" class="btn btn-secondary">Cancel</a>
+                <a href="/story/{thread.id}/play" class="btn btn-success">Play</a>
+            </div>
+        </form>
+    </main>
+</body>
+</html>
