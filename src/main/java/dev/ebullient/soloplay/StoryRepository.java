@@ -251,19 +251,23 @@ public class StoryRepository {
     // ===== LOCATION METHODS =====
 
     /**
-     * Create a new location in the story thread.
+     * Create a new location in the story thread with tags.
      */
-    public Location createLocation(String storyThreadId, String type, String name, String summary, String description) {
+    public Location createLocation(String storyThreadId, String name, String summary, String description,
+            List<String> tags) {
         var session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
 
         try {
-            Location location = new Location(storyThreadId, Location.LocationType.valueOf(type), name);
+            Location location = new Location(storyThreadId, name);
             if (isPresent(summary)) {
                 location.setSummary(summary);
             }
             if (isPresent(description)) {
                 location.setDescription(description);
+            }
+            if (tags != null && !tags.isEmpty()) {
+                tags.forEach(location::addTag);
             }
 
             session.save(location);
@@ -335,6 +339,106 @@ public class StoryRepository {
     public Location findLocationById(String locationId) {
         var session = sessionFactory.openSession();
         return session.load(Location.class, locationId);
+    }
+
+    /**
+     * Add tags to a location.
+     */
+    public Location addLocationTags(String locationId, List<String> tags) {
+        var session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+
+        try {
+            Location location = session.load(Location.class, locationId);
+            if (location == null) {
+                transaction.rollback();
+                return null;
+            }
+
+            tags.forEach(location::addTag);
+            session.save(location);
+            transaction.commit();
+            return location;
+        } catch (Exception e) {
+            transaction.rollback();
+            throw e;
+        } finally {
+            transaction.close();
+        }
+    }
+
+    /**
+     * Remove tags from a location.
+     */
+    public Location removeLocationTags(String locationId, List<String> tags) {
+        var session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+
+        try {
+            Location location = session.load(Location.class, locationId);
+            if (location == null) {
+                transaction.rollback();
+                return null;
+            }
+
+            tags.forEach(location::removeTag);
+            session.save(location);
+            transaction.commit();
+            return location;
+        } catch (Exception e) {
+            transaction.rollback();
+            throw e;
+        } finally {
+            transaction.close();
+        }
+    }
+
+    /**
+     * Find locations that have ANY of the specified tags (OR).
+     */
+    public List<Location> findLocationsByAnyTag(String storyThreadId, List<String> tags) {
+        var session = sessionFactory.openSession();
+        String cypher = """
+                MATCH (l:Location)
+                WHERE l.storyThreadId = $storyThreadId
+                  AND any(tag IN $tags WHERE tag IN l.tags)
+                RETURN l
+                ORDER BY l.name
+                """;
+        return toList(session.query(Location.class, cypher,
+                Map.of("storyThreadId", storyThreadId, "tags", tags)));
+    }
+
+    /**
+     * Find locations that have ALL of the specified tags (AND).
+     */
+    public List<Location> findLocationsByAllTags(String storyThreadId, List<String> tags) {
+        var session = sessionFactory.openSession();
+        String cypher = """
+                MATCH (l:Location)
+                WHERE l.storyThreadId = $storyThreadId
+                  AND all(tag IN $tags WHERE tag IN l.tags)
+                RETURN l
+                ORDER BY l.name
+                """;
+        return toList(session.query(Location.class, cypher,
+                Map.of("storyThreadId", storyThreadId, "tags", tags)));
+    }
+
+    /**
+     * Find locations that do NOT have any of the specified tags.
+     */
+    public List<Location> findLocationsExcludingTags(String storyThreadId, List<String> excludeTags) {
+        var session = sessionFactory.openSession();
+        String cypher = """
+                MATCH (l:Location)
+                WHERE l.storyThreadId = $storyThreadId
+                  AND none(tag IN $excludeTags WHERE tag IN l.tags)
+                RETURN l
+                ORDER BY l.name
+                """;
+        return toList(session.query(Location.class, cypher,
+                Map.of("storyThreadId", storyThreadId, "excludeTags", excludeTags)));
     }
 
     // ===== RELATIONSHIP METHODS =====

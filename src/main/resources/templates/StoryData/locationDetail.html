@@ -34,8 +34,10 @@
                 <div class="basic-info">
                     <h2>{location.name}</h2>
                     <div class="location-badges">
-                        {#if location.type}
-                        <span class="badge type-badge">{location.type}</span>
+                        {#if location.tags}
+                        {#each location.tags}
+                        <span class="badge tag-badge">{it}</span>
+                        {/each}
                         {/if}
                     </div>
                 </div>

@@ -67,9 +67,11 @@ Act as a pair programming partner with these responsibilities:
 - Always include: `settingName`, `sourceFile`, `canonical` flag
 - Use `canonical: true` for source material vs generated content
 
-**Character Tag System:**
+**Tag-Based Entity System:**
 
-Characters use a flexible tag-based classification instead of rigid enums:
+Both Characters and Locations use a flexible tag-based classification instead of rigid enums. Tags are case-insensitive and normalized to lowercase. Entities can have multiple tags.
+
+**Character Tags:**
 
 - **Control tags**: `"player-controlled"`, `"npc"` (default)
 - **Party tags**: `"companion"`, `"temporary"`, `"protagonist"`
@@ -77,17 +79,28 @@ Characters use a flexible tag-based classification instead of rigid enums:
 - **Role tags**: `"quest-giver"`, `"merchant"`, `"informant"`, `"villain"`, `"mentor"`
 - **Prefixed tags**: `"faction:thieves-guild"`, `"profession:blacksmith"`, `"location:tavern"`
 
-Tags are case-insensitive and normalized to lowercase. Characters can have multiple tags.
-
-Available tag operations:
+Character tag operations:
 
 - `createCharacter()` - accepts optional tags list
-- `addCharacterTags()` - add tags to existing character
-- `removeCharacterTags()` - remove tags from character
+- `addCharacterTags()` / `removeCharacterTags()` - manage tags
 - `findCharactersByTags()` - find by ANY tag (OR)
 - `getPlayerCharacters()` - find player-controlled
 - `getPartyMembers()` - find PCs + companions
 - `setCharacterControl()` - transfer between player/GM control
+
+**Location Tags:**
+
+- **Type tags**: `"city"`, `"town"`, `"village"`, `"dungeon"`, `"wilderness"`, `"building"`, `"region"`, `"plane"`
+- **Status tags**: `"destroyed"`, `"abandoned"`, `"hidden"`, `"active"`
+- **Feature tags**: `"fortified"`, `"magical"`, `"haunted"`, `"sacred"`, `"cursed"`
+- **Access tags**: `"public"`, `"restricted"`, `"secret"`, `"guarded"`
+- **Prefixed tags**: `"faction:thieves-guild"`, `"climate:tropical"`, `"terrain:mountainous"`
+
+Location tag operations:
+
+- `createLocation()` - accepts optional tags list
+- `addLocationTags()` / `removeLocationTags()` - manage tags
+- `findLocationsByTags()` - find by ANY tag (OR)
 
 **Response Augmentation:**
 

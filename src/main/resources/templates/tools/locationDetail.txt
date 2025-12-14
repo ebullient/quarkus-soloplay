@@ -1,7 +1,7 @@
-Location: {location.name} ({location.type})
+Location: {location.name}
 ID: {location.id}
-{#if location.summary}Summary: {location.summary}
+{#if location.tags}Tags: {#each location.tags}{it}{#if it_hasNext}, {/if}{/each}
+{/if}{#if location.summary}Summary: {location.summary}
 {/if}{#if location.description}Description: {location.description}
-{/if}Status: {location.status}
-{#if location.parentLocation}Part of: {location.parentLocation.name}
+{/if}{#if location.parentLocation}Part of: {location.parentLocation.name}
 {/if}

@@ -39,11 +39,15 @@
             <div class="location-card">
                 <div class="location-header">
                     <h3><a href="/inspect/locations/{location.id}">{location.name}</a></h3>
-                    {#if location.type}
-                    <span class="location-type">{location.type}</span>
-                    {/if}
+                    <div class="location-tags">
+                        {#if location.tags}
+                        {#each location.tags}
+                        <span class="tag">{it}</span>
+                        {/each}
+                        {/if}
+                    </div>
                 </div>
-                
+
                 {#if location.summary}
                 <p class="location-summary">{location.summary}</p>
                 {/if}

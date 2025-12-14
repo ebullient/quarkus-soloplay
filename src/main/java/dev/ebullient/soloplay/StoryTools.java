@@ -214,13 +214,61 @@ public class StoryTools {
     }
 
     @Tool("""
-            Create a new location (CITY, REGION, BUILDING, DUNGEON, etc.) in the story thread.
+            Create a new location in the story thread with optional tags.
             Summary should be brief (5-10 words) for quick identification.
             Description can be detailed narrative.
+
+            Common tags:
+            - Type: "city", "town", "village", "dungeon", "wilderness", "building", "region", "plane"
+            - Status: "destroyed", "abandoned", "hidden", "active"
+            - Features: "fortified", "magical", "haunted", "sacred", "cursed"
+            - Access: "public", "restricted", "secret", "guarded"
+
+            Tags parameter should be a list like: ["city", "fortified", "active"]
             """)
-    public String createLocation(String storyThreadId, String type, String name, String summary, String description) {
-        Location location = storyRepository.createLocation(storyThreadId, type, name, summary, description);
-        return "Created location: " + location.getName() + " (ID: " + location.getId() + ")";
+    public String createLocation(String storyThreadId, String name, String summary, String description,
+            List<String> tags) {
+        Location location = storyRepository.createLocation(storyThreadId, name, summary, description, tags);
+        String tagInfo = tags != null && !tags.isEmpty() ? " with tags: " + String.join(", ", tags) : "";
+        return "Created location: " + location.getName() + " (ID: " + location.getId() + ")" + tagInfo;
+    }
+
+    @Tool("""
+            Add tags to a location. Tags are case-insensitive and automatically normalized.
+            Common tags: "city", "dungeon", "fortified", "magical", "abandoned", etc.
+            Can also use prefixed tags like "faction:thieves-guild" or "climate:tropical".
+            """)
+    public String addLocationTags(String locationId, List<String> tags) {
+        Location location = storyRepository.addLocationTags(locationId, tags);
+        if (location == null) {
+            return "Error: Location not found with ID: " + locationId;
+        }
+        return "Added tags to " + location.getName() + ": " + String.join(", ", tags)
+                + "\nCurrent tags: " + String.join(", ", location.getTags());
+    }
+
+    @Tool("""
+            Remove tags from a location.
+            """)
+    public String removeLocationTags(String locationId, List<String> tags) {
+        Location location = storyRepository.removeLocationTags(locationId, tags);
+        if (location == null) {
+            return "Error: Location not found with ID: " + locationId;
+        }
+        return "Removed tags from " + location.getName() + ": " + String.join(", ", tags)
+                + "\nCurrent tags: " + String.join(", ", location.getTags());
+    }
+
+    @Tool("""
+            Find locations that have ANY of the specified tags (OR logic).
+            Example: findLocationsByTags(threadId, ["city", "town"]) finds cities OR towns.
+            """)
+    public String findLocationsByTags(String storyThreadId, List<String> tags) {
+        List<Location> locations = storyRepository.findLocationsByAnyTag(storyThreadId, tags);
+        if (locations.isEmpty()) {
+            return "No locations found with tags: " + String.join(", ", tags);
+        }
+        return Templates.locationList(locations).render();
     }
 
     @Tool("""

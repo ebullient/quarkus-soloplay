@@ -31,7 +31,9 @@
         <h2>{location.name} - Character Connections</h2>
         
         <div class="location-summary">
-            <p><strong>Type:</strong> {location.type}</p>
+            {#if location.tags}
+            <p><strong>Tags:</strong> {#each location.tags}{it}{#if it_hasNext}, {/if}{/each}</p>
+            {/if}
             {#if location.summary}
                 <p><strong>Summary:</strong> {location.summary}</p>
             {/if}
