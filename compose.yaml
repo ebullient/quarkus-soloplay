@@ -10,7 +10,6 @@ services:
     volumes:
       - neo4j-data:/data
       - neo4j-logs:/logs
-      - ./src/main/resources/neo4j-indexes.cypher:/docker-entrypoint-initdb.d/init.cypher:ro
     healthcheck:
       test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "devpassword", "RETURN 1"]
       interval: 10s

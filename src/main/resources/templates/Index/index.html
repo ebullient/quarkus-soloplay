@@ -16,12 +16,12 @@
     </header>
 
     <main>
-        <div class="data-overview">
+        <section class="data-overview">
             <h2>Welcome to Quarkus Solo Play</h2>
             <p>Choose how you want to interact with your campaign:</p>
 
-            <div class="data-sections">
-                <div class="data-section">
+            <div class="data-sections grid">
+                <article class="data-section">
                     <h3>🎲 Story Mode</h3>
                     <p>Play through adventures with AI-powered storytelling. Create characters, track events, and manage your campaign narrative.</p>
                     <ul>
@@ -31,9 +31,9 @@
                         <li>AI tools for dynamic storytelling</li>
                     </ul>
                     <a href="/story" class="btn btn-primary">Start Story Mode</a>
-                </div>
+                </article>
 
-                <div class="data-section">
+                <article class="data-section">
                     <h3>💬 Chat Interface</h3>
                     <p>Have a freeform conversation with your AI dungeon master. Ask questions, get creative suggestions, or brainstorm ideas.</p>
                     <ul>
@@ -43,9 +43,9 @@
                         <li>Story development ideas</li>
                     </ul>
                     <a href="/chat" class="btn btn-primary">Open Chat</a>
-                </div>
+                </article>
 
-                <div class="data-section">
+                <article class="data-section">
                     <h3>📚 Lore Assistant</h3>
                     <p>Query your campaign knowledge base using RAG (Retrieval-Augmented Generation). Get answers grounded in your uploaded setting documents.</p>
                     <ul>
@@ -55,9 +55,9 @@
                         <li>Context-aware responses</li>
                     </ul>
                     <a href="/lore" class="btn btn-primary">Query Lore</a>
-                </div>
+                </article>
 
-                <div class="data-section">
+                <article class="data-section">
                     <h3>📤 Document Ingestion</h3>
                     <p>Upload and process campaign setting documents. The system extracts content, generates embeddings, and stores them for retrieval.</p>
                     <ul>
@@ -67,9 +67,9 @@
                         <li>Vector search integration</li>
                     </ul>
                     <a href="/ingest" class="btn btn-secondary">Manage Documents</a>
-                </div>
+                </article>
 
-                <div class="data-section ai-inspection">
+                <article class="data-section ai-inspection">
                     <h3>🔍 Campaign Inspector</h3>
                     <p>Explore and inspect your campaign data. View characters, locations, relationships, events, and see what the AI agents see.</p>
                     <ul>
@@ -79,10 +79,10 @@
                         <li>Inspect AI tool outputs</li>
                     </ul>
                     <a href="/inspect" class="btn btn-primary">Inspect Campaign</a>
-                </div>
+                </article>
             </div>
 
-            <div class="tech-info">
+            <aside class="tech-info">
                 <h3>How It Works</h3>
                 <p>This application combines:</p>
                 <ul>
@@ -92,8 +92,8 @@
                     <li><strong>Neo4j</strong> - Graph database for campaign data and vector search</li>
                     <li><strong>Renarde MVC</strong> - Web framework for interactive pages</li>
                 </ul>
-            </div>
-        </div>
+            </aside>
+        </section>
     </main>
 
     <footer>

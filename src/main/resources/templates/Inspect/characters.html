@@ -21,12 +21,12 @@
     </nav>
 
     <main>
-        <div class="characters-header">
+        <header class="characters-header">
             <h2>Characters ({characters.size})</h2>
-            <div class="actions">
+            <nav class="actions">
                 <a href="/inspect?storyThreadId={storyThreadId}" class="btn btn-secondary">← Back to Dashboard</a>
-            </div>
-        </div>
+            </nav>
+        </header>
 
         {#if characters.empty}
         <div class="empty-state">
@@ -34,10 +34,10 @@
             <p>Characters are automatically created by AI agents during gameplay.</p>
         </div>
         {#else}
-        <div class="characters-grid">
+        <section class="characters-grid grid">
             {#for character in characters}
-            <div class="character-card">
-                <div class="character-header">
+            <article class="character-card card">
+                <header class="character-header">
                     <h3><a href="/inspect/characters/{character.id}">{character.name}</a></h3>
                     <div class="character-tags">
                         {#if character.tags}
@@ -46,20 +46,20 @@
                         {/each}
                         {/if}
                     </div>
-                </div>
+                </header>
 
                 {#if character.summary}
                 <p class="character-summary">{character.summary}</p>
                 {/if}
-                
-                <div class="character-meta">
+
+                <footer class="character-meta">
                     {#if character.createdAt}
                     <span class="created-at">Created: {character.createdAt.format('MMM dd, yyyy')}</span>
                     {/if}
-                </div>
-            </div>
+                </footer>
+            </article>
             {/for}
-        </div>
+        </section>
         {/if}
     </main>
 </body>

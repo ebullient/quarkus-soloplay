@@ -1,0 +1,15 @@
+.flash-message, .flash {
+    padding: var(--spacing-md);
+    margin: var(--spacing-md) 0;
+    border-radius: var(--border-radius-sm);
+    border-left: 4px solid;
+    font-size: 0.95rem;
+
+    &.success {
+        @include status-message(var(--color-success-bg), var(--color-success-border), var(--color-success-text));
+    }
+
+    &.error {
+        @include status-message(var(--color-error-bg), var(--color-error-border), var(--color-error-text));
+    }
+}

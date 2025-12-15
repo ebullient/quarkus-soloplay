@@ -99,14 +99,3 @@ DROP INDEX character_name IF EXISTS;
 
 // Then re-run the index creation script
 ```
-
-## How It Works (Docker Compose)
-
-The `compose.yaml` includes this volume mount:
-
-```yaml
-volumes:
-  - ./src/main/resources/neo4j-indexes.cypher:/docker-entrypoint-initdb.d/init.cypher:ro
-```
-
-Neo4j's Docker image automatically executes any `.cypher` files in `/docker-entrypoint-initdb.d/` when the database is first initialized. This provides seamless index creation without manual intervention.

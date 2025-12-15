@@ -1,0 +1,14 @@
+// CSS Custom Properties are defined in base/_reset.scss on :root
+// This file only contains compile-time SCSS variables that don't need runtime theming
+
+// Typography - Font stacks (compile-time only)
+$font-family-serif: 'Georgia', serif;
+$font-family-mono: 'Courier New', monospace;
+
+// Transitions - Animation timing (compile-time only)
+$transition-fast: 0.2s;
+$transition-base: 0.3s;
+
+// Scrollbar - Browser-specific sizing (compile-time only)
+$scrollbar-width: 10px;
+$scrollbar-width-sm: 8px;

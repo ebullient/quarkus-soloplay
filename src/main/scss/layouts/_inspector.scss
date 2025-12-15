@@ -1,0 +1,33 @@
+// Inspector Layout - Minimal specific styles
+
+// AI output has unique scrollable area
+.ai-output {
+    padding: var(--spacing-md);
+    background: var(--color-bg-elevated);
+    max-height: 500px;
+    overflow-y: auto;
+    @include custom-scrollbar($scrollbar-width-sm);
+
+    pre, code {
+        font-family: $font-family-mono;
+        white-space: pre-wrap;
+    }
+}
+
+// Section headers with underline
+section > h3 {
+    border-bottom: 2px solid var(--color-bg-overlay);
+    padding-bottom: var(--spacing-sm);
+}
+
+// Relationship visuals need specific sizing
+.direction-label {
+    font-size: 1.5rem;
+    width: 2rem;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.connection-symbol {
+    font-size: 2rem;
+}

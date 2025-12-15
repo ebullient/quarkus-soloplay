@@ -42,6 +42,7 @@ public class Story extends Controller {
      * Landing page - show all story threads with option to create new.
      */
     @GET
+    @Path("/")
     public TemplateInstance select() {
         List<StoryThread> threads = storyRepository.findAllStoryThreads();
         return Templates.select(threads);

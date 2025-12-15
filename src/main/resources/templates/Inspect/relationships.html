@@ -21,25 +21,27 @@
     </nav>
 
     <main>
-        <div class="breadcrumb">
-            <a href="/inspect?storyThreadId={storyThreadId}">Inspect</a> &gt;
-            <span>Relationships</span>
-        </div>
+        <nav aria-label="Breadcrumb">
+            <ol class="breadcrumb">
+                <li><a href="/inspect?storyThreadId={storyThreadId}">Inspect</a></li>
+                <li aria-current="page">Relationships</li>
+            </ol>
+        </nav>
 
         <h2>Relationship Network</h2>
 
-        <div class="actions">
+        <nav class="actions">
             <a href="/inspect/ai/api-network?storyThreadId={storyThreadId}" class="btn btn-ai">View AI Output</a>
-        </div>
+        </nav>
 
         {#if relationships.isEmpty()}
             <div class="empty-state">
                 <p>No relationships found in this campaign.</p>
             </div>
         {#else}
-            <div class="relationship-network">
+            <section class="relationship-network">
                 {#for relationship in relationships}
-                    <div class="relationship-card">
+                    <article class="relationship-card card">
                         <div class="relationship-connection">
                             <div class="character from">
                                 <strong>{relationship.character1.name}</strong>
@@ -65,12 +67,12 @@
                                 {/if}
                             </div>
                         </div>
-                        <div class="relationship-meta">
+                        <footer class="relationship-meta">
                             Since: {relationship.since}
-                        </div>
-                    </div>
+                        </footer>
+                    </article>
                 {/for}
-            </div>
+            </section>
         {/if}
     </main>
 </body>

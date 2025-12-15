@@ -21,70 +21,65 @@
     </nav>
 
     <main>
-        <div class="character-detail-header">
-            <div class="actions">
-                <a href="/inspect/characters?storyThreadId={character.storyThreadId}" class="btn btn-secondary">← Back to Characters</a>
-                <a href="/inspect/characters/{character.id}/relationships" class="btn btn-primary">View Relationships</a>
-                <a href="/inspect/ai/character-relationships/{character.id}" class="btn btn-ai">AI View</a>
-            </div>
-        </div>
+        <nav class="character-detail-header actions">
+            <a href="/inspect/characters?storyThreadId={character.storyThreadId}" class="btn btn-secondary">← Back to Characters</a>
+            <a href="/inspect/characters/{character.id}/relationships" class="btn btn-primary">View Relationships</a>
+            <a href="/inspect/ai/character-relationships/{character.id}" class="btn btn-ai">AI View</a>
+        </nav>
 
-        <div class="character-detail">
-            <div class="character-info">
-                <div class="basic-info">
-                    <h2>{character.name}</h2>
-                    <div class="character-badges">
-                        {#if character.tags}
-                        {#each character.tags}
-                        <span class="badge tag-badge">{it}</span>
-                        {/each}
-                        {/if}
-                        {#if character.characterClass}
-                        <span class="badge class-badge">{character.characterClass}</span>
-                        {/if}
-                        {#if character.level}
-                        <span class="badge level-badge">Level {character.level}</span>
-                        {/if}
-                        {#if character.alignment}
-                        <span class="badge alignment-badge">{character.alignment}</span>
-                        {/if}
-                    </div>
+        <article class="character-detail card">
+            <header class="basic-info">
+                <h2>{character.name}</h2>
+                <div class="character-badges">
+                    {#if character.tags}
+                    {#each character.tags}
+                    <span class="badge">{it}</span>
+                    {/each}
+                    {/if}
+                    {#if character.characterClass}
+                    <span class="badge">{character.characterClass}</span>
+                    {/if}
+                    {#if character.level}
+                    <span class="badge">Level {character.level}</span>
+                    {/if}
+                    {#if character.alignment}
+                    <span class="badge">{character.alignment}</span>
+                    {/if}
                 </div>
+            </header>
 
-                {#if character.summary}
-                <div class="summary">
-                    <h3>Summary</h3>
-                    <p>{character.summary}</p>
-                </div>
-                {/if}
+            {#if character.summary}
+            <section class="summary">
+                <h3>Summary</h3>
+                <p>{character.summary}</p>
+            </section>
+            {/if}
 
-                {#if character.description}
-                <div class="description">
-                    <h3>Description</h3>
-                    <p>{character.description}</p>
-                </div>
-                {/if}
+            {#if character.description}
+            <section class="description">
+                <h3>Description</h3>
+                <p>{character.description}</p>
+            </section>
+            {/if}
 
-                <div class="metadata">
-                    <h3>Metadata</h3>
-                    <div class="meta-grid">
-                        <div class="meta-item">
-                            <strong>ID:</strong> {character.id}
-                        </div>
-                        {#if character.createdAt}
-                        <div class="meta-item">
-                            <strong>Created:</strong> {character.createdAt.format('yyyy-MM-dd HH:mm')}
-                        </div>
-                        {/if}
-                        {#if character.updatedAt}
-                        <div class="meta-item">
-                            <strong>Updated:</strong> {character.updatedAt.format('yyyy-MM-dd HH:mm')}
-                        </div>
-                        {/if}
-                    </div>
-                </div>
-            </div>
-        </div>
+            <aside class="metadata">
+                <h3>Metadata</h3>
+                <dl>
+                    <dt>ID:</dt>
+                    <dd>{character.id}</dd>
+
+                    {#if character.createdAt}
+                    <dt>Created:</dt>
+                    <dd>{character.createdAt.format('yyyy-MM-dd HH:mm')}</dd>
+                    {/if}
+
+                    {#if character.updatedAt}
+                    <dt>Updated:</dt>
+                    <dd>{character.updatedAt.format('yyyy-MM-dd HH:mm')}</dd>
+                    {/if}
+                </dl>
+            </aside>
+        </article>
     </main>
 
 

@@ -1,0 +1,52 @@
+// Campaign Assistant - Main Styles
+// This file compiles to /target/classes/META-INF/resources/styles.css
+
+// Variables and Mixins
+@import 'variables';
+@import 'mixins';
+
+// Base
+@import 'base/base';
+@import 'base/typography';
+
+// Components
+@import 'components/utilities';
+@import 'components/buttons';
+@import 'components/forms';
+@import 'components/badges';
+@import 'components/messages';
+@import 'components/flash';
+@import 'components/header';
+@import 'components/nav';
+
+// Additional shared styles
+main {
+    flex: 1;
+    padding: var(--spacing-xl);
+}
+
+footer {
+    background: var(--color-bg-elevated);
+    padding: var(--spacing-md);
+    text-align: center;
+    border-top: 1px solid var(--color-text-accent);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+// Semantic aliases for card variants
+.data-section {
+    @extend .card;
+    @extend .card--interactive;
+}
+
+.ai-inspection {
+    @extend .card;
+    @extend .card--ai;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem var(--spacing-md);
+    color: var(--color-text-secondary);
+}

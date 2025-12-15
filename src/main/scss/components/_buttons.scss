@@ -1,0 +1,76 @@
+button, .btn {
+    padding: 0.75rem 1.5rem;
+    background: var(--color-text-accent);
+    border: none;
+    border-radius: var(--border-radius-sm);
+    color: var(--color-bg-elevated);
+    font-size: var(--font-size-base);
+    font-weight: bold;
+    cursor: pointer;
+    transition: background $transition-base;
+    display: inline-block;
+    text-decoration: none;
+    text-align: center;
+
+    &:hover {
+        background: var(--color-text-accent-bright);
+        opacity: 0.9;
+    }
+
+    &:disabled {
+        background: var(--color-disabled);
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+}
+
+.btn-primary {
+    background-color: var(--color-text-user);
+    color: white;
+}
+
+.btn-secondary {
+    background-color: var(--color-gray-600);
+    color: white;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: var(--font-size-xs);
+    line-height: 1.2;
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+
+    &:hover {
+        background: var(--color-border);
+        border-color: var(--color-border-light);
+        opacity: 1;
+    }
+}
+
+.btn-ai {
+    background: linear-gradient(45deg, var(--color-text-ai) 0%, var(--color-text-ai-accent) 100%);
+    color: white;
+    border: none;
+    position: relative;
+    overflow: hidden;
+
+    &:before {
+        content: "🤖";
+        margin-right: var(--spacing-sm);
+    }
+
+    &:hover {
+        background: linear-gradient(45deg, var(--color-text-ai-accent) 0%, var(--color-text-ai) 100%);
+        color: white;
+    }
+}
+
+.btn.copied {
+    background: var(--color-success-border) !important;
+    border-color: var(--color-success-border) !important;
+}

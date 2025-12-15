@@ -24,9 +24,9 @@
         <div class="breadcrumb">
             <a href="#" onclick="history.back()">← Back</a>
         </div>
-        
+
         <h2>AI Tool Output: {toolName}</h2>
-        
+
         <div class="ai-output-container">
             <div class="output-header">
                 <span class="ai-badge">AI Response</span>
@@ -34,17 +34,17 @@
                     This is exactly what the AI agent sees when it calls the <code>{toolName}</code> tool.
                 </p>
             </div>
-            
+
             <div class="ai-output">
                 <pre class="ai-text">{output}</pre>
             </div>
-            
+
             <div class="output-actions">
                 <button onclick="copyToClipboard()" class="btn btn-outline">Copy to Clipboard</button>
             </div>
         </div>
     </main>
-    
+
     <script>
         function copyToClipboard() {
             const output = document.querySelector('.ai-text').textContent;
