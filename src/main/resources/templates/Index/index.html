@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quarkus Solo Play - AI-Powered RPG Assistant</title>
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/inspector.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1>Quarkus Solo Play</h1>
+            <p>AI-Powered RPG Campaign Assistant</p>
+        </div>
+    </header>
+
+    <main>
+        <div class="data-overview">
+            <h2>Welcome to Quarkus Solo Play</h2>
+            <p>Choose how you want to interact with your campaign:</p>
+
+            <div class="data-sections">
+                <div class="data-section">
+                    <h3>🎲 Story Mode</h3>
+                    <p>Play through adventures with AI-powered storytelling. Create characters, track events, and manage your campaign narrative.</p>
+                    <ul>
+                        <li>Interactive story progression</li>
+                        <li>Character and party management</li>
+                        <li>Event tracking and timeline</li>
+                        <li>AI tools for dynamic storytelling</li>
+                    </ul>
+                    <a href="/story" class="btn btn-primary">Start Story Mode</a>
+                </div>
+
+                <div class="data-section">
+                    <h3>💬 Chat Interface</h3>
+                    <p>Have a freeform conversation with your AI dungeon master. Ask questions, get creative suggestions, or brainstorm ideas.</p>
+                    <ul>
+                        <li>General campaign questions</li>
+                        <li>Creative brainstorming</li>
+                        <li>Rule clarifications</li>
+                        <li>Story development ideas</li>
+                    </ul>
+                    <a href="/chat" class="btn btn-primary">Open Chat</a>
+                </div>
+
+                <div class="data-section">
+                    <h3>📚 Lore Assistant</h3>
+                    <p>Query your campaign knowledge base using RAG (Retrieval-Augmented Generation). Get answers grounded in your uploaded setting documents.</p>
+                    <ul>
+                        <li>Search campaign lore</li>
+                        <li>Query setting details</li>
+                        <li>Access uploaded documents</li>
+                        <li>Context-aware responses</li>
+                    </ul>
+                    <a href="/lore" class="btn btn-primary">Query Lore</a>
+                </div>
+
+                <div class="data-section">
+                    <h3>📤 Document Ingestion</h3>
+                    <p>Upload and process campaign setting documents. The system extracts content, generates embeddings, and stores them for retrieval.</p>
+                    <ul>
+                        <li>Upload setting documents</li>
+                        <li>Automatic chunking and embedding</li>
+                        <li>YAML frontmatter support</li>
+                        <li>Vector search integration</li>
+                    </ul>
+                    <a href="/ingest" class="btn btn-secondary">Manage Documents</a>
+                </div>
+
+                <div class="data-section ai-inspection">
+                    <h3>🔍 Campaign Inspector</h3>
+                    <p>Explore and inspect your campaign data. View characters, locations, relationships, events, and see what the AI agents see.</p>
+                    <ul>
+                        <li>Browse characters and locations</li>
+                        <li>View relationships and connections</li>
+                        <li>Track events and timeline</li>
+                        <li>Inspect AI tool outputs</li>
+                    </ul>
+                    <a href="/inspect" class="btn btn-primary">Inspect Campaign</a>
+                </div>
+            </div>
+
+            <div class="tech-info">
+                <h3>How It Works</h3>
+                <p>This application combines:</p>
+                <ul>
+                    <li><strong>Quarkus</strong> - High-performance Java framework</li>
+                    <li><strong>LangChain4j</strong> - AI integration with prompt engineering</li>
+                    <li><strong>Ollama</strong> - Local LLM inference (qwen2.5:14b-instruct for chat, nomic-embed-text for embeddings)</li>
+                    <li><strong>Neo4j</strong> - Graph database for campaign data and vector search</li>
+                    <li><strong>Renarde MVC</strong> - Web framework for interactive pages</li>
+                </ul>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>Powered by Quarkus, LangChain4j, Ollama, and Neo4j</p>
+    </footer>
+</body>
+</html>

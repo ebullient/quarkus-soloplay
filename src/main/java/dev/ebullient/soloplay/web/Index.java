@@ -3,12 +3,26 @@ package dev.ebullient.soloplay.web;
 import jakarta.ws.rs.Path;
 
 import io.quarkiverse.renarde.Controller;
+import io.quarkus.qute.CheckedTemplate;
+import io.quarkus.qute.TemplateInstance;
 
 /**
- * Renarde controller for story pages and operations.
- * Serves chat, lore, and document ingestion pages with CSRF protection.
+ * Renarde controller for the main index/home page.
+ * Provides an overview of the application's features.
  */
 @Path("/")
 public class Index extends Controller {
 
+    @CheckedTemplate
+    public static class Templates {
+        public static native TemplateInstance index();
+    }
+
+    /**
+     * Serve the main index/home page.
+     */
+    @Path("/")
+    public TemplateInstance index() {
+        return Templates.index();
+    }
 }
