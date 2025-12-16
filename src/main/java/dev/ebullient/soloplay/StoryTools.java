@@ -63,13 +63,14 @@ public class StoryTools {
     }
 
     @Tool("""
-            Update an existing character's basic information (name, summary, description, class, level, alignment).
-            For tag management, use addCharacterTags or removeCharacterTags instead.
+            Update an existing character's basic information (name, summary, description, class, level).
+            For alignment, use addCharacterTags with tags like "alignment:lawful-good".
+            For other tag management, use addCharacterTags or removeCharacterTags.
             """)
     public String updateCharacter(String characterId, String name, String summary, String description,
-            String characterClass, Integer level, String alignment) {
+            String characterClass, Integer level) {
         Character character = storyRepository.updateCharacter(characterId, name, summary, description,
-                characterClass, level, alignment);
+                characterClass, level);
         if (character == null) {
             return "Error: Character not found with ID: " + characterId;
         }
@@ -79,6 +80,7 @@ public class StoryTools {
     @Tool("""
             Add tags to a character. Tags are case-insensitive and automatically normalized.
             Common tags: "player-controlled", "companion", "quest-giver", "merchant", "villain", "dead", etc.
+            Alignment tags: "alignment:lawful-good", "alignment:chaotic-neutral", "alignment:true-neutral", etc.
             Can also use prefixed tags like "faction:thieves-guild" or "profession:blacksmith".
             """)
     public String addCharacterTags(String characterId, List<String> tags) {

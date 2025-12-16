@@ -39,7 +39,6 @@ public class Character {
     private String description; // Full narrative that can evolve over time
     private String characterClass; // e.g., "Fighter", "Wizard"
     private Integer level;
-    private String alignment;
 
     public Character() {
         this.createdAt = Instant.now();
@@ -213,15 +212,6 @@ public class Character {
 
     public void setLevel(Integer level) {
         this.level = level;
-        this.updatedAt = Instant.now();
-    }
-
-    public String getAlignment() {
-        return alignment;
-    }
-
-    public void setAlignment(String alignment) {
-        this.alignment = alignment;
         this.updatedAt = Instant.now();
     }
 

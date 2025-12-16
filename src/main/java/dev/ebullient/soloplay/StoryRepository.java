@@ -84,9 +84,10 @@ public class StoryRepository {
 
     /**
      * Update a character's details.
+     * Note: Alignment is now handled via tags (e.g., "alignment:lawful-good")
      */
     public Character updateCharacter(String characterId, String name, String summary, String description,
-            String characterClass, Integer level, String alignment) {
+            String characterClass, Integer level) {
         var session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
 
@@ -110,9 +111,6 @@ public class StoryRepository {
             }
             if (isPresent(level)) {
                 character.setLevel(level);
-            }
-            if (isPresent(alignment)) {
-                character.setAlignment(alignment);
             }
 
             session.save(character);
@@ -695,8 +693,14 @@ public class StoryRepository {
      * Find all story threads.
      */
     public List<StoryThread> findAllStoryThreads() {
+        String cypher = """
+                OPTIONAL MATCH (st:StoryThread)
+                WHERE st IS NOT NULL
+                RETURN st
+                ORDER BY st.lastPlayedAt DESC
+                """;
         var session = sessionFactory.openSession();
-        return toList(session.loadAll(StoryThread.class));
+        return toList(session.query(StoryThread.class, cypher, Map.of()));
     }
 
     /**
@@ -704,13 +708,43 @@ public class StoryRepository {
      */
     public List<StoryThread> findActiveStoryThreads() {
         String cypher = """
-                MATCH (st:StoryThread)
+                OPTIONAL MATCH (st:StoryThread)
                 WHERE st.status = 'ACTIVE'
                 RETURN st
                 ORDER BY st.lastPlayedAt DESC
                 """;
         var session = sessionFactory.openSession();
         return toList(session.query(StoryThread.class, cypher, Map.of()));
+    }
+
+    /**
+     * Get list of all available setting names from ingested embeddings.
+     * Returns empty list if no settings have been ingested yet.
+     */
+    public List<String> getAvailableSettings() {
+        var session = sessionFactory.openSession();
+        List<String> settingNames = new ArrayList<>();
+
+        try {
+            // Query for distinct setting names from embedding documents
+            // The Neo4j LangChain4j extension stores embeddings with metadata properties
+            Iterable<Map<String, Object>> results = session.query(
+                    "MATCH (n:Document) WHERE n.settingName IS NOT NULL " +
+                            "RETURN DISTINCT n.settingName as settingName ORDER BY n.settingName",
+                    Map.of());
+
+            results.forEach(row -> {
+                String settingName = (String) row.get("settingName");
+                if (isPresent(settingName)) {
+                    settingNames.add(settingName);
+                }
+            });
+        } catch (Exception e) {
+            // Log the warning but don't fail - this happens when no embeddings exist yet
+            Log.debugf("No setting data found yet: %s", e.getMessage());
+        }
+
+        return settingNames;
     }
 
     /**

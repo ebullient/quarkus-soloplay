@@ -1,5 +1,6 @@
 package dev.ebullient.soloplay.web;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import jakarta.inject.Inject;
@@ -27,12 +28,17 @@ public class Story extends Controller {
     public static class Templates {
         public static native TemplateInstance select(List<StoryThread> threads);
 
-        public static native TemplateInstance create();
+        public static native TemplateInstance create(List<String> availableSettings);
 
         public static native TemplateInstance configure(StoryThread thread);
 
         public static native TemplateInstance play(StoryThread thread,
                 java.util.List<dev.ebullient.soloplay.data.Character> partyMembers);
+
+        public static native TemplateInstance createCharacter(StoryThread thread);
+
+        public static native TemplateInstance editCharacter(StoryThread thread,
+                dev.ebullient.soloplay.data.Character character);
     }
 
     @Inject
@@ -54,7 +60,8 @@ public class Story extends Controller {
     @GET
     @Path("/create")
     public TemplateInstance create() {
-        return Templates.create();
+        List<String> availableSettings = storyRepository.getAvailableSettings();
+        return Templates.create(availableSettings);
     }
 
     /**
@@ -69,14 +76,23 @@ public class Story extends Controller {
             @RestForm String adventureDescription,
             @RestForm String followingMode) {
 
+        List<String> availableSettings = storyRepository.getAvailableSettings();
+
         if (name == null || name.isBlank()) {
             flash("error", "Please provide a story thread name");
-            return Templates.create();
+            return Templates.create(availableSettings);
         }
 
         if (settingName == null || settingName.isBlank()) {
             flash("error", "Please provide a setting name");
-            return Templates.create();
+            return Templates.create(availableSettings);
+        }
+
+        // Validate that the setting exists in the RAG embedding store
+        if (!availableSettings.contains(settingName)) {
+            flash("error", "Setting '" + settingName
+                    + "' not found. Please upload setting documents first or choose from available settings.");
+            return Templates.create(availableSettings);
         }
 
         StoryThread thread = new StoryThread(name, settingName);
@@ -84,7 +100,7 @@ public class Story extends Controller {
         // Check if slug already exists - ask user to choose different name
         if (storyRepository.findStoryThreadBySlug(thread.getSlug()) != null) {
             flash("error", "A story with the name '" + name + "' already exists. Please choose a different name.");
-            return Templates.create();
+            return Templates.create(availableSettings);
         }
 
         // Set optional adventure fields
@@ -99,7 +115,7 @@ public class Story extends Controller {
                 thread.setFollowingMode(StoryThread.FollowingMode.valueOf(followingMode));
             } catch (IllegalArgumentException e) {
                 flash("error", "Invalid following mode: " + followingMode);
-                return Templates.create();
+                return Templates.create(availableSettings);
             }
         }
         storyRepository.saveStoryThread(thread);
@@ -202,5 +218,198 @@ public class Story extends Controller {
                 List.of("player-controlled", "companion"));
 
         return Templates.play(thread, partyMembers);
+    }
+
+    /**
+     * Show character creation form.
+     */
+    @GET
+    @Path("/{slug}/character/create")
+    public TemplateInstance createCharacter(@RestPath String slug) {
+        StoryThread thread = storyRepository.findStoryThreadBySlug(slug);
+        if (thread == null) {
+            flash("error", "Story thread not found");
+            return select();
+        }
+        return Templates.createCharacter(thread);
+    }
+
+    /**
+     * Handle character creation form submission.
+     */
+    @POST
+    @Path("/{slug}/character/create")
+    public TemplateInstance createCharacterPost(
+            @RestPath String slug,
+            @RestForm String name,
+            @RestForm String summary,
+            @RestForm String description,
+            @RestForm String characterClass,
+            @RestForm Integer level,
+            @RestForm List<String> tags,
+            @RestForm String customTags) {
+
+        StoryThread thread = storyRepository.findStoryThreadBySlug(slug);
+        if (thread == null) {
+            flash("error", "Story thread not found");
+            return select();
+        }
+
+        if (name == null || name.isBlank()) {
+            flash("error", "Please provide a character name");
+            return Templates.createCharacter(thread);
+        }
+
+        if (summary == null || summary.isBlank()) {
+            flash("error", "Please provide a character summary");
+            return Templates.createCharacter(thread);
+        }
+
+        // Build tag list - always include "player-controlled"
+        List<String> allTags = new ArrayList<>();
+        allTags.add("player-controlled");
+
+        // Add checkbox tags
+        if (tags != null && !tags.isEmpty()) {
+            allTags.addAll(tags);
+        }
+
+        // Add custom tags (comma-separated)
+        if (customTags != null && !customTags.isBlank()) {
+            String[] customTagArray = customTags.split(",");
+            for (String tag : customTagArray) {
+                String trimmed = tag.trim();
+                if (!trimmed.isEmpty()) {
+                    allTags.add(trimmed);
+                }
+            }
+        }
+
+        // Create character
+        var character = storyRepository.createCharacter(
+                thread.getSlug(),
+                name,
+                summary,
+                description,
+                allTags);
+
+        // Update optional fields
+        if (characterClass != null && !characterClass.isBlank()) {
+            character = storyRepository.updateCharacter(
+                    character.getId(),
+                    null, // name - don't change
+                    null, // summary - don't change
+                    null, // description - don't change
+                    characterClass,
+                    level);
+        } else if (level != null) {
+            character = storyRepository.updateCharacter(
+                    character.getId(),
+                    null, null, null,
+                    null, // characterClass
+                    level);
+        }
+
+        flash("success", "Character created: " + character.getName());
+        return play(slug);
+    }
+
+    /**
+     * Show character edit form.
+     */
+    @GET
+    @Path("/{slug}/character/{characterId}/edit")
+    public TemplateInstance editCharacter(@RestPath String slug, @RestPath String characterId) {
+        StoryThread thread = storyRepository.findStoryThreadBySlug(slug);
+        if (thread == null) {
+            flash("error", "Story thread not found");
+            return select();
+        }
+
+        var character = storyRepository.findCharacterById(characterId);
+        if (character == null) {
+            flash("error", "Character not found");
+            return play(slug);
+        }
+
+        return Templates.editCharacter(thread, character);
+    }
+
+    /**
+     * Handle character edit form submission.
+     */
+    @POST
+    @Path("/{slug}/character/{characterId}/edit")
+    public TemplateInstance editCharacterPost(
+            @RestPath String slug,
+            @RestPath String characterId,
+            @RestForm String name,
+            @RestForm String summary,
+            @RestForm String description,
+            @RestForm String characterClass,
+            @RestForm Integer level,
+            @RestForm List<String> tags,
+            @RestForm String customTags) {
+
+        StoryThread thread = storyRepository.findStoryThreadBySlug(slug);
+        if (thread == null) {
+            flash("error", "Story thread not found");
+            return select();
+        }
+
+        var character = storyRepository.findCharacterById(characterId);
+        if (character == null) {
+            flash("error", "Character not found");
+            return play(slug);
+        }
+
+        if (name == null || name.isBlank()) {
+            flash("error", "Please provide a character name");
+            return Templates.editCharacter(thread, character);
+        }
+
+        if (summary == null || summary.isBlank()) {
+            flash("error", "Please provide a character summary");
+            return Templates.editCharacter(thread, character);
+        }
+
+        // Update character
+        character = storyRepository.updateCharacter(
+                characterId,
+                name,
+                summary,
+                description,
+                characterClass,
+                level);
+
+        // Update tags - remove all existing tags and add new ones
+        // First, get current tags to remove them all
+        var currentTags = new ArrayList<>(character.getTags());
+        if (!currentTags.isEmpty()) {
+            storyRepository.removeCharacterTags(characterId, currentTags);
+        }
+
+        // Build new tag list - always include "player-controlled" for player characters
+        List<String> allTags = new ArrayList<>();
+        allTags.add("player-controlled");
+
+        if (tags != null && !tags.isEmpty()) {
+            allTags.addAll(tags);
+        }
+
+        if (customTags != null && !customTags.isBlank()) {
+            String[] customTagArray = customTags.split(",");
+            for (String tag : customTagArray) {
+                String trimmed = tag.trim();
+                if (!trimmed.isEmpty()) {
+                    allTags.add(trimmed);
+                }
+            }
+        }
+
+        storyRepository.addCharacterTags(characterId, allTags);
+
+        flash("success", "Character updated: " + character.getName());
+        return play(slug);
     }
 }
