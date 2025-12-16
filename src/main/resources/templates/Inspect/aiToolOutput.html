@@ -1,50 +1,51 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Tool Output - {toolName}</title>
-    <link rel="stylesheet" href="/styles.css">
-    <link rel="stylesheet" href="/inspector.css">
-</head>
-<body>
-    <header>
-        <h1>AI Tool Output</h1>
-        <p>Tool: {toolName}</p>
-    </header>
+{#include base}
+    {#title}AI Tool Output - {toolName}{/title}
 
+    {#stylesheets}
+    <link rel="stylesheet" href="/inspector.css">
+    {/stylesheets}
+
+    {#header-title}AI Tool Output{/header-title}
+
+    {#header-subtitle}
+        <p>Tool: {toolName}</p>
+    {/header-subtitle}
+
+    {#nav}
     <nav>
         <a href="/chat">Chat Interface</a>
         <a href="/lore">Lore Questions</a>
         <a href="/ingest">Ingest Documents</a>
         <a href="/inspect" class="active">My Game</a>
     </nav>
+    {/nav}
 
-    <main>
-        <div class="breadcrumb">
-            <a href="#" onclick="history.back()">← Back</a>
+    {#content}
+    <div class="breadcrumb">
+        <a href="#" onclick="history.back()">← Back</a>
+    </div>
+
+    <h2>AI Tool Output: {toolName}</h2>
+
+    <div class="ai-output-container">
+        <div class="output-header">
+            <span class="ai-badge">AI Response</span>
+            <p class="output-description">
+                This is exactly what the AI agent sees when it calls the <code>{toolName}</code> tool.
+            </p>
         </div>
 
-        <h2>AI Tool Output: {toolName}</h2>
-
-        <div class="ai-output-container">
-            <div class="output-header">
-                <span class="ai-badge">AI Response</span>
-                <p class="output-description">
-                    This is exactly what the AI agent sees when it calls the <code>{toolName}</code> tool.
-                </p>
-            </div>
-
-            <div class="ai-output">
-                <pre class="ai-text">{output}</pre>
-            </div>
-
-            <div class="output-actions">
-                <button onclick="copyToClipboard()" class="btn btn-outline">Copy to Clipboard</button>
-            </div>
+        <div class="ai-output">
+            <pre class="ai-text">{output}</pre>
         </div>
-    </main>
 
+        <div class="output-actions">
+            <button onclick="copyToClipboard()" class="btn btn-outline">Copy to Clipboard</button>
+        </div>
+    </div>
+    {/content}
+
+    {#footer-scripts}
     <script>
         function copyToClipboard() {
             const output = document.querySelector('.ai-text').textContent;
@@ -60,5 +61,5 @@
             });
         }
     </script>
-</body>
-</html>
+    {/footer-scripts}
+{/include}

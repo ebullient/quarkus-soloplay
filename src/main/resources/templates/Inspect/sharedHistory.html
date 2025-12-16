@@ -1,123 +1,122 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shared History - {char1.name} & {char2.name}</title>
-    <link rel="stylesheet" href="/styles.css">
-    <link rel="stylesheet" href="/inspector.css">
-</head>
-<body>
-    <header>
-        <h1>Shared History</h1>
-        <p>Campaign: {char1.storyThreadId}</p>
-    </header>
+{#include base}
+    {#title}Shared History - {char1.name} & {char2.name}{/title}
 
+    {#stylesheets}
+    <link rel="stylesheet" href="/inspector.css">
+    {/stylesheets}
+
+    {#header-title}Shared History{/header-title}
+
+    {#header-subtitle}
+        <p>Campaign: {char1.storyThreadId}</p>
+    {/header-subtitle}
+
+    {#nav}
     <nav>
         <a href="/chat">Chat Interface</a>
         <a href="/lore">Lore Questions</a>
         <a href="/ingest">Ingest Documents</a>
         <a href="/inspect" class="active">My Game</a>
     </nav>
+    {/nav}
 
-    <main>
-        <div class="breadcrumb">
-            <a href="/inspect?storyThreadId={char1.storyThreadId}">Inspect</a> &gt; 
-            <span>Shared History</span>
-        </div>
-        
-        <h2>Character Shared History</h2>
-        
-        <div class="character-pair">
-            <div class="character-info">
-                <a href="/inspect/characters/{char1.id}">
-                    <strong>{char1.name}</strong>
-                </a>
-                {#if char1.tags}
-                <span class="character-tags">({#each char1.tags}{it}{#if it_hasNext}, {/if}{/each})</span>
-                {/if}
-                {#if char1.summary}
-                    <p class="character-summary">{char1.summary}</p>
-                {/if}
-            </div>
+    {#content}
+    <div class="breadcrumb">
+        <a href="/inspect?storyThreadId={char1.storyThreadId}">Inspect</a> &gt;
+        <span>Shared History</span>
+    </div>
 
-            <div class="connection-indicator">
-                <span class="connection-symbol">⟷</span>
-            </div>
+    <h2>Character Shared History</h2>
 
-            <div class="character-info">
-                <a href="/inspect/characters/{char2.id}">
-                    <strong>{char2.name}</strong>
-                </a>
-                {#if char2.tags}
-                <span class="character-tags">({#each char2.tags}{it}{#if it_hasNext}, {/if}{/each})</span>
-                {/if}
-                {#if char2.summary}
-                    <p class="character-summary">{char2.summary}</p>
-                {/if}
-            </div>
-        </div>
-        
-        <div class="actions">
-            <a href="/inspect/ai/shared-history?char1Id={char1.id}&char2Id={char2.id}" class="btn btn-ai">
-                View AI Output
+    <div class="character-pair">
+        <div class="character-info">
+            <a href="/inspect/characters/{char1.id}">
+                <strong>{char1.name}</strong>
             </a>
+            {#if char1.tags}
+            <span class="character-tags">({#each char1.tags}{it}{#if it_hasNext}, {/if}{/each})</span>
+            {/if}
+            {#if char1.summary}
+                <p class="character-summary">{char1.summary}</p>
+            {/if}
         </div>
-        
-        {#if sharedEvents.isEmpty()}
-            <div class="empty-state">
-                <p>{char1.name} and {char2.name} have no recorded shared events.</p>
-            </div>
-        {#else}
-            <div class="shared-events">
-                <h3>Events they both participated in:</h3>
-                <div class="events-timeline">
-                    {#for event in sharedEvents}
-                        <div class="event-card">
-                            <div class="event-header">
-                                {#if event.tags}
-                                <span class="event-type">{#each event.tags}{it}{#if it_hasNext}, {/if}{/each}</span>
-                                {/if}
-                                <span class="event-timestamp">{event.timestamp}</span>
-                            </div>
 
-                            <div class="event-content">
-                                <p class="event-description">{event.description}</p>
-                                
-                                {#if event.location}
-                                    <div class="event-location">
-                                        <strong>Location:</strong> 
-                                        <a href="/inspect/locations/{event.location.id}">
-                                            {event.location.name}
-                                        </a>
-                                    </div>
-                                {/if}
-                                
-                                {#if event.day}
-                                    <div class="event-timing">
-                                        <strong>Campaign Day:</strong> {event.day}
-                                        {#if event.inWorldDate}
-                                            <span class="in-world-date">({event.inWorldDate})</span>
-                                        {/if}
-                                    </div>
-                                {/if}
-                                
-                                {#if event.participants && event.participants.size() > 2}
-                                    <div class="other-participants">
-                                        <strong>Other participants:</strong>
-                                        {#for participant in event.participants}
-                                            {#if participant.id != char1.id && participant.id != char2.id}
-                                                <a href="/inspect/characters/{participant.id}">{participant.name}</a>
-                                            {/if}
-                                        {/for}
-                                    </div>
-                                {/if}
-                            </div>
+        <div class="connection-indicator">
+            <span class="connection-symbol">⟷</span>
+        </div>
+
+        <div class="character-info">
+            <a href="/inspect/characters/{char2.id}">
+                <strong>{char2.name}</strong>
+            </a>
+            {#if char2.tags}
+            <span class="character-tags">({#each char2.tags}{it}{#if it_hasNext}, {/if}{/each})</span>
+            {/if}
+            {#if char2.summary}
+                <p class="character-summary">{char2.summary}</p>
+            {/if}
+        </div>
+    </div>
+
+    <div class="actions">
+        <a href="/inspect/ai/shared-history?char1Id={char1.id}&char2Id={char2.id}" class="btn btn-ai">
+            View AI Output
+        </a>
+    </div>
+
+    {#if sharedEvents.isEmpty()}
+        <div class="empty-state">
+            <p>{char1.name} and {char2.name} have no recorded shared events.</p>
+        </div>
+    {#else}
+        <div class="shared-events">
+            <h3>Events they both participated in:</h3>
+            <div class="events-timeline">
+                {#for event in sharedEvents}
+                    <div class="event-card">
+                        <div class="event-header">
+                            {#if event.tags}
+                            <span class="event-type">{#each event.tags}{it}{#if it_hasNext}, {/if}{/each}</span>
+                            {/if}
+                            <span class="event-timestamp">{event.timestamp}</span>
                         </div>
-                    {/for}
-                </div>
+
+                        <div class="event-content">
+                            <p class="event-description">{event.description}</p>
+
+                            {#if event.location}
+                                <div class="event-location">
+                                    <strong>Location:</strong>
+                                    <a href="/inspect/locations/{event.location.id}">
+                                        {event.location.name}
+                                    </a>
+                                </div>
+                            {/if}
+
+                            {#if event.day}
+                                <div class="event-timing">
+                                    <strong>Campaign Day:</strong> {event.day}
+                                    {#if event.inWorldDate}
+                                        <span class="in-world-date">({event.inWorldDate})</span>
+                                    {/if}
+                                </div>
+                            {/if}
+
+                            {#if event.participants && event.participants.size() > 2}
+                                <div class="other-participants">
+                                    <strong>Other participants:</strong>
+                                    {#for participant in event.participants}
+                                        {#if participant.id != char1.id && participant.id != char2.id}
+                                            <a href="/inspect/characters/{participant.id}">{participant.name}</a>
+                                        {/if}
+                                    {/for}
+                                </div>
+                            {/if}
+                        </div>
+                    </div>
+                {/for}
             </div>
-        {/if}
-    </main>
-</body>
-</html>
+        </div>
+    {/if}
+    {/content}
+{/include}

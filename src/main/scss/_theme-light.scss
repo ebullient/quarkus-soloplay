@@ -1,0 +1,63 @@
+:not(.dark) body {
+  // Background colors
+  --color-bg-base: var(--gray-light-8);
+  --color-bg-elevated: var(--gray-light-5);
+  --color-bg-overlay: var(--gray-light-3);
+
+  // Text colors
+  --color-text-primary: var(--gray-dark-5);
+  --color-text-secondary: var(--gray-dark-4);
+  --color-text-faint: var(--gray-dark-1);
+
+  // Accent colors
+  --color-text-accent: var(--primary-accent-4);
+  --color-text-accent-hover: var(--primary-accent-5);
+
+  // AI agent colors
+  --color-text-ai: var(--blue-4);
+  --color-bg-ai: rgba(var(--blue-4-rgb), 0.1);
+
+  // Chat participant colors
+  --color-bg-user: rgba(var(--cyan-4-rgb), 0.1);
+  --color-text-user: var(--cyan-5);
+
+  --color-bg-assistant: rgba(var(--purple-4-rgb), 0.1);
+  --color-text-assistant: var(--purple-5);
+
+  // Interactive states
+  --color-interactive-normal: var(--gray-light-5);
+  --color-interactive-hover: var(--primary-accent-1);
+  --color-interactive-accent: var(--primary-accent-4);
+  --color-interactive-accent-hover: var(--primary-accent-3);
+
+  // Status colors
+  --color-success-border: var(--green-4);
+  --color-success-text: var(--green-5);
+  --color-success-bg: rgba(var(--green-4-rgb), 0.1);
+
+  --color-error-border: var(--red-4);
+  --color-error-text: var(--red-5);
+  --color-error-bg: rgba(var(--red-4-rgb), 0.1);
+
+  --color-info-border: var(--blue-4);
+  --color-info-text: var(--blue-5);
+  --color-info-bg: rgba(var(--blue-4-rgb), 0.1);
+
+  --color-warning-border: var(--yellow-3);
+  --color-warning-text: var(--yellow-4);
+  --color-warning-bg: rgba(var(--yellow-3-rgb), 0.1);
+
+  // Borders
+  --color-border: var(--gray-light-1);
+  --color-border-light: var(--gray-light-2);
+
+  // Shadows
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 4px 12px rgba(var(--primary-accent-4-rgb), 0.2);
+  --shadow-focus: 0 0 5px rgba(var(--primary-accent-4-rgb), 0.5);
+  --shadow-focus-ai: 0 0 0 2px rgba(var(--blue-4-rgb), 0.3);
+
+  // Text on accent backgrounds
+  --color-text-on-accent: var(--gray-light-8);
+}

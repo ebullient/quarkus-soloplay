@@ -1,68 +1,65 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Locations - My Game</title>
-    <link rel="stylesheet" href="/styles.css">
-    <link rel="stylesheet" href="/characters.css">
-</head>
-<body>
-    <header>
-        <h1>Campaign Locations</h1>
-        <p>Campaign: {storyThreadId}</p>
-    </header>
+{#include base}
+    {#title}Locations - My Game{/title}
 
+    {#stylesheets}
+    <link rel="stylesheet" href="/characters.css">
+    {/stylesheets}
+
+    {#header-title}Campaign Locations{/header-title}
+
+    {#header-subtitle}
+        <p>Campaign: {storyThreadId}</p>
+    {/header-subtitle}
+
+    {#nav}
     <nav>
         <a href="/chat">Chat Interface</a>
         <a href="/lore">Lore Questions</a>
         <a href="/ingest">Ingest Documents</a>
         <a href="/inspect" class="active">My Game</a>
     </nav>
+    {/nav}
 
-    <main>
-        <div class="locations-header">
-            <h2>Locations ({locations.size})</h2>
-            <div class="actions">
-                <a href="/inspect?storyThreadId={storyThreadId}" class="btn btn-secondary">← Back to Dashboard</a>
-            </div>
+    {#content}
+    <div class="locations-header">
+        <h2>Locations ({locations.size})</h2>
+        <div class="actions">
+            <a href="/inspect?storyThreadId={storyThreadId}" class="btn btn-secondary">← Back to Dashboard</a>
         </div>
+    </div>
 
-        {#if locations.empty}
-        <div class="empty-state">
-            <p>No locations found in this campaign.</p>
-            <p>Locations are automatically created by AI agents during gameplay.</p>
-        </div>
-        {#else}
-        <div class="locations-grid">
-            {#for location in locations}
-            <div class="location-card">
-                <div class="location-header">
-                    <h3><a href="/inspect/locations/{location.id}">{location.name}</a></h3>
-                    <div class="location-tags">
-                        {#if location.tags}
-                        {#each location.tags}
-                        <span class="tag">{it}</span>
-                        {/each}
-                        {/if}
-                    </div>
-                </div>
-
-                {#if location.summary}
-                <p class="location-summary">{location.summary}</p>
-                {/if}
-
-                <div class="location-meta">
-                    {#if location.createdAt}
-                    <span class="created-at">Created: {location.createdAt.format('MMM dd, yyyy')}</span>
+    {#if locations.empty}
+    <div class="empty-state">
+        <p>No locations found in this campaign.</p>
+        <p>Locations are automatically created by AI agents during gameplay.</p>
+    </div>
+    {#else}
+    <div class="locations-grid">
+        {#for location in locations}
+        <div class="location-card">
+            <div class="location-header">
+                <h3><a href="/inspect/locations/{location.id}">{location.name}</a></h3>
+                <div class="location-tags">
+                    {#if location.tags}
+                    {#each location.tags}
+                    <span class="tag">{it}</span>
+                    {/each}
                     {/if}
                 </div>
             </div>
-            {/for}
+
+            {#if location.summary}
+            <p class="location-summary">{location.summary}</p>
+            {/if}
+
+            <div class="location-meta">
+                {#if location.createdAt}
+                <span class="created-at">Created: {location.createdAt.format('MMM dd, yyyy')}</span>
+                {/if}
+            </div>
         </div>
-        {/if}
-    </main>
-
-
-</body>
-</html>
+        {/for}
+    </div>
+    {/if}
+    {/content}
+{/include}

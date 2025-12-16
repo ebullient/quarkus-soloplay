@@ -1,4 +1,6 @@
 // Ingest Layout - Form-specific styles
+@use '../variables' as *;
+@use '../mixins' as *;
 
 #ingest-form-container {
     background: var(--color-bg-elevated);

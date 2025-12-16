@@ -1,21 +1,17 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quarkus Solo Play - AI-Powered RPG Assistant</title>
-    <link rel="stylesheet" href="/styles.css">
-    <link rel="stylesheet" href="/inspector.css">
-</head>
-<body>
-    <header>
-        <div class="header-content">
-            <h1>Quarkus Solo Play</h1>
-            <p>AI-Powered RPG Campaign Assistant</p>
-        </div>
-    </header>
+{#include base}
+    {#title}Quarkus Solo Play - AI-Powered RPG Assistant{/title}
 
-    <main>
+    {#stylesheets}
+    <link rel="stylesheet" href="/inspector.css">
+    {/stylesheets}
+
+    {#header-title}Quarkus Solo Play{/header-title}
+
+    {#header-subtitle}
+        <p>AI-Powered RPG Campaign Assistant</p>
+    {/header-subtitle}
+
+    {#content}
         <section class="data-overview">
             <h2>Welcome to Quarkus Solo Play</h2>
             <p>Choose how you want to interact with your campaign:</p>
@@ -94,10 +90,5 @@
                 </ul>
             </aside>
         </section>
-    </main>
-
-    <footer>
-        <p>Powered by Quarkus, LangChain4j, Ollama, and Neo4j</p>
-    </footer>
-</body>
-</html>
+    {/content}
+{/include}

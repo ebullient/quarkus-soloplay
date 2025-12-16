@@ -1,24 +1,22 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Campaign Setting Ingestion</title>
-    <link rel="stylesheet" href="/styles.css">
-    <link rel="stylesheet" href="/ingest.css">
-</head>
-<body>
-    <header>
-        <h1>Campaign Setting Ingestion</h1>
-    </header>
+{#include base}
+    {#title}Campaign Setting Ingestion{/title}
 
+    {#stylesheets}
+    <link rel="stylesheet" href="/ingest.css">
+    {/stylesheets}
+
+    {#header-title}Campaign Setting Ingestion{/header-title}
+
+    {#nav}
     <nav>
         <a href="/chat">Chat Interface</a>
         <a href="/lore">Lore Questions</a>
         <a href="/ingest" class="active">Ingest Documents</a>
         <a href="/inspect">My Game</a>
     </nav>
+    {/nav}
 
+    {#content}
     <div id="main-container">
         {#if flash:success}
         <div class="flash-message success">
@@ -62,6 +60,5 @@
             </form>
         </div>
     </div>
-
-</body>
-</html>
+    {/content}
+{/include}

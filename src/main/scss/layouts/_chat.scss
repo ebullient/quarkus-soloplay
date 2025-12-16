@@ -1,4 +1,6 @@
 // Chat Interface Layout
+@use '../variables' as *;
+@use '../mixins' as *;
 
 // Chat needs full height
 body {

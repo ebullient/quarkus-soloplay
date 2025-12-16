@@ -1,4 +1,6 @@
 // Utility Classes - Simple, composable layout primitives
+@use '../mixins' as *;
+@use '../variables' as *;
 
 // Card - elevated surface with padding
 .card {

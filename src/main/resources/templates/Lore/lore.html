@@ -1,25 +1,26 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Campaign Lore Assistant</title>
-    <link rel="stylesheet" href="/styles.css">
-    <link rel="stylesheet" href="/chat.css">
-    <script src="/chat-interface.js"></script>
-</head>
-<body>
-    <header>
-        <h1>Campaign Lore Assistant</h1>
-    </header>
+{#include base}
+    {#title}Campaign Lore Assistant{/title}
 
+    {#stylesheets}
+    <link rel="stylesheet" href="/chat.css">
+    {/stylesheets}
+
+    {#scripts}
+    <script src="/chat-interface.js"></script>
+    {/scripts}
+
+    {#header-title}Campaign Lore Assistant{/header-title}
+
+    {#nav}
     <nav>
         <a href="/chat">Chat Interface</a>
         <a href="/lore" class="active">Lore Questions</a>
         <a href="/ingest">Ingest Documents</a>
         <a href="/inspect">My Game</a>
     </nav>
+    {/nav}
 
+    {#content}
     <div id="chat-container"></div>
 
     <div id="input-container">
@@ -31,7 +32,9 @@
         >
         <button id="send-btn">Send</button>
     </div>
+    {/content}
 
+    {#footer-scripts}
     <script>
         new ChatInterface({
             apiEndpoint: '/api/lore',
@@ -40,5 +43,5 @@
             method: 'GET'
         });
     </script>
-</body>
-</html>
+    {/footer-scripts}
+{/include}

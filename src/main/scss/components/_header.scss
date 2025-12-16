@@ -2,7 +2,24 @@ header {
     background: var(--color-bg-elevated);
     padding: var(--spacing-md);
     text-align: center;
-    border-bottom: 2px solid var(--color-text-accent);
+    border-bottom: 2px solid var(--color-interactive-accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--spacing-md);
+
+    h1 {
+        margin: 0;
+
+        a {
+            color: var(--color-text-primary);
+            text-decoration: none;
+
+            &:hover {
+                color: var(--color-text-accent);
+            }
+        }
+    }
 }
 
 .header-content {

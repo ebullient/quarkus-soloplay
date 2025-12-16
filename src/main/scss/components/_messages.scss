@@ -39,7 +39,7 @@
             background: var(--color-bg-base);
             padding: 0.2rem 0.4rem;
             border-radius: 3px;
-            font-family: $font-family-mono;
+            font-family: var(--font-family-mono);
         }
 
         pre {

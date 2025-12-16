@@ -1,4 +1,6 @@
 // Inspector Layout - Minimal specific styles
+@use '../variables' as *;
+@use '../mixins' as *;
 
 // AI output has unique scrollable area
 .ai-output {
@@ -9,7 +11,7 @@
     @include custom-scrollbar($scrollbar-width-sm);
 
     pre, code {
-        font-family: $font-family-mono;
+        font-family: var(--font-family-mono);
         white-space: pre-wrap;
     }
 }

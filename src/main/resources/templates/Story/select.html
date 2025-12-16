@@ -1,19 +1,17 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Story Threads - Solo Play</title>
-    <link rel="stylesheet" href="/styles.css">
-    <link rel="stylesheet" href="/inspector.css">
-</head>
-<body>
-    <header>
-        <h1>Solo Play - Story Threads</h1>
-        <p>Select a story to continue or create a new adventure</p>
-    </header>
+{#include base}
+    {#title}Story Threads - Solo Play{/title}
 
-    <main>
+    {#stylesheets}
+    <link rel="stylesheet" href="/inspector.css">
+    {/stylesheets}
+
+    {#header-title}Solo Play - Story Threads{/header-title}
+
+    {#header-subtitle}
+        <p>Select a story to continue or create a new adventure</p>
+    {/header-subtitle}
+
+    {#content}
         {#if flash:success}
         <div class="flash success">{flash:success}</div>
         {/if}
@@ -78,6 +76,5 @@
                 </div>
             {/if}
         </section>
-    </main>
-</body>
-</html>
+    {/content}
+{/include}

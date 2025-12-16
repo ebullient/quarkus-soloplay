@@ -1,4 +1,2 @@
 // Ingest Interface - Compiled to ingest.css
-@import 'variables';
-@import 'mixins';
-@import 'layouts/ingest';
+@use 'layouts/ingest';

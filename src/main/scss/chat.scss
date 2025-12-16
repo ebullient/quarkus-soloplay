@@ -1,4 +1,2 @@
 // Chat Interface - Compiled to chat.css
-@import 'variables';
-@import 'mixins';
-@import 'layouts/chat';
+@use 'layouts/chat';

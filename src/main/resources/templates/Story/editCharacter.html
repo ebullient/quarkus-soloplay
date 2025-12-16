@@ -1,0 +1,131 @@
+{#include base}
+    {#title}Edit Character - {thread.name}{/title}
+
+    {#stylesheets}
+    <link rel="stylesheet" href="/inspector.css">
+    {/stylesheets}
+
+    {#header-title}Edit Character: {character.name}{/header-title}
+
+    {#header-subtitle}
+        <p>{thread.name} - {thread.settingName}</p>
+    {/header-subtitle}
+
+    {#nav}
+    <nav>
+        <a href="/story/{thread.slug}/play">← Back to Play</a>
+    </nav>
+    {/nav}
+
+    {#content}
+        {#if flash:error}
+        <div class="flash error">{flash:error}</div>
+        {/if}
+
+        <form action="/story/{thread.slug}/character/{character.id}/edit" method="POST" class="story-form">
+            <div class="form-section">
+                <h2>Basic Information</h2>
+
+                <div class="form-group">
+                    <label for="name">Character Name *</label>
+                    <input type="text" id="name" name="name" required
+                           value="{character.name}"
+                           autocomplete="off">
+                    <small>Your character's full name</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="summary">Summary *</label>
+                    <input type="text" id="summary" name="summary" required
+                           value="{character.summary}"
+                           maxlength="100"
+                           autocomplete="off">
+                    <small>Brief 5-10 word description (max 100 characters)</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description" name="description"
+                              rows="4">{character.description}</textarea>
+                    <small>Full character description</small>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h2>Character Stats</h2>
+
+                <div class="form-group">
+                    <label for="characterClass">Class</label>
+                    <input type="text" id="characterClass" name="characterClass"
+                           value="{character.characterClass}"
+                           placeholder="e.g., Fighter, Wizard, Rogue"
+                           autocomplete="off">
+                    <small>D&D character class (optional)</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="level">Level</label>
+                    <input type="number" id="level" name="level"
+                           min="1" max="20" value="{character.level ?: 1}">
+                    <small>Character level (1-20)</small>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h2>Character Tags</h2>
+                <p class="section-description">
+                    Add tags to categorize your character. Player-controlled tag is added automatically.
+                </p>
+
+                <div class="form-group">
+                    <label>Role Tags</label>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" name="tags" value="protagonist"
+                            {#if character.tags.contains('protagonist')}checked{/if}> Protagonist</label>
+                        <label><input type="checkbox" name="tags" value="companion"
+                            {#if character.tags.contains('companion')}checked{/if}> Companion (NPC ally)</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Alignment (select one or none)</label>
+                    <div class="checkbox-group">
+                        <label><input type="radio" name="tags" value="alignment:lawful-good"
+                            {#if character.tags.contains('alignment:lawful-good')}checked{/if}> Lawful Good</label>
+                        <label><input type="radio" name="tags" value="alignment:neutral-good"
+                            {#if character.tags.contains('alignment:neutral-good')}checked{/if}> Neutral Good</label>
+                        <label><input type="radio" name="tags" value="alignment:chaotic-good"
+                            {#if character.tags.contains('alignment:chaotic-good')}checked{/if}> Chaotic Good</label>
+                        <label><input type="radio" name="tags" value="alignment:lawful-neutral"
+                            {#if character.tags.contains('alignment:lawful-neutral')}checked{/if}> Lawful Neutral</label>
+                        <label><input type="radio" name="tags" value="alignment:true-neutral"
+                            {#if character.tags.contains('alignment:true-neutral')}checked{/if}> True Neutral</label>
+                        <label><input type="radio" name="tags" value="alignment:chaotic-neutral"
+                            {#if character.tags.contains('alignment:chaotic-neutral')}checked{/if}> Chaotic Neutral</label>
+                        <label><input type="radio" name="tags" value="alignment:lawful-evil"
+                            {#if character.tags.contains('alignment:lawful-evil')}checked{/if}> Lawful Evil</label>
+                        <label><input type="radio" name="tags" value="alignment:neutral-evil"
+                            {#if character.tags.contains('alignment:neutral-evil')}checked{/if}> Neutral Evil</label>
+                        <label><input type="radio" name="tags" value="alignment:chaotic-evil"
+                            {#if character.tags.contains('alignment:chaotic-evil')}checked{/if}> Chaotic Evil</label>
+                    </div>
+                    <small>Optional - alignment can shift during play</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="customTags">Additional Tags (comma-separated)</label>
+                    <input type="text" id="customTags" name="customTags"
+                           value="{#each character.tags}{#if !it.equalsIgnoreCase('player-controlled') && !it.equalsIgnoreCase('protagonist') && !it.equalsIgnoreCase('companion') && !it.startsWith('alignment:')}{it}{#if it_hasNext}, {/if}{/if}{/each}"
+                           placeholder="e.g., faction:harpers, profession:blacksmith, race:dwarf"
+                           autocomplete="off">
+                    <small>Custom tags for organization (optional)</small>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <a href="/story/{thread.slug}/play" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    {/content}
+{/include}

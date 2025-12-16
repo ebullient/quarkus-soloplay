@@ -1,3 +1,5 @@
+@use '../mixins' as *;
+
 .flash-message, .flash {
     padding: var(--spacing-md);
     margin: var(--spacing-md) 0;

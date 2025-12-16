@@ -1,91 +1,87 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Game - Campaign Data</title>
-    <link rel="stylesheet" href="/styles.css">
-    <link rel="stylesheet" href="/inspector.css">
-    <script src="/api-selector.js"></script>
-</head>
-<body>
-    <header>
-        <div class="header-content">
-            <div class="header-title">
-                <h1>My Game Dashboard</h1>
-                <p id="current-campaign-display">Campaign: Loading...</p>
-            </div>
-            <div class="header-controls">
-                <div class="campaign-selector">
-                    <label for="campaign-input">Campaign:</label>
-                    <input
-                        id="campaign-input"
-                        class="campaign-input"
-                        type="text"
-                        placeholder="Type or select campaign..."
-                        list="campaign-datalist"
-                        autocomplete="off"
-                    />
-                    <datalist id="campaign-datalist">
-                    </datalist>
-                    <button id="set-campaign" class="btn btn-sm" title="Set/Create this campaign">
-                        Set Campaign
-                    </button>
-                    <button id="refresh-campaigns" class="btn btn-sm" title="Refresh campaign list">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-refresh-ccw-icon lucide-refresh-ccw"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </header>
+{#include base}
+    {#title}My Game - Campaign Data{/title}
 
+    {#stylesheets}
+    <link rel="stylesheet" href="/inspector.css">
+    {/stylesheets}
+
+    {#scripts}
+    <script src="/api-selector.js"></script>
+    {/scripts}
+
+    {#header-title}My Game Dashboard{/header-title}
+
+    {#header-subtitle}
+        <p id="current-campaign-display">Campaign: Loading...</p>
+    {/header-subtitle}
+
+    {#nav}
     <nav>
         <a href="/chat">Chat Interface</a>
         <a href="/lore">Lore Questions</a>
         <a href="/ingest">Ingest Documents</a>
         <a href="/inspect" class="active">My Game</a>
+        <div class="campaign-selector">
+            <label for="campaign-input">Campaign:</label>
+            <input
+                id="campaign-input"
+                class="campaign-input"
+                type="text"
+                placeholder="Type or select campaign..."
+                list="campaign-datalist"
+                autocomplete="off"
+            />
+            <datalist id="campaign-datalist">
+            </datalist>
+            <button id="set-campaign" class="btn btn-sm" title="Set/Create this campaign">
+                Set Campaign
+            </button>
+            <button id="refresh-campaigns" class="btn btn-sm" title="Refresh campaign list">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-refresh-ccw-icon lucide-refresh-ccw"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+            </button>
+        </div>
     </nav>
+    {/nav}
 
-    <main>
-        <div class="data-overview">
-            <h2>Campaign Data Overview</h2>
+    {#content}
+    <div class="data-overview">
+        <h2>Campaign Data Overview</h2>
 
-            <div class="data-sections">
-                <div class="data-section">
-                    <h3>Characters</h3>
-                    <p>Manage NPCs, PCs, and other important figures in your campaign.</p>
-                    <a href="/inspect/characters?storyThreadId={storyThreadId}" class="btn btn-primary">View Characters</a>
-                </div>
+        <div class="data-sections">
+            <div class="data-section">
+                <h3>Characters</h3>
+                <p>Manage NPCs, PCs, and other important figures in your campaign.</p>
+                <a href="/inspect/characters?storyThreadId={storyThreadId}" class="btn btn-primary">View Characters</a>
+            </div>
 
-                <div class="data-section">
-                    <h3>Locations</h3>
-                    <p>Explore cities, regions, and other important places.</p>
-                    <a href="/inspect/locations?storyThreadId={storyThreadId}" class="btn btn-primary">View Locations</a>
-                </div>
+            <div class="data-section">
+                <h3>Locations</h3>
+                <p>Explore cities, regions, and other important places.</p>
+                <a href="/inspect/locations?storyThreadId={storyThreadId}" class="btn btn-primary">View Locations</a>
+            </div>
 
-                <div class="data-section">
-                    <h3>Events & Timeline</h3>
-                    <p>Track important events and campaign milestones.</p>
-                    <a href="/inspect/events?storyThreadId={storyThreadId}" class="btn btn-secondary">Coming Soon</a>
-                </div>
+            <div class="data-section">
+                <h3>Events & Timeline</h3>
+                <p>Track important events and campaign milestones.</p>
+                <a href="/inspect/events?storyThreadId={storyThreadId}" class="btn btn-secondary">Coming Soon</a>
+            </div>
 
-                <div class="data-section">
-                    <h3>Relationships</h3>
-                    <p>Explore connections between characters and factions.</p>
-                    <a href="/inspect/relationships?storyThreadId={storyThreadId}" class="btn btn-primary">View Relationships</a>
-                </div>
+            <div class="data-section">
+                <h3>Relationships</h3>
+                <p>Explore connections between characters and factions.</p>
+                <a href="/inspect/relationships?storyThreadId={storyThreadId}" class="btn btn-primary">View Relationships</a>
+            </div>
 
-                <div class="data-section ai-inspection">
-                    <h3>🤖 AI Tool Inspection</h3>
-                    <p>See exactly what the AI agents see when they query campaign data.</p>
-                    <div class="ai-tools-grid">
-                        <a href="/inspect/ai/api-network?storyThreadId={storyThreadId}" class="btn btn-ai btn-sm">
-                            Campaign Network
-                        </a>
-                    </div>
+            <div class="data-section ai-inspection">
+                <h3>🤖 AI Tool Inspection</h3>
+                <p>See exactly what the AI agents see when they query campaign data.</p>
+                <div class="ai-tools-grid">
+                    <a href="/inspect/ai/api-network?storyThreadId={storyThreadId}" class="btn btn-ai btn-sm">
+                        Campaign Network
+                    </a>
                 </div>
             </div>
         </div>
-    </main>
-</body>
-</html>
+    </div>
+    {/content}
+{/include}

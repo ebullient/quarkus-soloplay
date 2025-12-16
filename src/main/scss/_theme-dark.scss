@@ -1,0 +1,63 @@
+.dark body {
+  // Background colors
+  --color-bg-base: var(--gray-dark-85);
+  --color-bg-elevated: var(--gray-dark-7);
+  --color-bg-overlay: var(--gray-dark-75);
+
+  // Text colors
+  --color-text-primary: var(--gray-light-1);
+  --color-text-secondary: var(--gray);
+  --color-text-faint: var(--gray-dark-1);
+
+  // Accent colors
+  --color-text-accent: var(--primary-accent-2);
+  --color-text-accent-hover: var(--primary-accent-1);
+
+  // AI agent colors
+  --color-text-ai: var(--blue-2);
+  --color-bg-ai: rgba(var(--blue-4-rgb), 0.2);
+
+  // Chat participant colors
+  --color-bg-user: rgba(var(--cyan-4-rgb), 0.2);
+  --color-text-user: var(--cyan-2);
+
+  --color-bg-assistant: rgba(var(--purple-4-rgb), 0.2);
+  --color-text-assistant: var(--purple-2);
+
+  // Interactive states
+  --color-interactive-normal: var(--gray-dark-6);
+  --color-interactive-hover: var(--primary-accent-4);
+  --color-interactive-accent: var(--primary-accent-5);
+  --color-interactive-accent-hover: var(--primary-accent-4);
+
+  // Status colors
+  --color-success-border: var(--green-2);
+  --color-success-text: var(--green-3);
+  --color-success-bg: rgba(var(--green-4-rgb), 0.15);
+
+  --color-error-border: var(--red-2);
+  --color-error-text: var(--red-3);
+  --color-error-bg: rgba(var(--red-4-rgb), 0.15);
+
+  --color-info-border: var(--blue-2);
+  --color-info-text: var(--blue-3);
+  --color-info-bg: rgba(var(--blue-4-rgb), 0.15);
+
+  --color-warning-border: var(--yellow-2);
+  --color-warning-text: var(--yellow-3);
+  --color-warning-bg: rgba(var(--yellow-3-rgb), 0.15);
+
+  // Borders
+  --color-border: var(--gray-dark-9);
+  --color-border-light: var(--gray-dark-6);
+
+  // Shadows
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 4px 12px rgba(var(--primary-accent-4-rgb), 0.3);
+  --shadow-focus: 0 0 5px rgba(var(--primary-accent-4-rgb), 0.6);
+  --shadow-focus-ai: 0 0 0 2px rgba(var(--blue-2-rgb), 0.4);
+
+  // Text on accent backgrounds
+  --color-text-on-accent: var(--gray-light-8);
+}

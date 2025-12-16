@@ -1,23 +1,24 @@
 // Campaign Assistant - Main Styles
 // This file compiles to /target/classes/META-INF/resources/styles.css
 
-// Variables and Mixins
-@import 'variables';
-@import 'mixins';
+// Theme system (color palette and light/dark modes)
+@use 'color-palette';
+@use 'theme-light';
+@use 'theme-dark';
 
 // Base
-@import 'base/base';
-@import 'base/typography';
+@use 'base/base';
+@use 'base/typography';
 
 // Components
-@import 'components/utilities';
-@import 'components/buttons';
-@import 'components/forms';
-@import 'components/badges';
-@import 'components/messages';
-@import 'components/flash';
-@import 'components/header';
-@import 'components/nav';
+@use 'components/utilities';
+@use 'components/buttons';
+@use 'components/forms';
+@use 'components/badges';
+@use 'components/messages';
+@use 'components/flash';
+@use 'components/header';
+@use 'components/nav';
 
 // Additional shared styles
 main {
@@ -32,6 +33,35 @@ footer {
     border-top: 1px solid var(--color-text-accent);
     color: var(--color-text-secondary);
     font-size: var(--font-size-sm);
+}
+
+// Theme toggle button
+.theme-toggle {
+    --size: 1.2rem;
+
+    background: none;
+    border: none;
+    padding: 0;
+
+    height: var(--size);
+    width: var(--size);
+    inline-size: var(--size);
+    block-size: var(--size);
+    aspect-ratio: 1;
+    border-radius: 50%;
+
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    outline-offset: 5px;
+
+    color: var(--color-text-primary);
+
+    & > svg {
+        inline-size: 100%;
+        block-size: 100%;
+        stroke-linecap: round;
+    }
 }
 
 // Semantic aliases for card variants

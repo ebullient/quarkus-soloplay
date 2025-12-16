@@ -1,82 +1,80 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{location.name} - Location Detail</title>
-    <link rel="stylesheet" href="/styles.css">
-    <link rel="stylesheet" href="/characters.css">
-</head>
-<body>
-    <header>
-        <h1>Location: {location.name}</h1>
-        <p>Campaign: {location.storyThreadId}</p>
-    </header>
+{#include base}
+    {#title}{location.name} - Location Detail{/title}
 
+    {#stylesheets}
+    <link rel="stylesheet" href="/characters.css">
+    {/stylesheets}
+
+    {#header-title}Location: {location.name}{/header-title}
+
+    {#header-subtitle}
+        <p>Campaign: {location.storyThreadId}</p>
+    {/header-subtitle}
+
+    {#nav}
     <nav>
         <a href="/chat">Chat Interface</a>
         <a href="/lore">Lore Questions</a>
         <a href="/ingest">Ingest Documents</a>
         <a href="/inspect" class="active">My Game</a>
     </nav>
+    {/nav}
 
-    <main>
-        <div class="location-detail-header">
-            <div class="actions">
-                <a href="/inspect/locations?storyThreadId={location.storyThreadId}" class="btn btn-secondary">← Back to Locations</a>
-                <a href="/inspect/locations/{location.id}/connections" class="btn btn-primary">View Connections</a>
-                <a href="/inspect/ai/location-connections/{location.id}" class="btn btn-ai">AI View</a>
-            </div>
+    {#content}
+    <div class="location-detail-header">
+        <div class="actions">
+            <a href="/inspect/locations?storyThreadId={location.storyThreadId}" class="btn btn-secondary">← Back to Locations</a>
+            <a href="/inspect/locations/{location.id}/connections" class="btn btn-primary">View Connections</a>
+            <a href="/inspect/ai/location-connections/{location.id}" class="btn btn-ai">AI View</a>
         </div>
+    </div>
 
-        <div class="location-detail">
-            <div class="location-info">
-                <div class="basic-info">
-                    <h2>{location.name}</h2>
-                    <div class="location-badges">
-                        {#if location.tags}
-                        {#each location.tags}
-                        <span class="badge tag-badge">{it}</span>
-                        {/each}
-                        {/if}
-                    </div>
-                </div>
-
-                {#if location.summary}
-                <div class="summary">
-                    <h3>Summary</h3>
-                    <p>{location.summary}</p>
-                </div>
-                {/if}
-
-                {#if location.description}
-                <div class="description">
-                    <h3>Description</h3>
-                    <p>{location.description}</p>
-                </div>
-                {/if}
-
-                <div class="metadata">
-                    <h3>Metadata</h3>
-                    <div class="meta-grid">
-                        <div class="meta-item">
-                            <strong>ID:</strong> {location.id}
-                        </div>
-                        {#if location.createdAt}
-                        <div class="meta-item">
-                            <strong>Created:</strong> {location.createdAt.format('yyyy-MM-dd HH:mm')}
-                        </div>
-                        {/if}
-                        {#if location.updatedAt}
-                        <div class="meta-item">
-                            <strong>Updated:</strong> {location.updatedAt.format('yyyy-MM-dd HH:mm')}
-                        </div>
-                        {/if}
-                    </div>
+    <div class="location-detail">
+        <div class="location-info">
+            <div class="basic-info">
+                <h2>{location.name}</h2>
+                <div class="location-badges">
+                    {#if location.tags}
+                    {#each location.tags}
+                    <span class="badge tag-badge">{it}</span>
+                    {/each}
+                    {/if}
                 </div>
             </div>
-        </div>
-    </main>
 
-</body>
-</html>
+            {#if location.summary}
+            <div class="summary">
+                <h3>Summary</h3>
+                <p>{location.summary}</p>
+            </div>
+            {/if}
+
+            {#if location.description}
+            <div class="description">
+                <h3>Description</h3>
+                <p>{location.description}</p>
+            </div>
+            {/if}
+
+            <div class="metadata">
+                <h3>Metadata</h3>
+                <div class="meta-grid">
+                    <div class="meta-item">
+                        <strong>ID:</strong> {location.id}
+                    </div>
+                    {#if location.createdAt}
+                    <div class="meta-item">
+                        <strong>Created:</strong> {location.createdAt.format('yyyy-MM-dd HH:mm')}
+                    </div>
+                    {/if}
+                    {#if location.updatedAt}
+                    <div class="meta-item">
+                        <strong>Updated:</strong> {location.updatedAt.format('yyyy-MM-dd HH:mm')}
+                    </div>
+                    {/if}
+                </div>
+            </div>
+        </div>
+    </div>
+    {/content}
+{/include}

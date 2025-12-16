@@ -1,23 +1,23 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configure {thread.name} - Solo Play</title>
-    <link rel="stylesheet" href="/styles.css">
-    <link rel="stylesheet" href="/inspector.css">
-</head>
-<body>
-    <header>
-        <h1>Configure Story Thread</h1>
-        <p>Update settings for: {thread.name}</p>
-    </header>
+{#include base}
+    {#title}Configure {thread.name} - Solo Play{/title}
 
+    {#stylesheets}
+    <link rel="stylesheet" href="/inspector.css">
+    {/stylesheets}
+
+    {#header-title}Configure Story Thread{/header-title}
+
+    {#header-subtitle}
+        <p>Update settings for: {thread.name}</p>
+    {/header-subtitle}
+
+    {#nav}
     <nav>
         <a href="/story">← Back to Story Threads</a>
     </nav>
+    {/nav}
 
-    <main>
+    {#content}
         {#if flash:success}
         <div class="flash success">{flash:success}</div>
         {/if}
@@ -113,6 +113,5 @@
                 <a href="/story/{thread.id}/play" class="btn btn-success">Play</a>
             </div>
         </form>
-    </main>
-</body>
-</html>
+    {/content}
+{/include}

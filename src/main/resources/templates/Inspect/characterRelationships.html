@@ -1,108 +1,107 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relationships - {character.name}</title>
-    <link rel="stylesheet" href="/styles.css">
-    <link rel="stylesheet" href="/inspector.css">
-</head>
-<body>
-    <header>
-        <h1>Character Relationships</h1>
-        <p>Campaign: {character.storyThreadId}</p>
-    </header>
+{#include base}
+    {#title}Relationships - {character.name}{/title}
 
+    {#stylesheets}
+    <link rel="stylesheet" href="/inspector.css">
+    {/stylesheets}
+
+    {#header-title}Character Relationships{/header-title}
+
+    {#header-subtitle}
+        <p>Campaign: {character.storyThreadId}</p>
+    {/header-subtitle}
+
+    {#nav}
     <nav>
         <a href="/chat">Chat Interface</a>
         <a href="/lore">Lore Questions</a>
         <a href="/ingest">Ingest Documents</a>
         <a href="/inspect" class="active">My Game</a>
     </nav>
+    {/nav}
 
-    <main>
-        <div class="breadcrumb">
-            <a href="/inspect?storyThreadId={character.storyThreadId}">Inspect</a> &gt;
-            <a href="/inspect/characters?storyThreadId={character.storyThreadId}">Characters</a> &gt;
-            <a href="/inspect/characters/{character.id}">{character.name}</a> &gt;
-            <span>Relationships</span>
-        </div>
+    {#content}
+    <div class="breadcrumb">
+        <a href="/inspect?storyThreadId={character.storyThreadId}">Inspect</a> &gt;
+        <a href="/inspect/characters?storyThreadId={character.storyThreadId}">Characters</a> &gt;
+        <a href="/inspect/characters/{character.id}">{character.name}</a> &gt;
+        <span>Relationships</span>
+    </div>
 
-        <h2>{character.name}'s Relationships</h2>
+    <h2>{character.name}'s Relationships</h2>
 
-        <div class="character-summary">
-            {#if character.tags}
-            <p><strong>Tags:</strong> {#each character.tags}{it}{#if it_hasNext}, {/if}{/each}</p>
-            {/if}
-            {#if character.summary}
-                <p><strong>Summary:</strong> {character.summary}</p>
-            {/if}
-        </div>
-
-        <div class="actions">
-            <a href="/inspect/ai/character-relationships/{character.id}" class="btn btn-ai">View AI Output</a>
-        </div>
-
-        {#if relationships.isEmpty()}
-            <div class="empty-state">
-                <p>{character.name} has no recorded relationships.</p>
-            </div>
-        {#else}
-            <div class="relationships-list">
-                {#for relationship in relationships}
-                    <div class="relationship-item">
-                        {#if relationship.character1.id == character.id}
-                            <!-- This character is the source -->
-                            <div class="relationship-direction outgoing">
-                                <span class="direction-label">→</span>
-                                <div class="other-character">
-                                    <a href="/inspect/characters/{relationship.character2.id}">
-                                        <strong>{relationship.character2.name}</strong>
-                                    </a>
-                                    {#if relationship.character2.tags}
-                                    <span class="character-tags">({#each relationship.character2.tags}{it}{#if it_hasNext}, {/if}{/each})</span>
-                                    {/if}
-                                </div>
-                                <div class="relationship-info">
-                                    {#if relationship.tags}
-                                    <span class="relationship-type">{#each relationship.tags}{it}{#if it_hasNext}, {/if}{/each}</span>
-                                    {/if}
-                                    <span class="relationship-strength">Strength: {relationship.strength}</span>
-                                    {#if relationship.description}
-                                        <p class="relationship-description">{relationship.description}</p>
-                                    {/if}
-                                </div>
-                            </div>
-                        {#else}
-                            <!-- This character is the target -->
-                            <div class="relationship-direction incoming">
-                                <span class="direction-label">←</span>
-                                <div class="other-character">
-                                    <a href="/inspect/characters/{relationship.character1.id}">
-                                        <strong>{relationship.character1.name}</strong>
-                                    </a>
-                                    {#if relationship.character1.tags}
-                                    <span class="character-tags">({#each relationship.character1.tags}{it}{#if it_hasNext}, {/if}{/each})</span>
-                                    {/if}
-                                </div>
-                                <div class="relationship-info">
-                                    {#if relationship.tags}
-                                    <span class="relationship-type">{#each relationship.tags}{it}{#if it_hasNext}, {/if}{/each}</span>
-                                    {/if}
-                                    <span class="relationship-strength">Strength: {relationship.strength}</span>
-                                    {#if relationship.description}
-                                        <p class="relationship-description">{relationship.description}</p>
-                                    {/if}
-                                </div>
-                            </div>
-                        {/if}
-                        <div class="relationship-meta">
-                            Since: {relationship.since}
-                        </div>
-                    </div>
-                {/for}
-            </div>
+    <div class="character-summary">
+        {#if character.tags}
+        <p><strong>Tags:</strong> {#each character.tags}{it}{#if it_hasNext}, {/if}{/each}</p>
         {/if}
-    </main>
-</body>
-</html>
+        {#if character.summary}
+            <p><strong>Summary:</strong> {character.summary}</p>
+        {/if}
+    </div>
+
+    <div class="actions">
+        <a href="/inspect/ai/character-relationships/{character.id}" class="btn btn-ai">View AI Output</a>
+    </div>
+
+    {#if relationships.isEmpty()}
+        <div class="empty-state">
+            <p>{character.name} has no recorded relationships.</p>
+        </div>
+    {#else}
+        <div class="relationships-list">
+            {#for relationship in relationships}
+                <div class="relationship-item">
+                    {#if relationship.character1.id == character.id}
+                        <!-- This character is the source -->
+                        <div class="relationship-direction outgoing">
+                            <span class="direction-label">→</span>
+                            <div class="other-character">
+                                <a href="/inspect/characters/{relationship.character2.id}">
+                                    <strong>{relationship.character2.name}</strong>
+                                </a>
+                                {#if relationship.character2.tags}
+                                <span class="character-tags">({#each relationship.character2.tags}{it}{#if it_hasNext}, {/if}{/each})</span>
+                                {/if}
+                            </div>
+                            <div class="relationship-info">
+                                {#if relationship.tags}
+                                <span class="relationship-type">{#each relationship.tags}{it}{#if it_hasNext}, {/if}{/each}</span>
+                                {/if}
+                                <span class="relationship-strength">Strength: {relationship.strength}</span>
+                                {#if relationship.description}
+                                    <p class="relationship-description">{relationship.description}</p>
+                                {/if}
+                            </div>
+                        </div>
+                    {#else}
+                        <!-- This character is the target -->
+                        <div class="relationship-direction incoming">
+                            <span class="direction-label">←</span>
+                            <div class="other-character">
+                                <a href="/inspect/characters/{relationship.character1.id}">
+                                    <strong>{relationship.character1.name}</strong>
+                                </a>
+                                {#if relationship.character1.tags}
+                                <span class="character-tags">({#each relationship.character1.tags}{it}{#if it_hasNext}, {/if}{/each})</span>
+                                {/if}
+                            </div>
+                            <div class="relationship-info">
+                                {#if relationship.tags}
+                                <span class="relationship-type">{#each relationship.tags}{it}{#if it_hasNext}, {/if}{/each}</span>
+                                {/if}
+                                <span class="relationship-strength">Strength: {relationship.strength}</span>
+                                {#if relationship.description}
+                                    <p class="relationship-description">{relationship.description}</p>
+                                {/if}
+                            </div>
+                        </div>
+                    {/if}
+                    <div class="relationship-meta">
+                        Since: {relationship.since}
+                    </div>
+                </div>
+            {/for}
+        </div>
+    {/if}
+    {/content}
+{/include}

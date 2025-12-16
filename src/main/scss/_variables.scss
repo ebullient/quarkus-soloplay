@@ -1,9 +1,5 @@
-// CSS Custom Properties are defined in base/_reset.scss on :root
-// This file only contains compile-time SCSS variables that don't need runtime theming
-
-// Typography - Font stacks (compile-time only)
-$font-family-serif: 'Georgia', serif;
-$font-family-mono: 'Courier New', monospace;
+// Compile-time SCSS variables only
+// Runtime CSS custom properties are in base/_base.scss and theme files
 
 // Transitions - Animation timing (compile-time only)
 $transition-fast: 0.2s;

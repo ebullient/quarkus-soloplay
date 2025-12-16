@@ -5,7 +5,7 @@ input[type="text"] {
     border-radius: var(--border-radius-sm);
     color: var(--color-text-primary);
     font-size: var(--font-size-base);
-    font-family: $font-family-serif;
+    font-family: var(--font-family-base);
 
     &:focus {
         outline: none;

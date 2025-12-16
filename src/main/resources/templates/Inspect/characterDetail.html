@@ -1,87 +1,81 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{character.name} - Character Detail</title>
-    <link rel="stylesheet" href="/styles.css">
-    <link rel="stylesheet" href="/characters.css">
-</head>
-<body>
-    <header>
-        <h1>Character: {character.name}</h1>
-        <p>Campaign: {character.storyThreadId}</p>
-    </header>
+{#include base}
+    {#title}{character.name} - Character Detail{/title}
 
+    {#stylesheets}
+    <link rel="stylesheet" href="/characters.css">
+    {/stylesheets}
+
+    {#header-title}Character: {character.name}{/header-title}
+
+    {#header-subtitle}
+        <p>Campaign: {character.storyThreadId}</p>
+    {/header-subtitle}
+
+    {#nav}
     <nav>
         <a href="/chat">Chat Interface</a>
         <a href="/lore">Lore Questions</a>
         <a href="/ingest">Ingest Documents</a>
         <a href="/inspect" class="active">My Game</a>
     </nav>
+    {/nav}
 
-    <main>
-        <nav class="character-detail-header actions">
-            <a href="/inspect/characters?storyThreadId={character.storyThreadId}" class="btn btn-secondary">← Back to Characters</a>
-            <a href="/inspect/characters/{character.id}/relationships" class="btn btn-primary">View Relationships</a>
-            <a href="/inspect/ai/character-relationships/{character.id}" class="btn btn-ai">AI View</a>
-        </nav>
+    {#content}
+    <nav class="character-detail-header actions">
+        <a href="/inspect/characters?storyThreadId={character.storyThreadId}" class="btn btn-secondary">← Back to Characters</a>
+        <a href="/inspect/characters/{character.id}/relationships" class="btn btn-primary">View Relationships</a>
+        <a href="/inspect/ai/character-relationships/{character.id}" class="btn btn-ai">AI View</a>
+    </nav>
 
-        <article class="character-detail card">
-            <header class="basic-info">
-                <h2>{character.name}</h2>
-                <div class="character-badges">
-                    {#if character.tags}
-                    {#each character.tags}
-                    <span class="badge">{it}</span>
-                    {/each}
-                    {/if}
-                    {#if character.characterClass}
-                    <span class="badge">{character.characterClass}</span>
-                    {/if}
-                    {#if character.level}
-                    <span class="badge">Level {character.level}</span>
-                    {/if}
-                    {#if character.alignment}
-                    <span class="badge">{character.alignment}</span>
-                    {/if}
-                </div>
-            </header>
+    <article class="character-detail card">
+        <header class="basic-info">
+            <h2>{character.name}</h2>
+            <div class="character-badges">
+                {#if character.tags}
+                {#each character.tags}
+                <span class="badge">{it}</span>
+                {/each}
+                {/if}
+                {#if character.characterClass}
+                <span class="badge">{character.characterClass}</span>
+                {/if}
+                {#if character.level}
+                <span class="badge">Level {character.level}</span>
+                {/if}
+            </div>
+        </header>
 
-            {#if character.summary}
-            <section class="summary">
-                <h3>Summary</h3>
-                <p>{character.summary}</p>
-            </section>
-            {/if}
+        {#if character.summary}
+        <section class="summary">
+            <h3>Summary</h3>
+            <p>{character.summary}</p>
+        </section>
+        {/if}
 
-            {#if character.description}
-            <section class="description">
-                <h3>Description</h3>
-                <p>{character.description}</p>
-            </section>
-            {/if}
+        {#if character.description}
+        <section class="description">
+            <h3>Description</h3>
+            <p>{character.description}</p>
+        </section>
+        {/if}
 
-            <aside class="metadata">
-                <h3>Metadata</h3>
-                <dl>
-                    <dt>ID:</dt>
-                    <dd>{character.id}</dd>
+        <aside class="metadata">
+            <h3>Metadata</h3>
+            <dl>
+                <dt>ID:</dt>
+                <dd>{character.id}</dd>
 
-                    {#if character.createdAt}
-                    <dt>Created:</dt>
-                    <dd>{character.createdAt.format('yyyy-MM-dd HH:mm')}</dd>
-                    {/if}
+                {#if character.createdAt}
+                <dt>Created:</dt>
+                <dd>{character.createdAt.format('yyyy-MM-dd HH:mm')}</dd>
+                {/if}
 
-                    {#if character.updatedAt}
-                    <dt>Updated:</dt>
-                    <dd>{character.updatedAt.format('yyyy-MM-dd HH:mm')}</dd>
-                    {/if}
-                </dl>
-            </aside>
-        </article>
-    </main>
-
-
-</body>
-</html>
+                {#if character.updatedAt}
+                <dt>Updated:</dt>
+                <dd>{character.updatedAt.format('yyyy-MM-dd HH:mm')}</dd>
+                {/if}
+            </dl>
+        </aside>
+    </article>
+    {/content}
+{/include}
