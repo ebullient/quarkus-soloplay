@@ -697,7 +697,7 @@ public class StoryRepository {
                 OPTIONAL MATCH (st:StoryThread)
                 WHERE st IS NOT NULL
                 RETURN st
-                ORDER BY st.lastPlayedAt DESC
+                ORDER BY COALESCE(st.lastPlayedAt, st.createdAt, datetime()) DESC
                 """;
         var session = sessionFactory.openSession();
         return toList(session.query(StoryThread.class, cypher, Map.of()));
@@ -711,7 +711,7 @@ public class StoryRepository {
                 OPTIONAL MATCH (st:StoryThread)
                 WHERE st.status = 'ACTIVE'
                 RETURN st
-                ORDER BY st.lastPlayedAt DESC
+                ORDER BY COALESCE(st.lastPlayedAt, st.createdAt, datetime()) DESC
                 """;
         var session = sessionFactory.openSession();
         return toList(session.query(StoryThread.class, cypher, Map.of()));
