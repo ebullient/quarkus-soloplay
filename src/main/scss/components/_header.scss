@@ -1,5 +1,5 @@
 header {
-    background: var(--color-bg-elevated);
+    background: var(--color-bg-base);
     padding: var(--spacing-md);
     text-align: center;
     border-bottom: 2px solid var(--color-interactive-accent);
@@ -19,6 +19,11 @@ header {
                 color: var(--color-text-accent);
             }
         }
+    }
+
+    // match block-end of h1
+    p {
+      margin-block-end: 0.67em;
     }
 }
 

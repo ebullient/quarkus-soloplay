@@ -26,6 +26,9 @@
     --border-radius-sm: 4px;
     --border-radius-md: 8px;
     --border-radius-lg: 12px;
+
+    --link-decoration: underline;
+    --link-decoration-hover: underline;
 }
 
 body {
@@ -37,6 +40,19 @@ body {
     flex-direction: column;
     transition: background-color 0.3s ease, color 0.3s ease;
     margin: 0px;
+}
+
+/*
+ * links
+ */
+ a {
+  color: var(--link-color);
+  text-decoration-line: var(--link-decoration);
+  text-decoration-color: var(--link-decoration-color);
+}
+a:hover {
+  color: var(--link-color-hover);
+  text-decoration-line: var(--link-decoration-hover);
 }
 
 // Global scrollbar styling
