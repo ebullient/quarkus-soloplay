@@ -79,7 +79,7 @@ FOR ()-[r:RELATES_TO]-() ON (r.strength);
 // 5. Campaign-scoped queries (most common pattern)
 
 // To verify indexes were created:
-// SHOW INDEXES
+SHOW INDEXES
 
 // To check index usage in queries:
 // PROFILE MATCH (c:Character {storyThreadId: 'test'}) RETURN c

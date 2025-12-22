@@ -24,7 +24,7 @@
     <div class="locations-header">
         <h2>Locations ({locations.size})</h2>
         <div class="actions">
-            <a href="/inspect?storyThreadId={storyThreadId}" class="btn btn-secondary">← Back to Dashboard</a>
+            <a href="/inspect/story/{storyThreadId}" class="btn btn-secondary">← Back to Dashboard</a>
         </div>
     </div>
 
@@ -38,7 +38,7 @@
         {#for location in locations}
         <div class="location-card">
             <div class="location-header">
-                <h3><a href="/inspect/locations/{location.id}">{location.name}</a></h3>
+                <h3><a href="/inspect/story/{storyThreadId}/locations/{location.slug}">{location.name}</a></h3>
                 <div class="location-tags">
                     {#if location.tags}
                     {#each location.tags}

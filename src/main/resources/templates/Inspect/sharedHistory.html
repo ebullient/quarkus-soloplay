@@ -22,7 +22,7 @@
 
     {#content}
     <div class="breadcrumb">
-        <a href="/inspect?storyThreadId={char1.storyThreadId}">Inspect</a> &gt;
+        <a href="/inspect/story/{char1.storyThreadId}">Inspect</a> &gt;
         <span>Shared History</span>
     </div>
 
@@ -30,7 +30,7 @@
 
     <div class="character-pair">
         <div class="character-info">
-            <a href="/inspect/characters/{char1.id}">
+            <a href="/inspect/story/{char1.storyThreadId}/characters/{char1.slug}">
                 <strong>{char1.name}</strong>
             </a>
             {#if char1.tags}
@@ -46,7 +46,7 @@
         </div>
 
         <div class="character-info">
-            <a href="/inspect/characters/{char2.id}">
+            <a href="/inspect/story/{char2.storyThreadId}/characters/{char2.slug}">
                 <strong>{char2.name}</strong>
             </a>
             {#if char2.tags}
@@ -59,7 +59,7 @@
     </div>
 
     <div class="actions">
-        <a href="/inspect/ai/shared-history?char1Id={char1.id}&char2Id={char2.id}" class="btn btn-ai">
+        <a href="/inspect/story/{char1.storyThreadId}/ai/shared-history?char1Slug={char1.slug}&char2Slug={char2.slug}" class="btn btn-ai">
             View AI Output
         </a>
     </div>
@@ -87,7 +87,7 @@
                             {#if event.location}
                                 <div class="event-location">
                                     <strong>Location:</strong>
-                                    <a href="/inspect/locations/{event.location.id}">
+                                    <a href="/inspect/story/{char1.storyThreadId}/locations/{event.location.slug}">
                                         {event.location.name}
                                     </a>
                                 </div>
@@ -107,7 +107,7 @@
                                     <strong>Other participants:</strong>
                                     {#for participant in event.participants}
                                         {#if participant.id != char1.id && participant.id != char2.id}
-                                            <a href="/inspect/characters/{participant.id}">{participant.name}</a>
+                                            <a href="/inspect/story/{char1.storyThreadId}/characters/{participant.slug}">{participant.name}</a>
                                         {/if}
                                     {/for}
                                 </div>

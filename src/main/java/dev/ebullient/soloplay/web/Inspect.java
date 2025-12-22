@@ -7,7 +7,6 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 
 import org.jboss.resteasy.reactive.RestPath;
-import org.jboss.resteasy.reactive.RestQuery;
 
 import dev.ebullient.soloplay.StoryRepository;
 import dev.ebullient.soloplay.StoryTools;
@@ -15,6 +14,7 @@ import dev.ebullient.soloplay.data.Character;
 import dev.ebullient.soloplay.data.CharacterRelationship;
 import dev.ebullient.soloplay.data.Location;
 import dev.ebullient.soloplay.data.StoryEvent;
+import dev.ebullient.soloplay.data.StoryThread;
 import io.quarkiverse.renarde.Controller;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
@@ -36,6 +36,9 @@ public class Inspect extends Controller {
 
     @CheckedTemplate
     public static class Templates {
+        // Story thread selection
+        public static native TemplateInstance selectThread(List<StoryThread> threads);
+
         // Main dashboard
         public static native TemplateInstance index(String storyThreadId);
 
@@ -64,42 +67,44 @@ public class Inspect extends Controller {
     }
 
     /**
-     * Main story data dashboard.
-     * Shows overview of all story elements.
-     * Requires storyThreadId to be provided as query parameter.
+     * Story thread selection page.
+     * Shows list of available story threads to inspect.
      */
     @GET
     @Path("/")
-    public TemplateInstance index(@RestQuery String storyThreadId) {
-        if (storyThreadId == null || storyThreadId.isBlank()) {
-            validation.addError("storyThreadId", "Story Thread ID is required");
-            // Return error page or redirect to story thread selection
-            throw new IllegalArgumentException("storyThreadId parameter is required");
-        }
-        return Templates.index(storyThreadId);
+    public TemplateInstance selectThread() {
+        List<StoryThread> threads = storyRepository.findAllStoryThreads();
+        return Templates.selectThread(threads);
+    }
+
+    /**
+     * Main story data dashboard for a specific thread.
+     * Shows overview of all story elements.
+     */
+    @GET
+    @Path("/story/{threadId}")
+    public TemplateInstance index(@RestPath String threadId) {
+        return Templates.index(threadId);
     }
 
     /**
      * List all characters in a story thread.
-     * Requires storyThreadId to be provided as query parameter.
      */
     @GET
-    @Path("/characters")
-    public TemplateInstance characters(@RestQuery String storyThreadId) {
-        if (storyThreadId == null || storyThreadId.isBlank()) {
-            throw new IllegalArgumentException("storyThreadId parameter is required");
-        }
-        List<Character> characters = storyRepository.findCharactersByStoryThreadId(storyThreadId);
-        return Templates.characters(characters, storyThreadId);
+    @Path("/story/{threadId}/characters")
+    public TemplateInstance characters(@RestPath String threadId) {
+        List<Character> characters = storyRepository.findCharactersByStoryThreadId(threadId);
+        return Templates.characters(characters, threadId);
     }
 
     /**
      * View a single character's details.
      */
     @GET
-    @Path("/characters/{id}")
-    public TemplateInstance characterDetail(@RestPath String id) {
-        Character character = storyRepository.findCharacterById(id);
+    @Path("/story/{threadId}/characters/{characterSlug}")
+    public TemplateInstance characterDetail(@RestPath String threadId, @RestPath String characterSlug) {
+        String characterId = threadId + ":" + characterSlug;
+        Character character = storyRepository.findCharacterById(characterId);
         if (character == null) {
             notFound(); // throws w/ 404
         }
@@ -108,25 +113,22 @@ public class Inspect extends Controller {
 
     /**
      * List all locations in a story thread.
-     * Requires storyThreadId to be provided as query parameter.
      */
     @GET
-    @Path("/locations")
-    public TemplateInstance locations(@RestQuery String storyThreadId) {
-        if (storyThreadId == null || storyThreadId.isBlank()) {
-            throw new IllegalArgumentException("storyThreadId parameter is required");
-        }
-        List<Location> locations = storyRepository.findLocationsByStoryThreadId(storyThreadId);
-        return Templates.locations(locations, storyThreadId);
+    @Path("/story/{threadId}/locations")
+    public TemplateInstance locations(@RestPath String threadId) {
+        List<Location> locations = storyRepository.findLocationsByStoryThreadId(threadId);
+        return Templates.locations(locations, threadId);
     }
 
     /**
      * View a single location's details.
      */
     @GET
-    @Path("/locations/{id}")
-    public TemplateInstance locationDetail(@RestPath String id) {
-        Location location = storyRepository.findLocationById(id);
+    @Path("/story/{threadId}/locations/{locationSlug}")
+    public TemplateInstance locationDetail(@RestPath String threadId, @RestPath String locationSlug) {
+        String locationId = threadId + ":" + locationSlug;
+        Location location = storyRepository.findLocationById(locationId);
         if (location == null) {
             notFound(); // throws w/ 404
         }
@@ -135,29 +137,26 @@ public class Inspect extends Controller {
 
     /**
      * View all relationships in a story thread (relationship network).
-     * Requires storyThreadId to be provided as query parameter.
      */
     @GET
-    @Path("/relationships")
-    public TemplateInstance relationships(@RestQuery String storyThreadId) {
-        if (storyThreadId == null || storyThreadId.isBlank()) {
-            throw new IllegalArgumentException("storyThreadId parameter is required");
-        }
-        List<CharacterRelationship> relationships = storyRepository.findRelationshipsByStoryThreadId(storyThreadId);
-        return Templates.relationships(storyThreadId, relationships);
+    @Path("/story/{threadId}/relationships")
+    public TemplateInstance relationships(@RestPath String threadId) {
+        List<CharacterRelationship> relationships = storyRepository.findRelationshipsByStoryThreadId(threadId);
+        return Templates.relationships(threadId, relationships);
     }
 
     /**
      * View relationships for a specific character.
      */
     @GET
-    @Path("/characters/{id}/relationships")
-    public TemplateInstance characterRelationships(@RestPath String id) {
-        Character character = storyRepository.findCharacterById(id);
+    @Path("/story/{threadId}/characters/{characterSlug}/relationships")
+    public TemplateInstance characterRelationships(@RestPath String threadId, @RestPath String characterSlug) {
+        String characterId = threadId + ":" + characterSlug;
+        Character character = storyRepository.findCharacterById(characterId);
         if (character == null) {
             notFound(); // throws w/ 404
         }
-        List<CharacterRelationship> relationships = storyRepository.findRelationshipsByCharacterId(id);
+        List<CharacterRelationship> relationships = storyRepository.findRelationshipsByCharacterId(characterId);
         return Templates.characterRelationships(character, relationships);
     }
 
@@ -165,13 +164,14 @@ public class Inspect extends Controller {
      * View characters connected to a location.
      */
     @GET
-    @Path("/locations/{id}/connections")
-    public TemplateInstance locationConnections(@RestPath String id) {
-        Location location = storyRepository.findLocationById(id);
+    @Path("/story/{threadId}/locations/{locationSlug}/connections")
+    public TemplateInstance locationConnections(@RestPath String threadId, @RestPath String locationSlug) {
+        String locationId = threadId + ":" + locationSlug;
+        Location location = storyRepository.findLocationById(locationId);
         if (location == null) {
             notFound(); // throws w/ 404
         }
-        List<Character> connectedCharacters = storyRepository.findCharactersByLocation(id);
+        List<Character> connectedCharacters = storyRepository.findCharactersByLocation(locationId);
         return Templates.locationConnections(location, connectedCharacters);
     }
 
@@ -179,11 +179,11 @@ public class Inspect extends Controller {
      * View shared history between two characters.
      */
     @GET
-    @Path("/shared-history")
-    public TemplateInstance sharedHistory(@RestQuery String char1Id, @RestQuery String char2Id) {
-        if (char1Id == null || char2Id == null) {
-            badRequest(); // throws w/ 400
-        }
+    @Path("/story/{threadId}/shared-history/{char1Slug}/{char2Slug}")
+    public TemplateInstance sharedHistory(@RestPath String threadId, @RestPath String char1Slug,
+            @RestPath String char2Slug) {
+        String char1Id = threadId + ":" + char1Slug;
+        String char2Id = threadId + ":" + char2Slug;
         Character char1 = storyRepository.findCharacterById(char1Id);
         Character char2 = storyRepository.findCharacterById(char2Id);
         if (char1 == null || char2 == null) {
@@ -199,23 +199,20 @@ public class Inspect extends Controller {
      * See what the AI tool returns for character relationships.
      */
     @GET
-    @Path("/ai/character-relationships/{id}")
-    public TemplateInstance aiCharacterRelationships(@RestPath String id) {
-        String output = storyTools.getCharacterRelationships(id);
+    @Path("/story/{threadId}/ai/characters/{characterSlug}/relationships")
+    public TemplateInstance aiCharacterRelationships(@RestPath String threadId, @RestPath String characterSlug) {
+        String characterId = threadId + ":" + characterSlug;
+        String output = storyTools.getCharacterRelationships(characterId);
         return Templates.aiToolOutput("Character Relationships", output);
     }
 
     /**
      * See what the AI tool returns for story network.
-     * Requires storyThreadId to be provided as query parameter.
      */
     @GET
-    @Path("/ai/story-network")
-    public TemplateInstance aiStoryNetwork(@RestQuery String storyThreadId) {
-        if (storyThreadId == null || storyThreadId.isBlank()) {
-            throw new IllegalArgumentException("storyThreadId parameter is required");
-        }
-        String output = storyTools.getStoryNetwork(storyThreadId);
+    @Path("/story/{threadId}/ai/network")
+    public TemplateInstance aiStoryNetwork(@RestPath String threadId) {
+        String output = storyTools.getStoryNetwork(threadId);
         return Templates.aiToolOutput("Story Network", output);
     }
 
@@ -223,9 +220,10 @@ public class Inspect extends Controller {
      * See what the AI tool returns for location connections.
      */
     @GET
-    @Path("/ai/location-connections/{id}")
-    public TemplateInstance aiLocationConnections(@RestPath String id) {
-        String output = storyTools.getLocationConnections(id);
+    @Path("/story/{threadId}/ai/locations/{locationSlug}/connections")
+    public TemplateInstance aiLocationConnections(@RestPath String threadId, @RestPath String locationSlug) {
+        String locationId = threadId + ":" + locationSlug;
+        String output = storyTools.getLocationConnections(locationId);
         return Templates.aiToolOutput("Location Connections", output);
     }
 
@@ -233,11 +231,11 @@ public class Inspect extends Controller {
      * See what the AI tool returns for shared history.
      */
     @GET
-    @Path("/ai/shared-history")
-    public TemplateInstance aiSharedHistory(@RestQuery String char1Id, @RestQuery String char2Id) {
-        if (char1Id == null || char2Id == null) {
-            badRequest(); // throws w/ 400
-        }
+    @Path("/story/{threadId}/ai/shared-history/{char1Slug}/{char2Slug}")
+    public TemplateInstance aiSharedHistory(@RestPath String threadId, @RestPath String char1Slug,
+            @RestPath String char2Slug) {
+        String char1Id = threadId + ":" + char1Slug;
+        String char2Id = threadId + ":" + char2Slug;
         String output = storyTools.getSharedHistory(char1Id, char2Id);
         return Templates.aiToolOutput("Shared History", output);
     }

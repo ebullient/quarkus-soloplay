@@ -22,9 +22,9 @@
 
     {#content}
     <div class="breadcrumb">
-        <a href="/inspect?storyThreadId={character.storyThreadId}">Inspect</a> &gt;
-        <a href="/inspect/characters?storyThreadId={character.storyThreadId}">Characters</a> &gt;
-        <a href="/inspect/characters/{character.id}">{character.name}</a> &gt;
+        <a href="/inspect/story/{character.storyThreadId}">Inspect</a> &gt;
+        <a href="/inspect/story/{character.storyThreadId}/characters">Characters</a> &gt;
+        <a href="/inspect/story/{character.storyThreadId}/characters/{character.slug}">{character.name}</a> &gt;
         <span>Relationships</span>
     </div>
 
@@ -40,7 +40,7 @@
     </div>
 
     <div class="actions">
-        <a href="/inspect/ai/character-relationships/{character.id}" class="btn btn-ai">View AI Output</a>
+        <a href="/inspect/story/{character.storyThreadId}/ai/character-relationships/{character.slug}" class="btn btn-ai">View AI Output</a>
     </div>
 
     {#if relationships.isEmpty()}
@@ -56,7 +56,7 @@
                         <div class="relationship-direction outgoing">
                             <span class="direction-label">→</span>
                             <div class="other-character">
-                                <a href="/inspect/characters/{relationship.character2.id}">
+                                <a href="/inspect/story/{character.storyThreadId}/characters/{relationship.character2.slug}">
                                     <strong>{relationship.character2.name}</strong>
                                 </a>
                                 {#if relationship.character2.tags}
@@ -78,7 +78,7 @@
                         <div class="relationship-direction incoming">
                             <span class="direction-label">←</span>
                             <div class="other-character">
-                                <a href="/inspect/characters/{relationship.character1.id}">
+                                <a href="/inspect/story/{character.storyThreadId}/characters/{relationship.character1.slug}">
                                     <strong>{relationship.character1.name}</strong>
                                 </a>
                                 {#if relationship.character1.tags}

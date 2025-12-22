@@ -1,4 +1,4 @@
-package dev.ebullient.soloplay;
+package dev.ebullient.soloplay.api;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -10,6 +10,9 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
 import org.jboss.resteasy.reactive.RestQuery;
+
+import dev.ebullient.soloplay.LoreAssistant;
+import dev.ebullient.soloplay.MarkdownAugmenter;
 
 /**
  * RAG-based lore query interface.

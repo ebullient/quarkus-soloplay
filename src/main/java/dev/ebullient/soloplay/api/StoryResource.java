@@ -1,4 +1,4 @@
-package dev.ebullient.soloplay;
+package dev.ebullient.soloplay.api;
 
 import java.time.Instant;
 import java.util.List;
@@ -12,6 +12,9 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
+import dev.ebullient.soloplay.MarkdownAugmenter;
+import dev.ebullient.soloplay.PlayAssistant;
+import dev.ebullient.soloplay.StoryRepository;
 import dev.ebullient.soloplay.data.StoryThread;
 
 /**

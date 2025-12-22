@@ -23,9 +23,9 @@
     {#content}
     <div class="location-detail-header">
         <div class="actions">
-            <a href="/inspect/locations?storyThreadId={location.storyThreadId}" class="btn btn-secondary">← Back to Locations</a>
-            <a href="/inspect/locations/{location.id}/connections" class="btn btn-primary">View Connections</a>
-            <a href="/inspect/ai/location-connections/{location.id}" class="btn btn-ai">AI View</a>
+            <a href="/inspect/story/{location.storyThreadId}/locations" class="btn btn-secondary">← Back to Locations</a>
+            <a href="/inspect/story/{location.storyThreadId}/locations/{location.slug}/connections" class="btn btn-primary">View Connections</a>
+            <a href="/inspect/story/{location.storyThreadId}/ai/location-connections/{location.slug}" class="btn btn-ai">AI View</a>
         </div>
     </div>
 

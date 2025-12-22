@@ -23,7 +23,7 @@
     {#content}
     <nav aria-label="Breadcrumb">
         <ol class="breadcrumb">
-            <li><a href="/inspect?storyThreadId={storyThreadId}">Inspect</a></li>
+            <li><a href="/inspect/story/{storyThreadId}">Inspect</a></li>
             <li aria-current="page">Relationships</li>
         </ol>
     </nav>
@@ -31,7 +31,7 @@
     <h2>Relationship Network</h2>
 
     <nav class="actions">
-        <a href="/inspect/ai/api-network?storyThreadId={storyThreadId}" class="btn btn-ai">View AI Output</a>
+        <a href="/inspect/story/{storyThreadId}/ai/network" class="btn btn-ai">View AI Output</a>
     </nav>
 
     {#if relationships.isEmpty()}

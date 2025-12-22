@@ -22,9 +22,9 @@
 
     {#content}
     <div class="breadcrumb">
-        <a href="/inspect?storyThreadId={location.storyThreadId}">Inspect</a> &gt;
-        <a href="/inspect/locations?storyThreadId={location.storyThreadId}">Locations</a> &gt;
-        <a href="/inspect/locations/{location.id}">{location.name}</a> &gt;
+        <a href="/inspect/story/{location.storyThreadId}">Inspect</a> &gt;
+        <a href="/inspect/story/{location.storyThreadId}/locations">Locations</a> &gt;
+        <a href="/inspect/story/{location.storyThreadId}/locations/{location.slug}">{location.name}</a> &gt;
         <span>Connections</span>
     </div>
 
@@ -40,7 +40,7 @@
     </div>
 
     <div class="actions">
-        <a href="/inspect/ai/location-connections/{location.id}" class="btn btn-ai">View AI Output</a>
+        <a href="/inspect/story/{location.storyThreadId}/ai/location-connections/{location.slug}" class="btn btn-ai">View AI Output</a>
     </div>
 
     {#if connectedCharacters.isEmpty()}
@@ -54,7 +54,7 @@
                 {#for character in connectedCharacters}
                     <div class="character-card">
                         <div class="character-info">
-                            <a href="/inspect/characters/{character.id}">
+                            <a href="/inspect/story/{location.storyThreadId}/characters/{character.slug}">
                                 <strong>{character.name}</strong>
                             </a>
                             {#if character.tags}
@@ -65,7 +65,7 @@
                             {/if}
                         </div>
                         <div class="character-actions">
-                            <a href="/inspect/characters/{character.id}/relationships" class="btn btn-sm">
+                            <a href="/inspect/story/{location.storyThreadId}/characters/{character.slug}/relationships" class="btn btn-sm">
                                 View Relationships
                             </a>
                         </div>
@@ -83,7 +83,7 @@
                 {#for char1 in connectedCharacters}
                     {#for char2 in connectedCharacters}
                         {#if char1.id != char2.id && char1.name < char2.name}
-                            <a href="/inspect/shared-history?char1Id={char1.id}&char2Id={char2.id}"
+                            <a href="/inspect/story/{location.storyThreadId}/shared-history?char1Slug={char1.slug}&char2Slug={char2.slug}"
                                class="btn btn-sm btn-outline">
                                 {char1.name} ↔ {char2.name}
                             </a>
