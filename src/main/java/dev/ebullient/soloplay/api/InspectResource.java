@@ -1,6 +1,8 @@
 package dev.ebullient.soloplay.api;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -9,6 +11,8 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 
 import dev.ebullient.soloplay.StoryRepository;
 import dev.ebullient.soloplay.StoryTools;
@@ -17,6 +21,7 @@ import dev.ebullient.soloplay.data.CharacterRelationship;
 import dev.ebullient.soloplay.data.Location;
 import dev.ebullient.soloplay.data.StoryEvent;
 import dev.ebullient.soloplay.data.StoryThread;
+import io.quarkus.logging.Log;
 
 /**
  * REST API for inspecting story data.
@@ -49,8 +54,11 @@ public class InspectResource {
     @GET
     @Path("/story/{threadId}")
     @Produces(MediaType.APPLICATION_JSON)
-    public StoryThread getStoryThread(@PathParam("threadId") String threadId) {
-        return storyRepository.findStoryThreadBySlug(threadId);
+    public Response getStoryThread(@PathParam("threadId") String threadId) {
+        var result = storyRepository.findStoryThreadBySlug(threadId);
+        return result == null
+                ? Response.status(Status.NOT_FOUND).build()
+                : Response.ok(result).build();
     }
 
     /**
@@ -69,10 +77,13 @@ public class InspectResource {
     @GET
     @Path("/story/{threadId}/characters/{characterSlug}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Character getCharacter(@PathParam("threadId") String threadId,
+    public Response getCharacter(@PathParam("threadId") String threadId,
             @PathParam("characterSlug") String characterSlug) {
         String characterId = threadId + ":" + characterSlug;
-        return storyRepository.findCharacterById(characterId);
+        var result = storyRepository.findCharacterById(characterId);
+        return result == null
+                ? Response.status(Status.NOT_FOUND).build()
+                : Response.ok(result).build();
     }
 
     /**
@@ -91,10 +102,13 @@ public class InspectResource {
     @GET
     @Path("/story/{threadId}/locations/{locationSlug}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Location getLocation(@PathParam("threadId") String threadId,
+    public Response getLocation(@PathParam("threadId") String threadId,
             @PathParam("locationSlug") String locationSlug) {
         String locationId = threadId + ":" + locationSlug;
-        return storyRepository.findLocationById(locationId);
+        var result = storyRepository.findLocationById(locationId);
+        return result == null
+                ? Response.status(Status.NOT_FOUND).build()
+                : Response.ok(result).build();
     }
 
     /**
@@ -113,10 +127,13 @@ public class InspectResource {
     @GET
     @Path("/story/{threadId}/characters/{characterSlug}/relationships")
     @Produces(MediaType.APPLICATION_JSON)
-    public List<CharacterRelationship> getCharacterRelationships(@PathParam("threadId") String threadId,
+    public Response getCharacterRelationships(@PathParam("threadId") String threadId,
             @PathParam("characterSlug") String characterSlug) {
         String characterId = threadId + ":" + characterSlug;
-        return storyRepository.findRelationshipsByCharacterId(characterId);
+        var result = storyRepository.findRelationshipsByCharacterId(characterId);
+        return result == null
+                ? Response.status(Status.NOT_FOUND).build()
+                : Response.ok(result).build();
     }
 
     /**
@@ -153,11 +170,11 @@ public class InspectResource {
      */
     @GET
     @Path("/story/{threadId}/ai/characters/{characterSlug}/relationships")
-    @Produces(MediaType.TEXT_PLAIN)
-    public String getAiCharacterRelationships(@PathParam("threadId") String threadId,
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getAiCharacterRelationships(@PathParam("threadId") String threadId,
             @PathParam("characterSlug") String characterSlug) {
         String characterId = threadId + ":" + characterSlug;
-        return storyTools.getCharacterRelationships(characterId);
+        return invokeToolFunction(() -> storyTools.getCharacterRelationships(characterId));
     }
 
     /**
@@ -166,9 +183,9 @@ public class InspectResource {
      */
     @GET
     @Path("/story/{threadId}/ai/network")
-    @Produces(MediaType.TEXT_PLAIN)
-    public String getAiStoryNetwork(@PathParam("threadId") String threadId) {
-        return storyTools.getStoryNetwork(threadId);
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getAiStoryNetwork(@PathParam("threadId") String threadId) {
+        return invokeToolFunction(() -> storyTools.getStoryNetwork(threadId));
     }
 
     /**
@@ -177,11 +194,11 @@ public class InspectResource {
      */
     @GET
     @Path("/story/{threadId}/ai/locations/{locationSlug}/connections")
-    @Produces(MediaType.TEXT_PLAIN)
-    public String getAiLocationConnections(@PathParam("threadId") String threadId,
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getAiLocationConnections(@PathParam("threadId") String threadId,
             @PathParam("locationSlug") String locationSlug) {
         String locationId = threadId + ":" + locationSlug;
-        return storyTools.getLocationConnections(locationId);
+        return invokeToolFunction(() -> storyTools.getLocationConnections(locationId));
     }
 
     /**
@@ -190,12 +207,44 @@ public class InspectResource {
      */
     @GET
     @Path("/story/{threadId}/ai/shared-history/{char1Slug}/{char2Slug}")
-    @Produces(MediaType.TEXT_PLAIN)
-    public String getAiSharedHistory(@PathParam("threadId") String threadId,
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getAiSharedHistory(@PathParam("threadId") String threadId,
             @PathParam("char1Slug") String char1Slug,
             @PathParam("char2Slug") String char2Slug) {
         String char1Id = threadId + ":" + char1Slug;
         String char2Id = threadId + ":" + char2Slug;
-        return storyTools.getSharedHistory(char1Id, char2Id);
+        return invokeToolFunction(() -> storyTools.getSharedHistory(char1Id, char2Id));
+    }
+
+    /**
+     * Adapt text-oriented tool back to JSON-oriented API
+     *
+     * @param fn Tool function that returns a string
+     * @return JSON-wrapped structure with clear(er) status indicators
+     */
+    Response invokeToolFunction(Supplier<String> fn) {
+        try {
+            var result = fn.get();
+            if (result == null) {
+                // none of these methods return null, so if this happens..
+                return Response.serverError().entity(Map.of("error", Map.of("type", "UNEXPECTED"))).build();
+            }
+            if (result.matches("No .*? found .*")) {
+                return Response.status(Status.NOT_FOUND)
+                        .entity(Map.of("error", Map.of("type", "NOT_FOUND", "message", result)))
+                        .build();
+            }
+            if (result.startsWith("Error: ")) {
+                return Response.serverError()
+                        .entity(Map.of("error", Map.of("type", "DATA_ACCESS", "message", result)))
+                        .build();
+            }
+            return Response.ok().entity(Map.of("result", result)).build();
+        } catch (Exception e) {
+            Log.error("Error inspecting story tools", e);
+            return Response.serverError()
+                    .entity(Map.of("error", Map.of("type", "UNEXPECTED")))
+                    .build();
+        }
     }
 }
