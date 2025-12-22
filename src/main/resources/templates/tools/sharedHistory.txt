@@ -1,0 +1,8 @@
+{#if events.isEmpty()}
+No shared history found between these characters.
+{#else}
+Shared history between {char1.name} and {char2.name}:
+{#for event in events}
+- Day {event.day}: {event.title}
+{/for}
+{/if}

@@ -32,6 +32,16 @@ public class StoryTools {
         public static native TemplateInstance locationDetail(Location location);
 
         public static native TemplateInstance locationList(List<Location> locations);
+
+        public static native TemplateInstance characterRelationships(Character character,
+                List<CharacterRelationship> relationships);
+
+        public static native TemplateInstance storyNetwork(List<Character> characters, List<Location> locations,
+                List<StoryEvent> recentEvents);
+
+        public static native TemplateInstance locationConnections(Location location, List<Character> characters);
+
+        public static native TemplateInstance sharedHistory(Character char1, Character char2, List<StoryEvent> events);
     }
 
     @Tool("""
@@ -283,27 +293,13 @@ public class StoryTools {
             Returns formatted information about who this character is connected to and how.
             """)
     public String getCharacterRelationships(String characterId) {
-        List<CharacterRelationship> relationships = storyRepository.findRelationshipsByCharacterId(characterId);
-        if (relationships.isEmpty()) {
-            return "No relationships found for this character.";
-        }
-
         Character character = storyRepository.findCharacterById(characterId);
-        StringBuilder result = new StringBuilder();
-        result.append(character.getName()).append("'s relationships:\n");
-
-        for (CharacterRelationship rel : relationships) {
-            Character other = rel.getCharacter1().getId().equals(characterId)
-                    ? rel.getCharacter2()
-                    : rel.getCharacter1();
-            result.append("- ").append(other.getName());
-            if (rel.getTags() != null && !rel.getTags().isEmpty()) {
-                result.append(" (").append(String.join(", ", rel.getTags())).append(")");
-            }
-            result.append("\n");
+        if (character == null) {
+            return "Error: Character not found with ID: " + characterId;
         }
 
-        return result.toString();
+        List<CharacterRelationship> relationships = storyRepository.findRelationshipsByCharacterId(characterId);
+        return Templates.characterRelationships(character, relationships).render();
     }
 
     // ===== QUERY METHODS =====
@@ -317,35 +313,7 @@ public class StoryTools {
         List<Location> locations = storyRepository.findLocationsByStoryThreadId(storyThreadId);
         List<StoryEvent> recentEvents = storyRepository.findRecentEvents(storyThreadId, 5);
 
-        StringBuilder result = new StringBuilder();
-        result.append("=== STORY NETWORK ===\n\n");
-
-        result.append("Characters (").append(characters.size()).append("):\n");
-        for (Character c : characters) {
-            result.append("- ").append(c.getName());
-            if (c.getSummary() != null) {
-                result.append(" (").append(c.getSummary()).append(")");
-            }
-            result.append("\n");
-        }
-
-        result.append("\nLocations (").append(locations.size()).append("):\n");
-        for (Location l : locations) {
-            result.append("- ").append(l.getName());
-            if (l.getSummary() != null) {
-                result.append(" (").append(l.getSummary()).append(")");
-            }
-            result.append("\n");
-        }
-
-        if (!recentEvents.isEmpty()) {
-            result.append("\nRecent Events:\n");
-            for (StoryEvent e : recentEvents) {
-                result.append("- Day ").append(e.getDay()).append(": ").append(e.getTitle()).append("\n");
-            }
-        }
-
-        return result.toString();
+        return Templates.storyNetwork(characters, locations, recentEvents).render();
     }
 
     @Tool("""
@@ -353,24 +321,13 @@ public class StoryTools {
             Useful for knowing who is present at a location or who has connections to it.
             """)
     public String getLocationConnections(String locationId) {
-        List<Character> characters = storyRepository.findCharactersByLocation(locationId);
         Location location = storyRepository.findLocationById(locationId);
-
         if (location == null) {
             return "Error: Location not found with ID: " + locationId;
         }
 
-        if (characters.isEmpty()) {
-            return "No character connections found for " + location.getName();
-        }
-
-        StringBuilder result = new StringBuilder();
-        result.append("Characters connected to ").append(location.getName()).append(":\n");
-        for (Character c : characters) {
-            result.append("- ").append(c.getName()).append("\n");
-        }
-
-        return result.toString();
+        List<Character> characters = storyRepository.findCharactersByLocation(locationId);
+        return Templates.locationConnections(location, characters).render();
     }
 
     @Tool("""
@@ -378,24 +335,14 @@ public class StoryTools {
             Useful for understanding their relationship context.
             """)
     public String getSharedHistory(String character1Id, String character2Id) {
-        List<StoryEvent> events = storyRepository.findSharedEvents(character1Id, character2Id);
-
-        if (events.isEmpty()) {
-            return "No shared history found between these characters.";
-        }
-
         Character char1 = storyRepository.findCharacterById(character1Id);
         Character char2 = storyRepository.findCharacterById(character2Id);
 
-        StringBuilder result = new StringBuilder();
-        result.append("Shared history between ").append(char1.getName())
-                .append(" and ").append(char2.getName()).append(":\n");
-
-        for (StoryEvent event : events) {
-            result.append("- Day ").append(event.getDay()).append(": ")
-                    .append(event.getTitle()).append("\n");
+        if (char1 == null || char2 == null) {
+            return "Error: One or both characters not found";
         }
 
-        return result.toString();
+        List<StoryEvent> events = storyRepository.findSharedEvents(character1Id, character2Id);
+        return Templates.sharedHistory(char1, char2, events).render();
     }
 }
