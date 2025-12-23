@@ -11,25 +11,15 @@
 
     {#header-title}Chat Assistant{/header-title}
 
-    {#nav}
-    <nav>
-        <a href="/chat" class="active">Chat Interface</a>
-        <a href="/lore">Lore Questions</a>
-        <a href="/ingest">Ingest Documents</a>
-        <a href="/inspect">My Game</a>
-    </nav>
-    {/nav}
-
     {#content}
     <div id="chat-container"></div>
 
     <div id="input-container">
-        <input
-            type="text"
+        <textarea
             id="question-input"
             placeholder="Ask your campaign question..."
             autocomplete="off"
-        >
+            rows="1"></textarea>
         <button id="send-btn">Send</button>
     </div>
     {/content}

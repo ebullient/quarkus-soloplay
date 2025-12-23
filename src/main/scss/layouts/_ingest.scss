@@ -3,11 +3,9 @@
 @use '../mixins' as *;
 
 #ingest-form-container {
-    background: var(--color-bg-elevated);
-    border: 2px solid var(--color-text-accent);
-    border-radius: var(--border-radius-md);
-    padding: var(--spacing-xl);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+   padding: var(--spacing-xl);
+   max-width: 600px;
+   margin: 0 auto;
 }
 
 // File input wrapper (hides native input)

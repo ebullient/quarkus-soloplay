@@ -121,6 +121,11 @@
     color: var(--color-text-primary);
     font-size: var(--font-size-base);
     font-family: inherit;
+    resize: vertical;
+    min-height: 2.5rem;
+    max-height: 200px;
+    overflow-y: auto;
+    line-height: 1.5;
 
     &:focus {
         outline: none;

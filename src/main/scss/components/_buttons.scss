@@ -16,6 +16,7 @@ button, .btn {
 
     &:hover {
         background: var(--color-interactive-accent-hover);
+        color: var(--color-text-on-accent);
         opacity: 0.9;
     }
 
@@ -26,12 +27,15 @@ button, .btn {
     }
 }
 
+a.btn-primary,
 .btn-primary {
     background-color: var(--color-interactive-accent);
     color: var(--color-text-on-accent);
 
     &:hover {
         background-color: var(--color-interactive-accent-hover);
+        color: var(--color-text-on-accent);
+        text-decoration: none;
     }
 }
 
@@ -41,6 +45,17 @@ button, .btn {
 
     &:hover {
         background-color: var(--secondary-accent-3);
+        text-decoration: none;
+    }
+}
+
+.btn-cancel {
+    background-color: var(--color-cancel-btn-bg);
+    color: var(--color-text-on-accent);
+
+    &:hover {
+        background-color: var(--color-cancel-btn-bg-hover);
+        text-decoration: none;
     }
 }
 

@@ -1,2 +1,10 @@
 // Inspector Interface - Compiled to inspector.css
 @use 'layouts/inspector';
+
+.story-form {
+  #adventureDescription {
+    width: 95%;
+    background: var(--color-bg-base);
+    color: var(--color-text-primary);
+  }
+}

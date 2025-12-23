@@ -23,16 +23,23 @@
 // Additional shared styles
 main {
     flex: 1;
-    padding: var(--spacing-xl);
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    padding: 0;
 }
 
 footer {
     background: var(--color-bg-elevated);
-    padding: var(--spacing-md);
+    padding: 0;
     text-align: center;
     border-top: 1px solid var(--color-text-accent);
     color: var(--color-text-secondary);
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-xs);
+
+    > p {
+      margin: var(--spacing-xs);
+    }
 }
 
 // Theme toggle button

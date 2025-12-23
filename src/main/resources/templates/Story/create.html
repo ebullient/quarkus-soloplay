@@ -1,94 +1,89 @@
 {#include base}
-    {#title}Create Story Thread - Solo Play{/title}
+{#title}Create Story Thread - Solo Play{/title}
 
-    {#stylesheets}
-    <link rel="stylesheet" href="/inspector.css">
-    {/stylesheets}
+{#stylesheets}
+<link rel="stylesheet" href="/inspector.css">
+{/stylesheets}
 
-    {#header-title}Create New Story Thread{/header-title}
+{#header-title}Create New Story Thread{/header-title}
 
-    {#header-subtitle}
-        <p>Start a new solo play adventure</p>
-    {/header-subtitle}
+{#header-subtitle}
+<p>Start a new solo play adventure</p>
+{/header-subtitle}
 
-    {#nav}
-    <nav>
-        <a href="/story">← Back to Story Threads</a>
-    </nav>
-    {/nav}
+{#nav}
+<nav>
+  <a href="/story">← Back to Story Threads</a>
+</nav>
+{/nav}
 
-    {#content}
-        {#if flash:error}
-        <div class="flash error">{flash:error}</div>
-        {/if}
+{#content}
+{#if flash:error}
+<div class="flash error">{flash:error}</div>
+{/if}
 
-        <form action="/story/create" method="POST" class="story-form">
-            <div class="form-section">
-                <h2>Basic Information</h2>
+<form action="/story/create" method="POST" class="story-form">
+  <div class="form-section">
+    <h2>Basic Information</h2>
 
-                <div class="form-group">
-                    <label for="name">Story Thread Name *</label>
-                    <input type="text" id="name" name="name" required
-                           placeholder="e.g., Summer 2024 Adventure"
-                           autocomplete="off">
-                    <small>Give your playthrough a memorable name</small>
-                </div>
+    <div class="form-group">
+      <label for="settingName">Setting Name *</label>
+      {#if availableSettings.isEmpty()}
+      <p>⚠️ No settings found. Please upload lore documents first via <a
+          href="/ingest">/ingest</a></p>
+      {#else}
+      <select id="settingName" name="settingName" required>
+        <option value="">-- Select a Setting --</option>
+        {#for setting in availableSettings}
+        <option value="{setting}">{setting}</option>
+        {/for}
+      </select>
+      <small>Select from settings with uploaded lore documents</small>
+      {/if}
+    </div>
 
-                <div class="form-group">
-                    <label for="settingName">Setting Name *</label>
-                    {#if availableSettings.isEmpty()}
-                        <input type="text" id="settingName" name="settingName" required
-                               placeholder="e.g., Forgotten Realms"
-                               autocomplete="off">
-                        <small class="warning">⚠️ No settings found. Please upload lore documents first via <a href="/ingest">/ingest</a></small>
-                    {#else}
-                        <select id="settingName" name="settingName" required>
-                            <option value="">-- Select a Setting --</option>
-                            {#for setting in availableSettings}
-                            <option value="{setting}">{setting}</option>
-                            {/for}
-                        </select>
-                        <small>Select from settings with uploaded lore documents</small>
-                    {/if}
-                </div>
-            </div>
+    <div class="form-group">
+      <label for="name">Story Thread Name *</label>
+      <input type="text" id="name" name="name" required placeholder="e.g., Summer 2024 Adventure" autocomplete="off"><br />
+      <small>Give your playthrough a memorable name</small>
+    </div>
+  </div>
 
-            <div class="form-section">
-                <h2>Adventure Context (Optional)</h2>
-                <p class="section-description">
-                    If you're following a published adventure, provide details here.
-                    Leave blank for sandbox/homebrew play.
-                </p>
+  <div class="form-section">
+    <h2>Adventure Context (Optional)</h2>
+    <p class="section-description">
+      If you're following a published adventure, provide details here.
+      Leave blank for sandbox/homebrew play.
+    </p>
 
-                <div class="form-group">
-                    <label for="adventureName">Adventure Name</label>
-                    <input type="text" id="adventureName" name="adventureName"
-                           placeholder="e.g., Lost Mine of Phandelver"
-                           autocomplete="off">
-                </div>
+    <div class="form-group">
+      <label for="adventureName">Adventure Name</label>
+      <input type="text" id="adventureName" name="adventureName" placeholder="e.g., Lost Mine of Phandelver"
+        autocomplete="off">
+    </div>
 
-                <div class="form-group">
-                    <label for="adventureDescription">Adventure Description</label>
-                    <textarea id="adventureDescription" name="adventureDescription"
-                              rows="3"
-                              placeholder="Brief description of the adventure"></textarea>
-                </div>
+    <div class="form-group">
+      <label for="adventureDescription">Adventure Description</label>
+      <textarea id="adventureDescription" name="adventureDescription" rows="3"
+        placeholder="Brief description of the adventure"></textarea>
+    </div>
 
-                <div class="form-group">
-                    <label for="followingMode">Following Mode</label>
-                    <select id="followingMode" name="followingMode">
-                        <option value="LOOSE" selected>Loose - Use as inspiration, player drives story</option>
-                        <option value="STRICT">Strict - Follow adventure beats and structure</option>
-                        <option value="INSPIRATION">Inspiration - Reference only when asked</option>
-                    </select>
-                    <small>How strictly the AI should follow the published adventure</small>
-                </div>
-            </div>
+    <div class="form-group">
+      <label for="followingMode">Following Mode</label>
+      <p>How strictly should the AI follow the published adventure?</p>
+      <select id="followingMode" name="followingMode">
+        <option value="LOOSE" selected>Loose - Use as inspiration, player drives story</option>
+        <option value="STRICT">Strict - Follow adventure beats and structure</option>
+        <option value="INSPIRATION">Inspiration - Reference only when asked</option>
+      </select>
+    </div>
+  </div>
 
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Create Story Thread</button>
-                <a href="/story" class="btn btn-secondary">Cancel</a>
-            </div>
-        </form>
-    {/content}
+  {#authenticityToken/}
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Create Story Thread</button>
+    <a href="/story" class="btn btn-cancel">Cancel</a>
+  </div>
+</form>
+{/content}
 {/include}

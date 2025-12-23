@@ -52,6 +52,10 @@
   --color-warning-text: var(--yellow-3);
   --color-warning-bg: rgba(var(--yellow-3-rgb), 0.15);
 
+  // Cancel colors
+  --color-cancel-btn-bg: var(--gray-dark-4);
+  --color-cancel-btn-bg-hover: var(--gray-dark-2);
+
   // Borders
   --color-border: var(--gray-dark-9);
   --color-border-light: var(--gray-dark-6);

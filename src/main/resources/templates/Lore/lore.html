@@ -11,25 +11,15 @@
 
     {#header-title}Campaign Lore Assistant{/header-title}
 
-    {#nav}
-    <nav>
-        <a href="/chat">Chat Interface</a>
-        <a href="/lore" class="active">Lore Questions</a>
-        <a href="/ingest">Ingest Documents</a>
-        <a href="/inspect">My Game</a>
-    </nav>
-    {/nav}
-
     {#content}
     <div id="chat-container"></div>
 
     <div id="input-container">
-        <input
-            type="text"
+        <textarea
             id="question-input"
             placeholder="Ask about campaign lore..."
             autocomplete="off"
-        >
+            rows="1"></textarea>
         <button id="send-btn">Send</button>
     </div>
     {/content}

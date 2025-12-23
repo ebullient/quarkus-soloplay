@@ -29,4 +29,12 @@ body {
 
 #question-input {
     flex: 1;
+    background: var(--color-bg-base);
+    color: var(--color-text-primary);
+    resize: vertical;
+    min-height: 2.5rem;
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: inherit;
+    line-height: 1.5;
 }

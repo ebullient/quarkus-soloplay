@@ -5,7 +5,7 @@
 class ChatInterface {
     constructor(config) {
         this.apiEndpoint = config.apiEndpoint;
-        this.loadingMessage = config.loadingMessage || 'Thinking...';
+        this.loadingMessage = config.loadingMessage || 'Thinking';
         this.errorMessage = config.errorMessage || 'Error: Could not get response.';
         this.method = config.method || 'POST';
 
@@ -18,14 +18,25 @@ class ChatInterface {
 
     init() {
         this.sendBtn.addEventListener('click', () => this.sendQuestion());
-        this.questionInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
+
+        // Auto-resize textarea
+        this.questionInput.addEventListener('input', () => this.autoResize());
+
+        // Handle Enter key (Shift+Enter for new line)
+        this.questionInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
                 this.sendQuestion();
             }
         });
 
         // Focus input on load
         this.questionInput.focus();
+    }
+
+    autoResize() {
+        this.questionInput.style.height = 'auto';
+        this.questionInput.style.height = this.questionInput.scrollHeight + 'px';
     }
 
     addMessage(text, isUser) {
@@ -64,6 +75,7 @@ class ChatInterface {
 
         this.addMessage(question, true);
         this.questionInput.value = '';
+        this.autoResize(); // Reset height after clearing
         this.sendBtn.disabled = true;
         this.addLoadingIndicator();
 

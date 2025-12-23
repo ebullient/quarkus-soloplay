@@ -25,12 +25,21 @@ class PlayInterface {
     setupEventListeners() {
         this.sendButton.addEventListener('click', () => this.sendMessage());
 
-        this.messageInput.addEventListener('keypress', (e) => {
+        // Auto-resize textarea
+        this.messageInput.addEventListener('input', () => this.autoResize());
+
+        // Handle Enter key (Shift+Enter for new line)
+        this.messageInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 this.sendMessage();
             }
         });
+    }
+
+    autoResize() {
+        this.messageInput.style.height = 'auto';
+        this.messageInput.style.height = this.messageInput.scrollHeight + 'px';
     }
 
     async sendMessage() {
@@ -45,9 +54,10 @@ class PlayInterface {
 
         // Clear input
         this.messageInput.value = '';
+        this.autoResize(); // Reset height after clearing
 
         // Add loading indicator
-        const loadingMsg = this.addAssistantMessage('The GM is thinking...');
+        const loadingMsg = this.addAssistantMessage('Plotting with the GM...');
         loadingMsg.classList.add('loading');
 
         try {
