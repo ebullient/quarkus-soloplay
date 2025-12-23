@@ -12,6 +12,7 @@ import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
 import dev.ebullient.soloplay.IngestService;
+import dev.ebullient.soloplay.StoryRepository;
 import dev.ebullient.soloplay.health.Neo4jHealth;
 import io.quarkiverse.renarde.Controller;
 import io.quarkus.logging.Log;
@@ -23,7 +24,7 @@ public class Lore extends Controller {
     public static class Templates {
         public static native TemplateInstance lore();
 
-        public static native TemplateInstance ingest();
+        public static native TemplateInstance ingest(List<String> availableSettings);
     }
 
     @Inject
@@ -31,6 +32,9 @@ public class Lore extends Controller {
 
     @Inject
     Neo4jHealth neo4jHealth;
+
+    @Inject
+    StoryRepository storyRepository;
 
     /**
      * Serve the lore query page.
@@ -47,7 +51,8 @@ public class Lore extends Controller {
     @GET
     @Path("/ingest")
     public TemplateInstance ingest() {
-        return Templates.ingest();
+        List<String> availableSettings = storyRepository.getAvailableSettings();
+        return Templates.ingest(availableSettings);
     }
 
     /**
@@ -63,12 +68,12 @@ public class Lore extends Controller {
 
         if (settingName == null || settingName.isBlank()) {
             flash("error", "Please provide a setting name");
-            return Templates.ingest();
+            return ingest();
         }
 
         if (files == null || files.isEmpty()) {
             flash("error", "Please select at least one file to upload");
-            return Templates.ingest();
+            return ingest();
         }
 
         // Verify Neo4j connectivity before processing files
@@ -77,7 +82,7 @@ public class Lore extends Controller {
         } catch (Exception e) {
             Log.error("Neo4j not available", e);
             flash("error", "Neo4j is not available: " + e.getMessage());
-            return Templates.ingest();
+            return ingest();
         }
 
         // Process multiple files
@@ -90,7 +95,7 @@ public class Lore extends Controller {
             } catch (Exception e) {
                 Log.errorf(e, "Error processing file: %s", file.fileName());
                 flash("error", "Error processing file " + file.fileName() + ": " + e.getMessage());
-                return Templates.ingest();
+                return ingest();
             }
         }
 
