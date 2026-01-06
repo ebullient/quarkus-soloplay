@@ -675,6 +675,52 @@ public class StoryRepository {
     }
 
     /**
+     * Create and save a new story thread with validation.
+     * Validates slug uniqueness and sets optional adventure/followingMode fields.
+     *
+     * @param name Story thread display name
+     * @param settingName Setting name (must exist in RAG embeddings)
+     * @param adventureName Optional adventure name (can be null or blank)
+     * @param followingMode Optional following mode (can be null or blank, defaults to LOOSE if adventure specified)
+     * @return The created story thread
+     * @throws IllegalArgumentException if slug already exists or followingMode is invalid
+     */
+    public StoryThread createStoryThread(String name, String settingName,
+            String adventureName, String followingMode) {
+        // Create new thread with name and setting
+        StoryThread thread = new StoryThread(name, settingName);
+
+        // Check if slug already exists
+        if (findStoryThreadBySlug(thread.getSlug()) != null) {
+            throw new IllegalArgumentException(
+                    "A story with the name '" + name + "' already exists. Please choose a different name.");
+        }
+
+        // Set optional adventure
+        if (adventureName != null && !adventureName.isBlank()) {
+            thread.setAdventureName(adventureName);
+
+            // Default followingMode to LOOSE if adventure specified but no mode provided
+            if (followingMode == null || followingMode.isBlank()) {
+                thread.setFollowingMode(StoryThread.FollowingMode.LOOSE);
+            }
+        }
+
+        // Set followingMode with validation
+        if (followingMode != null && !followingMode.isBlank()) {
+            try {
+                thread.setFollowingMode(StoryThread.FollowingMode.valueOf(followingMode));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid following mode: " + followingMode
+                        + ". Valid values: LOOSE, STRICT, INSPIRATION");
+            }
+        }
+
+        saveStoryThread(thread);
+        return thread;
+    }
+
+    /**
      * Find a story thread by slug (primary ID).
      */
     public StoryThread findStoryThreadBySlug(String slug) {
@@ -774,5 +820,64 @@ public class StoryRepository {
         }
 
         return storyThreadIds;
+    }
+
+    /**
+     * Delete a story thread and all associated data (characters, locations, events, relationships).
+     */
+    public void deleteStoryThread(String slug) {
+        var session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+
+        try {
+            // Delete all entities with storyThreadId matching the slug
+            String cypher = """
+                    MATCH (n)
+                    WHERE n.storyThreadId = $slug
+                    DETACH DELETE n
+                    """;
+            session.query(cypher, Map.of("slug", slug));
+
+            // Delete the story thread itself
+            StoryThread thread = session.load(StoryThread.class, slug);
+            if (thread != null) {
+                session.delete(thread);
+            }
+
+            transaction.commit();
+        } catch (Exception e) {
+            transaction.rollback();
+            throw e;
+        } finally {
+            transaction.close();
+        }
+    }
+
+    /**
+     * Delete a character and all associated relationships.
+     */
+    public void deleteCharacter(String characterId) {
+        var session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+
+        try {
+            Character character = session.load(Character.class, characterId);
+            if (character != null) {
+                session.delete(character);
+            }
+            transaction.commit();
+        } catch (Exception e) {
+            transaction.rollback();
+            throw e;
+        } finally {
+            transaction.close();
+        }
+    }
+
+    /**
+     * Find all characters for a story thread (alias for findCharactersByStoryThreadId).
+     */
+    public List<Character> findAllCharacters(String storyThreadId) {
+        return findCharactersByStoryThreadId(storyThreadId);
     }
 }

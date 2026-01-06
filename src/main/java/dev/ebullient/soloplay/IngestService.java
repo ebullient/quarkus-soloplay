@@ -309,6 +309,59 @@ public class IngestService {
     }
 
     /**
+     * List all available adventures from ingested documents.
+     * Adventures are identified by having "adventures" in the sourceFile path.
+     * Returns a map of setting name -> list of adventure names (from YAML sources field).
+     */
+    public Map<String, List<String>> listAdventures() {
+        var session = sessionFactory.openSession();
+        Map<String, List<String>> result = new HashMap<>();
+
+        try {
+            // Query for documents with "adventures" in path and extract sources
+            String cypher = """
+                    MATCH (n:Document)
+                    WHERE n.sourceFile IS NOT NULL
+                      AND toLower(n.sourceFile) CONTAINS 'adventures'
+                      AND n.sources IS NOT NULL
+                    RETURN DISTINCT n.settingName as settingName,
+                           n.sources as adventureName
+                    ORDER BY n.settingName, n.sources
+                    """;
+
+            Iterable<Map<String, Object>> results = session.query(cypher, Map.of());
+            results.forEach(row -> {
+                String settingName = (String) row.get("settingName");
+                String adventureName = (String) row.get("adventureName");
+
+                if (settingName != null && adventureName != null) {
+                    result.computeIfAbsent(settingName, k -> new ArrayList<>())
+                            .add(adventureName);
+                }
+            });
+        } catch (Exception e) {
+            Log.errorf(e, "Error listing adventures: %s", e.getMessage());
+        }
+
+        return result;
+    }
+
+    /**
+     * Validate that an adventure exists in the ingested documents for a given setting.
+     * Returns true if the adventure is found, false otherwise.
+     */
+    public boolean validateAdventureExists(String settingName, String adventureName) {
+        if (settingName == null || adventureName == null) {
+            return false;
+        }
+
+        Map<String, List<String>> adventures = listAdventures();
+        List<String> settingAdventures = adventures.get(settingName);
+
+        return settingAdventures != null && settingAdventures.contains(adventureName);
+    }
+
+    /**
      * Delete all embeddings for a specific file in a setting.
      * Returns the number of embeddings deleted.
      */
@@ -381,5 +434,57 @@ public class IngestService {
         } finally {
             tx.close();
         }
+    }
+
+    /**
+     * Result of batch document ingestion.
+     * Contains lists of successfully processed files and any errors encountered.
+     */
+    public record IngestResult(
+            List<String> processedFiles,
+            List<FileError> errors,
+            int successCount) {
+
+        public IngestResult(List<String> processedFiles, List<FileError> errors) {
+            this(processedFiles, errors, processedFiles.size());
+        }
+
+        public boolean hasErrors() {
+            return errors != null && !errors.isEmpty();
+        }
+
+        public boolean allFailed() {
+            return successCount == 0 && hasErrors();
+        }
+    }
+
+    public record FileError(String fileName, String errorMessage) {
+    }
+
+    /**
+     * Ingest multiple document files for a setting.
+     * Processes all files and returns a result with successes and failures.
+     *
+     * @param settingName The setting name to associate documents with
+     * @param files List of file uploads to process
+     * @return IngestResult containing processed files and any errors
+     */
+    public IngestResult ingestDocuments(String settingName,
+            List<org.jboss.resteasy.reactive.multipart.FileUpload> files) {
+        List<String> processedFiles = new ArrayList<>();
+        List<FileError> errors = new ArrayList<>();
+
+        for (var file : files) {
+            try {
+                String content = java.nio.file.Files.readString(file.uploadedFile());
+                loadSetting(settingName, file.fileName(), content);
+                processedFiles.add(file.fileName());
+            } catch (Exception e) {
+                Log.errorf(e, "Error processing file: %s", file.fileName());
+                errors.add(new FileError(file.fileName(), e.getMessage()));
+            }
+        }
+
+        return new IngestResult(processedFiles, errors);
     }
 }

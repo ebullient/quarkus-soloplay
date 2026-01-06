@@ -73,7 +73,6 @@ public class Story extends Controller {
             @RestForm String name,
             @RestForm String settingName,
             @RestForm String adventureName,
-            @RestForm String adventureDescription,
             @RestForm String followingMode) {
 
         List<String> availableSettings = storyRepository.getAvailableSettings();
@@ -95,30 +94,13 @@ public class Story extends Controller {
             return Templates.create(availableSettings);
         }
 
-        StoryThread thread = new StoryThread(name, settingName);
-
-        // Check if slug already exists - ask user to choose different name
-        if (storyRepository.findStoryThreadBySlug(thread.getSlug()) != null) {
-            flash("error", "A story with the name '" + name + "' already exists. Please choose a different name.");
+        StoryThread thread;
+        try {
+            thread = storyRepository.createStoryThread(name, settingName, adventureName, followingMode);
+        } catch (IllegalArgumentException e) {
+            flash("error", e.getMessage());
             return Templates.create(availableSettings);
         }
-
-        // Set optional adventure fields
-        if (adventureName != null && !adventureName.isBlank()) {
-            thread.setAdventureName(adventureName);
-        }
-        if (adventureDescription != null && !adventureDescription.isBlank()) {
-            thread.setAdventureDescription(adventureDescription);
-        }
-        if (followingMode != null && !followingMode.isBlank()) {
-            try {
-                thread.setFollowingMode(StoryThread.FollowingMode.valueOf(followingMode));
-            } catch (IllegalArgumentException e) {
-                flash("error", "Invalid following mode: " + followingMode);
-                return Templates.create(availableSettings);
-            }
-        }
-        storyRepository.saveStoryThread(thread);
 
         flash("success", "Story thread created: " + name);
 
@@ -155,7 +137,6 @@ public class Story extends Controller {
             @RestForm String name,
             @RestForm String settingName,
             @RestForm String adventureName,
-            @RestForm String adventureDescription,
             @RestForm String followingMode,
             @RestForm String status) {
 
@@ -174,9 +155,6 @@ public class Story extends Controller {
         }
         if (adventureName != null) {
             thread.setAdventureName(adventureName.isBlank() ? null : adventureName);
-        }
-        if (adventureDescription != null) {
-            thread.setAdventureDescription(adventureDescription.isBlank() ? null : adventureDescription);
         }
         if (followingMode != null && !followingMode.isBlank()) {
             try {

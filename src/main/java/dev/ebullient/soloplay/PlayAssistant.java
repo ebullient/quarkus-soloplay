@@ -29,11 +29,12 @@ public interface PlayAssistant {
             - Current Day: {currentDay}
             {#if adventureName}
             - Adventure: {adventureName}
-            - Adventure Description: {adventureDescription}
             - Following Mode: {followingMode}
               * LOOSE: Use adventure as inspiration, but let player drive story
               * STRICT: Follow adventure beats and structure closely
               * INSPIRATION: Reference adventure only when player explicitly asks
+
+            Note: Query setting lore for adventure details as needed.
             {/if}
 
             You have access to:
@@ -65,7 +66,6 @@ public interface PlayAssistant {
             @V("storyThreadId") String storyThreadId,
             @V("currentDay") Long currentDay,
             @V("adventureName") String adventureName,
-            @V("adventureDescription") String adventureDescription,
             @V("followingMode") String followingMode,
             @V("currentSituation") String currentSituation,
             @MemoryId String conversationId,

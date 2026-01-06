@@ -29,8 +29,7 @@ public class StoryThread {
     private String currentSituation; // Brief summary of current state
 
     // Adventure context (optional - for published adventures)
-    private String adventureName; // e.g., "Lost Mine of Phandelver"
-    private String adventureDescription; // Brief description of the adventure
+    private String adventureName; // e.g., "Lost Mine of Phandelver" or "Light of Xaryxis"
     private FollowingMode followingMode; // How strictly to follow the adventure
 
     public StoryThread() {
@@ -163,14 +162,6 @@ public class StoryThread {
 
     public void setAdventureName(String adventureName) {
         this.adventureName = adventureName;
-    }
-
-    public String getAdventureDescription() {
-        return adventureDescription;
-    }
-
-    public void setAdventureDescription(String adventureDescription) {
-        this.adventureDescription = adventureDescription;
     }
 
     public FollowingMode getFollowingMode() {

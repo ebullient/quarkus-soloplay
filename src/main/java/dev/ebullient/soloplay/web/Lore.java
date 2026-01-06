@@ -1,6 +1,5 @@
 package dev.ebullient.soloplay.web;
 
-import java.nio.file.Files;
 import java.util.List;
 
 import jakarta.inject.Inject;
@@ -85,21 +84,34 @@ public class Lore extends Controller {
             return ingest();
         }
 
-        // Process multiple files
-        int successCount = 0;
-        for (var file : files) {
-            try {
-                String content = Files.readString(file.uploadedFile());
-                campaignService.loadSetting(settingName, file.fileName(), content);
-                successCount++;
-            } catch (Exception e) {
-                Log.errorf(e, "Error processing file: %s", file.fileName());
-                flash("error", "Error processing file " + file.fileName() + ": " + e.getMessage());
-                return ingest();
+        // Process files using IngestService
+        IngestService.IngestResult result = campaignService.ingestDocuments(settingName, files);
+
+        // Report all errors and successes
+        if (result.allFailed()) {
+            // All files failed - show all errors
+            StringBuilder errorMsg = new StringBuilder("All files failed to process:\n");
+            for (IngestService.FileError error : result.errors()) {
+                errorMsg.append("- ").append(error.fileName()).append(": ").append(error.errorMessage()).append("\n");
             }
+            flash("error", errorMsg.toString());
+            return ingest();
+        } else if (result.hasErrors()) {
+            // Partial success - show what worked and what failed
+            StringBuilder msg = new StringBuilder();
+            msg.append("Processed ").append(result.successCount()).append(" file(s) successfully");
+            if (!result.processedFiles().isEmpty()) {
+                msg.append(" (").append(String.join(", ", result.processedFiles())).append(")");
+            }
+            msg.append(". Failed files:\n");
+            for (IngestService.FileError error : result.errors()) {
+                msg.append("- ").append(error.fileName()).append(": ").append(error.errorMessage()).append("\n");
+            }
+            flash("warning", msg.toString());
+            return ingest();
         }
 
-        flash("success", "Setting '" + settingName + "' updated with " + successCount + " file(s)");
+        flash("success", "Setting '" + settingName + "' updated with " + result.successCount() + " file(s)");
         return ingest();
     }
 }
