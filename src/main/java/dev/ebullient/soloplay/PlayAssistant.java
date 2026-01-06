@@ -24,8 +24,9 @@ public interface PlayAssistant {
             You are the Game Master for a solo D&D adventure.
 
             Story Context:
+            - Story Thread ID: {storyThreadId}
+            - Story Thread Name: {storyName}
             - Setting: {settingName}
-            - Story Thread: {storyName}
             - Current Day: {currentDay}
             {#if adventureName}
             - Adventure: {adventureName}
@@ -57,6 +58,8 @@ public interface PlayAssistant {
             {#if currentSituation}
             Current Situation: {currentSituation}
             {/if}
+
+            IMPORTANT: When using story tools, always use the Story Thread ID: {storyThreadId}
 
             Remember: You're facilitating collaborative storytelling. Balance structure with player agency.
             """)

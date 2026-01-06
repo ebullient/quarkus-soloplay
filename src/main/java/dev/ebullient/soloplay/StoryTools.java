@@ -175,6 +175,18 @@ public class StoryTools {
         return Templates.characterList(characters).render();
     }
 
+    @Tool("""
+            Get all characters in the story thread (not filtered by tags).
+            Use this to see the complete cast of characters.
+            """)
+    public String getAllCharacters(String storyThreadId) {
+        List<Character> characters = storyRepository.findCharactersByStoryThreadId(storyThreadId);
+        if (characters.isEmpty()) {
+            return "No characters found in this story.";
+        }
+        return Templates.characterList(characters).render();
+    }
+
     // ===== LOCATION METHODS =====
 
     @Tool("""
@@ -237,6 +249,29 @@ public class StoryTools {
     }
 
     @Tool("""
+            Get all locations in the story thread (not filtered by tags).
+            Use this to see all known places in the story.
+            """)
+    public String getAllLocations(String storyThreadId) {
+        List<Location> locations = storyRepository.findLocationsByStoryThreadId(storyThreadId);
+        if (locations.isEmpty()) {
+            return "No locations found in this story.";
+        }
+        return Templates.locationList(locations).render();
+    }
+
+    @Tool("""
+            Get detailed information about a specific location.
+            """)
+    public String getLocationDetail(String locationId) {
+        Location location = storyRepository.findLocationById(locationId);
+        if (location == null) {
+            return "Error: Location not found with ID: " + locationId;
+        }
+        return Templates.locationDetail(location).render();
+    }
+
+    @Tool("""
             Create a directional connection between two locations.
             Direction examples: "north", "south", "east", "west", "up", "down", "in", "through"
             Description example: "A winding forest path" or "Stone stairs leading down"
@@ -271,6 +306,30 @@ public class StoryTools {
         StringBuilder result = new StringBuilder("Found " + events.size() + " events:\n");
         for (StoryEvent event : events) {
             result.append("- Day ").append(event.getDay()).append(": ").append(event.getTitle()).append("\n");
+        }
+        return result.toString();
+    }
+
+    @Tool("""
+            Get recent events in the story thread.
+            Limit parameter controls how many recent events to return (default 10, max 50).
+            Use this to review what's happened recently in the story.
+            """)
+    public String getRecentEvents(String storyThreadId, Integer limit) {
+        int eventLimit = (limit != null && limit > 0) ? Math.min(limit, 50) : 10;
+        List<StoryEvent> events = storyRepository.findRecentEvents(storyThreadId, eventLimit);
+
+        if (events.isEmpty()) {
+            return "No events found in this story.";
+        }
+
+        StringBuilder result = new StringBuilder("Found " + events.size() + " recent events:\n");
+        for (StoryEvent event : events) {
+            result.append("- Day ").append(event.getDay()).append(": ").append(event.getTitle());
+            if (event.getTags() != null && !event.getTags().isEmpty()) {
+                result.append(" [").append(String.join(", ", event.getTags())).append("]");
+            }
+            result.append("\n");
         }
         return result.toString();
     }
