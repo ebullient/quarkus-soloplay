@@ -177,7 +177,7 @@ public interface MyAssistant {
 
 When storing documents:
 
-- Always include metadata (settingName, sourceFile, etc.)
+- Always include metadata (sourceFile, filename, canonical flag)
 - Use `canonical: true` for source material vs generated content
 - Configure chunk size/overlap via `campaign.chunk.size` and `campaign.chunk.overlap`
 
@@ -240,7 +240,8 @@ The application provides both REST APIs and web UI (Renarde MVC) for interacting
 - **REST API:**
   - `GET/POST /api/lore` - Query lore with question
   - `POST /api/lore/ingest` - Upload campaign documents (multipart form)
-  - `DELETE /api/lore/settings/{settingName}` - Delete setting and documents
+  - `DELETE /api/lore/all` - Delete all documents
+  - `DELETE /api/lore/files?sourceFile=...` - Delete specific file
 - **Web UI:**
   - `/lore` - Lore query interface
   - `/ingest` - Document upload and management
