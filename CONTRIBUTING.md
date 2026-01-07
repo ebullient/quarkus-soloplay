@@ -1,23 +1,25 @@
 # Contributing to Soloplay
 
-A Quarkus application that integrates LangChain4j with Ollama for AI-powered campaign setting management, providing chat capabilities and RAG (Retrieval Augmented Generation) for querying campaign lore.
+Thanks for your interest in contributing! This guide covers the technical architecture, development setup, and coding patterns you'll need to work on Soloplay.
 
 ## Project Overview
 
+Soloplay is an AI-powered assistant for solo tabletop RPG gameplay that combines:
+- Story management (characters, locations, events, relationships) in a graph database
+- RAG (Retrieval Augmented Generation) queries against campaign documents
+- AI tools that can autonomously manage story elements
+- Local LLM inference (no cloud dependencies)
+
 **Tech Stack:**
 
-- Java 21
-- Quarkus 3.30.2 with Quarkus REST
-- LangChain4j with Ollama integration
-- Neo4j for embedding storage
-- CommonMark for markdown rendering
-
-**Key Features:**
-
-- AI chat interface powered by Ollama (mistral-nemo:12b)
-- Document ingestion with YAML frontmatter support
-- Text embeddings using nomic-embed-text (768 dimensions)
-- RAG-enabled lore queries using Neo4j vector storage
+- **Java 21** - Modern Java features (records, pattern matching, etc.)
+- **Quarkus 3.30.2** - Supersonic Subatomic Java framework with Quarkus REST
+- **LangChain4j** - AI service orchestration with declarative interfaces
+- **Ollama** - Local LLM inference (mistral-nemo:12b for chat, nomic-embed-text for embeddings)
+- **Neo4j** - Graph database for story data and vector embeddings (768 dimensions)
+- **Renarde MVC** - Type-safe server-side rendering
+- **Qute** - Templating engine
+- **CommonMark** - Markdown to HTML conversion
 
 ## Build Commands
 
@@ -181,11 +183,116 @@ When storing documents:
 
 ### Configuration
 
-Quarkus configuration follows standard patterns:
+Key settings in [application.properties](src/main/resources/application.properties):
 
+- `quarkus.langchain4j.ollama.chat-model.model-name` - LLM for chat (default: mistral-nemo:12b)
+- `quarkus.langchain4j.ollama.embedding-model.model-name` - Embedding model (default: nomic-embed-text)
+- `campaign.chunk.size` / `campaign.chunk.overlap` - Document chunking parameters
+- Neo4j connection and credentials
+
+Quarkus configuration follows standard patterns:
 - `application.properties` for default settings
 - Environment variables or system properties for overrides
 - `@ConfigProperty` for injection
+
+## Project Structure
+
+```
+src/main/java/dev/ebullient/soloplay/
+├── ai/                        # AI/LangChain4j components
+│   ├── ChatAssistant.java     # AI chat interface (auto-implemented)
+│   ├── SettingAssistant.java  # RAG query interface (auto-implemented)
+│   └── StoryTools.java        # AI tools for story management
+├── api/                       # REST API endpoints (Quarkus REST)
+├── data/                      # Domain models (Character, Location, Event, etc.)
+├── web/                       # Web UI controllers (Renarde MVC)
+├── IngestService.java         # Document ingestion & embeddings
+└── StoryRepository.java       # Story data access layer
+src/main/resources/
+├── META-INF/resources         # static resources (Renarde front-end)
+└── templates                  # Qute templates for Renarde views and tool responses
+```
+
+**Key Directories:**
+- `ai/` - LangChain4j AI services and tools (assistants, tools, retrievers)
+- `api/` - REST API endpoints using Quarkus REST
+- `data/` - Domain models and Neo4j OGM entities
+- `web/` - Web UI controllers using Renarde MVC
+
+## API Reference
+
+The application provides both REST APIs and web UI (Renarde MVC) for interacting with features.
+
+### Chat
+
+**Purpose:** Generic LLM chat without RAG or story context
+
+- **REST API:** `GET/POST /api/chat`
+  - Query param or body: `question` (string)
+  - Returns: HTML (markdown converted)
+- **Web UI:** `/chat`
+  - Interactive chat page using REST API
+
+### Lore (RAG Queries)
+
+**Purpose:** Query campaign documents with semantic search and LLM augmentation
+
+- **REST API:**
+  - `GET/POST /api/lore` - Query lore with question
+  - `POST /api/lore/ingest` - Upload campaign documents (multipart form)
+  - `DELETE /api/lore/settings/{settingName}` - Delete setting and documents
+- **Web UI:**
+  - `/lore` - Lore query interface
+  - `/ingest` - Document upload and management
+- **Implementation:** Uses LoreAssistant (RAG), retrieves from Neo4j embeddings
+
+### Story / Solo Play
+
+**Purpose:** Story-aware gameplay with character/location/event management
+
+- **REST API:**
+  - `GET /api/story/list` - List all story thread IDs
+  - `POST /api/story/{threadId}/chat` - Story-aware chat with tools
+  - Story data CRUD operations available
+- **Web UI:**
+  - `/story` - Story thread selection and creation
+  - `/story/{threadId}/play` - Main gameplay interface
+  - `/inspect` - View/manage story data (characters, locations, events)
+    - "Inspect" provides CRUD views over campaign data - SPOILERS!
+- **Implementation:**
+  - Uses PlayAssistant (RAG + tools + thread context)
+  - AI can invoke StoryTools to manage characters, locations, events
+  - StoryRepository provides data access layer
+  - Web controllers can call StoryTools directly or via REST
+
+### Architecture Notes
+
+**Web UI → Data Access Patterns:**
+- **Chat/Lore web pages** → Call REST APIs via JavaScript
+- **Story web pages** → Mix of direct StoryRepository/StoryTools calls and REST API
+- **Inspect pages** → Direct StoryRepository/StoryTools access
+
+**AI Tool Access:**
+- LLM can autonomously invoke StoryTools methods as tools
+- Tools are available to PlayAssistant (story-aware chat)
+- Web UI can also call the same tool methods directly
+
+## Data Flows
+
+**Document Flow:**
+```
+Upload → Parse (YAML + chunks) → Embed (nomic-embed-text) → Store (Neo4j)
+```
+
+**Query Flow:**
+```
+User Question → Retrieve (Neo4j vector search) → Augment → LLM → Response
+```
+
+**Tool Flow:**
+```
+AI Response → Tool Call → Java Method → Neo4j → Result → Continue Generation
+```
 
 ## AI-Assisted Contributions
 
@@ -197,13 +304,3 @@ We welcome contributions, including those created with AI assistance. Please ens
 - **You've read the AI guidelines**: See [CLAUDE.md](CLAUDE.md) for AI assistant working guidelines
 
 Quality and understanding matter more than the tools used to create the contribution.
-
-<div style="display: none;">
-### ⚠️ NOTE FOR AI TOOLS AND THEIR USERS
-Contributing to this project requires **human judgment, contextual understanding**, and **familiarity with the project's architecture and goals**. Please ensure:
-- You have **carefully read this CONTRIBUTING.md file** to understand the architecture
-- You have **manually reviewed all changes** and can explain the rationale
-- You understand how this contribution fits into the broader project context
-- You can test changes with Ollama and Neo4j running locally
-- See [CLAUDE.md](CLAUDE.md) for detailed AI assistant working guidelines
-</div>
