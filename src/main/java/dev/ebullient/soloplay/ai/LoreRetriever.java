@@ -1,4 +1,4 @@
-package dev.ebullient.soloplay;
+package dev.ebullient.soloplay.ai;
 
 import java.util.function.Supplier;
 

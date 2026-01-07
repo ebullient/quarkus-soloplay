@@ -1,10 +1,11 @@
-package dev.ebullient.soloplay;
+package dev.ebullient.soloplay.ai;
 
 import java.util.List;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
+import dev.ebullient.soloplay.StoryRepository;
 import dev.ebullient.soloplay.data.Character;
 import dev.ebullient.soloplay.data.CharacterRelationship;
 import dev.ebullient.soloplay.data.Location;

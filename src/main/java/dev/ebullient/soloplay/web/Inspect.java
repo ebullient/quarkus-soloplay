@@ -9,7 +9,7 @@ import jakarta.ws.rs.Path;
 import org.jboss.resteasy.reactive.RestPath;
 
 import dev.ebullient.soloplay.StoryRepository;
-import dev.ebullient.soloplay.StoryTools;
+import dev.ebullient.soloplay.ai.StoryTools;
 import dev.ebullient.soloplay.data.Character;
 import dev.ebullient.soloplay.data.CharacterRelationship;
 import dev.ebullient.soloplay.data.Location;

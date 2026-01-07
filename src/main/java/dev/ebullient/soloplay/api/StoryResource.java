@@ -18,9 +18,9 @@ import jakarta.ws.rs.core.Response;
 
 import org.jboss.resteasy.reactive.RestPath;
 
-import dev.ebullient.soloplay.MarkdownAugmenter;
-import dev.ebullient.soloplay.PlayAssistant;
 import dev.ebullient.soloplay.StoryRepository;
+import dev.ebullient.soloplay.ai.MarkdownAugmenter;
+import dev.ebullient.soloplay.ai.PlayAssistant;
 import dev.ebullient.soloplay.data.Character;
 import dev.ebullient.soloplay.data.StoryThread;
 

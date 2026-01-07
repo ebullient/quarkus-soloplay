@@ -1,4 +1,4 @@
-package dev.ebullient.soloplay;
+package dev.ebullient.soloplay.ai;
 
 import jakarta.enterprise.context.ApplicationScoped;
 

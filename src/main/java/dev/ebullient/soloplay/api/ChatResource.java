@@ -11,8 +11,8 @@ import jakarta.ws.rs.core.MediaType;
 
 import org.jboss.resteasy.reactive.RestQuery;
 
-import dev.ebullient.soloplay.ChatAssistant;
-import dev.ebullient.soloplay.MarkdownAugmenter;
+import dev.ebullient.soloplay.ai.ChatAssistant;
+import dev.ebullient.soloplay.ai.MarkdownAugmenter;
 
 /**
  * Generic LLM chat interface - independent of any specific setting or story.

@@ -19,8 +19,8 @@ import org.jboss.resteasy.reactive.RestQuery;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
 import dev.ebullient.soloplay.IngestService;
-import dev.ebullient.soloplay.LoreAssistant;
-import dev.ebullient.soloplay.MarkdownAugmenter;
+import dev.ebullient.soloplay.ai.LoreAssistant;
+import dev.ebullient.soloplay.ai.MarkdownAugmenter;
 import dev.ebullient.soloplay.health.Neo4jHealth;
 import io.quarkus.logging.Log;
 
