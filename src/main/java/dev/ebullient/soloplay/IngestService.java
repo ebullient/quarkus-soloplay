@@ -104,7 +104,8 @@ public class IngestService {
 
                 // If section is still too large, chunk it again
                 if (section.length() > chunkSize * 2) {
-                    Log.infof("Section %d '%s' is large (%d chars), splitting into chunks", i, sectionTitle, section.length());
+                    Log.infof("Section %d '%s' is large (%d chars), splitting into chunks", i, sectionTitle,
+                            section.length());
                     var doc = Document.from(section);
                     var splitter = DocumentSplitters.recursive(chunkSize, chunkOverlap);
                     List<TextSegment> subSegments = splitter.split(doc);
@@ -243,23 +244,30 @@ public class IngestService {
 
             // Convert to Map<String, String> for metadata
             Map<String, String> result = new HashMap<>();
+
+            Object loreTags = rawMap.get("loreTags");
+            if (loreTags instanceof List<?> loreTagList) {
+                parseHierarchicalTags(loreTagList, result);
+            }
+
             for (Map.Entry<String, Object> entry : rawMap.entrySet()) {
+                String key = entry.getKey();
                 Object value = entry.getValue();
 
                 // Skip null values
                 if (value == null) {
-                    Log.debugf("Skipping null value for YAML key: %s", entry.getKey());
+                    Log.debugf("Skipping null value for YAML key: %s", key);
                     continue;
                 }
 
                 // Handle lists as comma-delimited strings
                 if (value instanceof List<?> list) {
-                    result.put(entry.getKey(),
+                    result.put(key,
                             list.stream()
                                     .map(Object::toString)
                                     .collect(Collectors.joining(",")));
                 } else {
-                    result.put(entry.getKey(), value.toString());
+                    result.put(key, value.toString());
                 }
             }
             return result;
@@ -268,6 +276,77 @@ public class IngestService {
             Log.errorf(e, "Failed to parse YAML frontmatter: %s", e.getMessage());
             throw new DocumentProcessingException(
                     "Invalid YAML frontmatter: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Parse hierarchical loreTags into structured metadata.
+     * Example: "lore/monster/cr/8" → metadata.put("monster.cr", "8")
+     *
+     * @param loreTags List of hierarchical tags from YAML
+     * @param metadata Metadata map to populate
+     */
+    private void parseHierarchicalTags(List<?> loreTags, Map<String, String> metadata) {
+        if (loreTags == null || loreTags.isEmpty()) {
+            return;
+        }
+
+        boolean contentTypeSet = false;
+
+        for (Object tag : loreTags) {
+            String tagStr = tag.toString();
+
+            // Only process tags with "lore/" prefix
+            if (!tagStr.startsWith("lore/")) {
+                continue;
+            }
+
+            // Remove "lore/" prefix
+            String path = tagStr.substring(5); // "monster/cr/8"
+
+            // Split into parts: ["monster", "cr", "8"]
+            String[] parts = path.split("/");
+
+            if (parts.length == 0) {
+                continue;
+            }
+
+            // Set contentType from first lore/ tag encountered
+            if (!contentTypeSet) {
+                metadata.put("contentType", parts[0]);
+                contentTypeSet = true;
+            }
+
+            final String key;
+            final String value;
+            // Parse nested properties
+            if (parts.length == 2) {
+                key = parts[0];
+                value = parts[1];
+            } else if (parts.length >= 3) {
+                // Complex case: "lore/monster/cr/8" → metadata["monster.cr"] = "8"
+                // Build dotted key from all parts except the last
+                StringBuilder keyBuilder = new StringBuilder(parts[0]);
+                for (int i = 1; i < parts.length - 1; i++) {
+                    keyBuilder.append(".").append(parts[i]);
+                }
+                key = keyBuilder.toString();
+                value = parts[parts.length - 1].replaceAll("\\s+", " ").trim();
+            } else {
+                // Simple case: "lore/statblock" → contentType already set, no other value to
+                // save
+                continue;
+            }
+
+            if (value.isEmpty()) {
+                continue; // Skip tags with empty values
+            }
+
+            // Convert to list if multiple of the same key, e.g.
+            // - lore/monster/environment/grassland
+            // - lore/monster/environment/hill
+            // - lore/monster/environment/mountain
+            metadata.merge(key, value, (v1, v2) -> v1 + ", " + v2);
         }
     }
 
@@ -311,7 +390,8 @@ public class IngestService {
     /**
      * List all available adventures from ingested documents.
      * Adventures are identified by having "adventures" in the sourceFile path.
-     * Returns a map of setting name -> list of adventure names (from YAML sources field).
+     * Returns a map of setting name -> list of adventure names (from YAML sources
+     * field).
      */
     public Map<String, List<String>> listAdventures() {
         var session = sessionFactory.openSession();
@@ -347,7 +427,8 @@ public class IngestService {
     }
 
     /**
-     * Validate that an adventure exists in the ingested documents for a given setting.
+     * Validate that an adventure exists in the ingested documents for a given
+     * setting.
      * Returns true if the adventure is found, false otherwise.
      */
     public boolean validateAdventureExists(String settingName, String adventureName) {
@@ -466,7 +547,7 @@ public class IngestService {
      * Processes all files and returns a result with successes and failures.
      *
      * @param settingName The setting name to associate documents with
-     * @param files List of file uploads to process
+     * @param files       List of file uploads to process
      * @return IngestResult containing processed files and any errors
      */
     public IngestResult ingestDocuments(String settingName,
