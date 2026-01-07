@@ -11,7 +11,6 @@ import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
 import dev.ebullient.soloplay.IngestService;
-import dev.ebullient.soloplay.StoryRepository;
 import dev.ebullient.soloplay.health.Neo4jHealth;
 import io.quarkiverse.renarde.Controller;
 import io.quarkus.logging.Log;
@@ -23,17 +22,14 @@ public class Lore extends Controller {
     public static class Templates {
         public static native TemplateInstance lore();
 
-        public static native TemplateInstance ingest(List<String> availableSettings);
+        public static native TemplateInstance ingest();
     }
 
     @Inject
-    IngestService campaignService;
+    IngestService ingestService;
 
     @Inject
     Neo4jHealth neo4jHealth;
-
-    @Inject
-    StoryRepository storyRepository;
 
     /**
      * Serve the lore query page.
@@ -50,8 +46,7 @@ public class Lore extends Controller {
     @GET
     @Path("/ingest")
     public TemplateInstance ingest() {
-        List<String> availableSettings = storyRepository.getAvailableSettings();
-        return Templates.ingest(availableSettings);
+        return Templates.ingest();
     }
 
     /**
@@ -60,15 +55,9 @@ public class Lore extends Controller {
      * error handling.
      */
     @POST
-    @Path("/load-setting")
-    public TemplateInstance loadSetting(
-            @RestForm String settingName,
+    @Path("/ingest")
+    public TemplateInstance ingestDocuments(
             @RestForm("documents") List<FileUpload> files) {
-
-        if (settingName == null || settingName.isBlank()) {
-            flash("error", "Please provide a setting name");
-            return ingest();
-        }
 
         if (files == null || files.isEmpty()) {
             flash("error", "Please select at least one file to upload");
@@ -85,7 +74,7 @@ public class Lore extends Controller {
         }
 
         // Process files using IngestService
-        IngestService.IngestResult result = campaignService.ingestDocuments(settingName, files);
+        IngestService.IngestResult result = ingestService.ingestDocuments(files);
 
         // Report all errors and successes
         if (result.allFailed()) {
@@ -111,7 +100,7 @@ public class Lore extends Controller {
             return ingest();
         }
 
-        flash("success", "Setting '" + settingName + "' updated with " + result.successCount() + " file(s)");
+        flash("success", "Ingested " + result.successCount() + " file(s) successfully");
         return ingest();
     }
 }

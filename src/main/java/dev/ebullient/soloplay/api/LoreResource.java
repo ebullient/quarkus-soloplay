@@ -19,6 +19,7 @@ import org.jboss.resteasy.reactive.RestQuery;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
 import dev.ebullient.soloplay.IngestService;
+import dev.ebullient.soloplay.LoreRepository;
 import dev.ebullient.soloplay.ai.LoreAssistant;
 import dev.ebullient.soloplay.ai.MarkdownAugmenter;
 import dev.ebullient.soloplay.health.Neo4jHealth;
@@ -40,6 +41,9 @@ public class LoreResource {
     MarkdownAugmenter prettify;
 
     @Inject
+    LoreRepository loreRepository;
+
+    @Inject
     IngestService ingestService;
 
     @Inject
@@ -52,6 +56,32 @@ public class LoreResource {
         return prettify.markdownToHtml(response);
     }
 
+    /**
+     * Retrieve a lore document by its filename (from YAML frontmatter).
+     * Used for resolving cross-references in campaign documents.
+     *
+     * @param filename The document filename (e.g., "backgrounds/acolyte-xphb.md")
+     * @return Raw markdown content or 404 if not found
+     */
+    @GET
+    @Path("/doc")
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response getDocument(@RestQuery String filename) {
+        if (filename == null || filename.isBlank()) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("Filename parameter is required")
+                    .build();
+        }
+
+        String content = loreRepository.getDocumentByFilename(filename);
+        if (content == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity("Document not found: " + filename)
+                    .build();
+        }
+        return Response.ok(content).build();
+    }
+
     @POST
     @Consumes(MediaType.TEXT_PLAIN)
     @Produces(MediaType.TEXT_HTML)
@@ -61,77 +91,62 @@ public class LoreResource {
     }
 
     /**
-     * List all ingested files grouped by setting.
-     * Returns a JSON map of setting name -> list of files with embedding counts.
+     * List all ingested files with embedding counts.
+     * Returns a JSON list of files with embedding counts.
      */
     @GET
     @Path("/files")
     @Produces(MediaType.APPLICATION_JSON)
-    public Map<String, List<Map<String, Object>>> listFiles() {
+    public List<Map<String, Object>> listFiles() {
         return ingestService.listIngestedFiles();
     }
 
     /**
      * List all available adventures from ingested documents.
      * Adventures are identified by having "adventures" in the sourceFile path.
-     * Returns a JSON map of setting name -> list of adventure names.
+     * Returns a JSON list of adventure names.
      */
     @GET
     @Path("/adventures")
     @Produces(MediaType.APPLICATION_JSON)
-    public Map<String, List<String>> listAdventures() {
-        return ingestService.listAdventures();
+    public List<String> listAdventures() {
+        return loreRepository.listAdventures();
     }
 
     /**
-     * Delete a specific file from a setting.
-     * Query params: settingName and sourceFile
+     * Delete a specific file.
+     * Query param: sourceFile
      */
     @DELETE
     @Path("/files")
     @Produces(MediaType.APPLICATION_JSON)
-    public Map<String, Object> deleteFile(
-            @RestQuery String settingName,
-            @RestQuery String sourceFile) {
-        int deleteCount = ingestService.deleteFile(settingName, sourceFile);
+    public Map<String, Object> deleteFile(@RestQuery String sourceFile) {
+        int deleteCount = ingestService.deleteFile(sourceFile);
         return Map.of(
                 "deleted", deleteCount,
-                "settingName", settingName,
                 "sourceFile", sourceFile);
     }
 
     /**
-     * Delete all files from a setting.
-     * Query param: settingName
+     * Delete all documents.
      */
     @DELETE
-    @Path("/setting")
+    @Path("/all")
     @Produces(MediaType.APPLICATION_JSON)
-    public Map<String, Object> deleteSetting(@RestQuery String settingName) {
-        int deleteCount = ingestService.deleteSetting(settingName);
-        return Map.of(
-                "deleted", deleteCount,
-                "settingName", settingName);
+    public Map<String, Object> deleteAllDocuments() {
+        int deleteCount = ingestService.deleteAllDocuments();
+        return Map.of("deleted", deleteCount);
     }
 
     /**
-     * Upload and ingest documents into a setting.
-     * Accepts multipart form data with settingName and one or more document files.
+     * Upload and ingest documents.
+     * Accepts multipart form data with one or more document files.
      */
     @POST
     @Path("/ingest")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response ingestDocuments(
-            @RestForm String settingName,
-            @RestForm("documents") List<FileUpload> files) {
-
-        // Validate required fields
-        if (settingName == null || settingName.isBlank()) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Map.of("error", "Setting name is required"))
-                    .build();
-        }
+    public Response ingestDocuments(@RestForm("documents") List<FileUpload> files) {
 
         if (files == null || files.isEmpty()) {
             return Response.status(Response.Status.BAD_REQUEST)
@@ -150,7 +165,7 @@ public class LoreResource {
         }
 
         // Process files using IngestService
-        IngestService.IngestResult result = ingestService.ingestDocuments(settingName, files);
+        IngestService.IngestResult result = ingestService.ingestDocuments(files);
 
         // Convert result to API response format
         List<Map<String, String>> errors = result.errors().stream()
@@ -171,7 +186,6 @@ public class LoreResource {
             // Some files failed
             return Response.status(Response.Status.PARTIAL_CONTENT)
                     .entity(Map.of(
-                            "settingName", settingName,
                             "processedFiles", result.processedFiles(),
                             "successCount", result.successCount(),
                             "failures", errors))
@@ -180,7 +194,6 @@ public class LoreResource {
             // All files succeeded
             return Response.status(Response.Status.CREATED)
                     .entity(Map.of(
-                            "settingName", settingName,
                             "processedFiles", result.processedFiles(),
                             "successCount", result.successCount()))
                     .build();

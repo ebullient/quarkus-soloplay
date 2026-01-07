@@ -18,6 +18,7 @@ import jakarta.ws.rs.core.Response;
 
 import org.jboss.resteasy.reactive.RestPath;
 
+import dev.ebullient.soloplay.LoreRepository;
 import dev.ebullient.soloplay.StoryRepository;
 import dev.ebullient.soloplay.ai.MarkdownAugmenter;
 import dev.ebullient.soloplay.ai.PlayAssistant;
@@ -42,7 +43,7 @@ public class StoryResource {
     MarkdownAugmenter prettify;
 
     @Inject
-    dev.ebullient.soloplay.IngestService ingestService;
+    LoreRepository loreRepository;
 
     /**
      * Get list of all story thread IDs.
@@ -64,29 +65,28 @@ public class StoryResource {
     @Produces(MediaType.TEXT_HTML)
     public String play(PlayRequest request) {
         // Load story thread by slug (primary ID)
-        StoryThread thread = storyRepository.findStoryThreadBySlug(request.storyThreadId);
-        if (thread == null) {
+        StoryThread storyThread = storyRepository.findStoryThreadBySlug(request.storyThreadId);
+        if (storyThread == null) {
             return "<p class='error'>Error: Story thread not found: " + request.storyThreadId + "</p>";
         }
 
         // Generate conversation ID for memory (maintains chat history per thread)
-        String conversationId = thread.getSlug() + "-play";
+        String conversationId = storyThread.getSlug() + "-play";
 
         // Call AI with full story context
         String response = playAssistant.chat(
-                thread.getSettingName(),
-                thread.getName(),
-                thread.getSlug(),
-                thread.getCurrentDay(),
-                thread.getAdventureName(),
-                thread.getFollowingMode() != null ? thread.getFollowingMode().toString() : null,
-                thread.getCurrentSituation(),
+                storyThread.getName(),
+                storyThread.getSlug(),
+                storyThread.getCurrentDay(),
+                storyThread.getAdventureName(),
+                storyThread.getFollowingMode() != null ? storyThread.getFollowingMode().toString() : null,
+                storyThread.getCurrentSituation(),
                 conversationId,
                 request.message);
 
         // Update last played timestamp
-        thread.setLastPlayedAt(Instant.now());
-        storyRepository.saveStoryThread(thread);
+        storyThread.setLastPlayedAt(Instant.now());
+        storyRepository.saveStoryThread(storyThread);
 
         return prettify.markdownToHtml(response);
     }
@@ -130,29 +130,12 @@ public class StoryResource {
                     .build();
         }
 
-        if (request.settingName == null || request.settingName.isBlank()) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(new ErrorResponse("Setting name is required"))
-                    .build();
-        }
-
-        // Validate that the setting exists in the RAG embedding store
-        List<String> availableSettings = storyRepository.getAvailableSettings();
-        if (!availableSettings.contains(request.settingName)) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(new ErrorResponse("Setting '" + request.settingName
-                            + "' not found. Please upload setting documents first or choose from available settings: "
-                            + String.join(", ", availableSettings)))
-                    .build();
-        }
-
         // Validate adventure exists if specified
         if (request.adventureName != null && !request.adventureName.isBlank()) {
-            if (!ingestService.validateAdventureExists(request.settingName, request.adventureName)) {
+            if (!loreRepository.validateAdventureExists(request.adventureName)) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(new ErrorResponse("Adventure '" + request.adventureName
-                                + "' not found for setting '" + request.settingName
-                                + "'. Use GET /api/lore/adventures to see available adventures."))
+                                + "' not found. Use GET /api/lore/adventures to see available adventures."))
                         .build();
             }
         }
@@ -162,7 +145,6 @@ public class StoryResource {
         try {
             thread = storyRepository.createStoryThread(
                     request.name,
-                    request.settingName,
                     request.adventureName,
                     request.followingMode);
         } catch (IllegalArgumentException e) {
@@ -413,7 +395,6 @@ public class StoryResource {
 
     public record CreateStoryThreadRequest(
             String name,
-            String settingName,
             String adventureName,
             String followingMode) {
     }

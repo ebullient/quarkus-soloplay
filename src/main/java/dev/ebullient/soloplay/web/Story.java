@@ -28,7 +28,7 @@ public class Story extends Controller {
     public static class Templates {
         public static native TemplateInstance select(List<StoryThread> threads);
 
-        public static native TemplateInstance create(List<String> availableSettings);
+        public static native TemplateInstance create();
 
         public static native TemplateInstance configure(StoryThread thread);
 
@@ -60,8 +60,7 @@ public class Story extends Controller {
     @GET
     @Path("/create")
     public TemplateInstance create() {
-        List<String> availableSettings = storyRepository.getAvailableSettings();
-        return Templates.create(availableSettings);
+        return Templates.create();
     }
 
     /**
@@ -71,35 +70,20 @@ public class Story extends Controller {
     @Path("/create")
     public TemplateInstance createPost(
             @RestForm String name,
-            @RestForm String settingName,
             @RestForm String adventureName,
             @RestForm String followingMode) {
 
-        List<String> availableSettings = storyRepository.getAvailableSettings();
-
         if (name == null || name.isBlank()) {
             flash("error", "Please provide a story thread name");
-            return Templates.create(availableSettings);
-        }
-
-        if (settingName == null || settingName.isBlank()) {
-            flash("error", "Please provide a setting name");
-            return Templates.create(availableSettings);
-        }
-
-        // Validate that the setting exists in the RAG embedding store
-        if (!availableSettings.contains(settingName)) {
-            flash("error", "Setting '" + settingName
-                    + "' not found. Please upload setting documents first or choose from available settings.");
-            return Templates.create(availableSettings);
+            return Templates.create();
         }
 
         StoryThread thread;
         try {
-            thread = storyRepository.createStoryThread(name, settingName, adventureName, followingMode);
+            thread = storyRepository.createStoryThread(name, adventureName, followingMode);
         } catch (IllegalArgumentException e) {
             flash("error", e.getMessage());
-            return Templates.create(availableSettings);
+            return Templates.create();
         }
 
         flash("success", "Story thread created: " + name);
@@ -135,7 +119,6 @@ public class Story extends Controller {
     public TemplateInstance configurePost(
             @RestPath String slug,
             @RestForm String name,
-            @RestForm String settingName,
             @RestForm String adventureName,
             @RestForm String followingMode,
             @RestForm String status) {
@@ -149,9 +132,6 @@ public class Story extends Controller {
         // Update fields (note: slug is immutable and cannot be changed)
         if (name != null && !name.isBlank()) {
             thread.setName(name);
-        }
-        if (settingName != null && !settingName.isBlank()) {
-            thread.setSettingName(settingName);
         }
         if (adventureName != null) {
             thread.setAdventureName(adventureName.isBlank() ? null : adventureName);

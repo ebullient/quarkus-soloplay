@@ -79,9 +79,9 @@ FOR (st:StoryThread) ON (st.status)
 CREATE INDEX story_thread_last_played IF NOT EXISTS
 FOR (st:StoryThread) ON (st.lastPlayedAt)
 
-// Index on settingName for filtering by setting
-CREATE INDEX story_thread_setting IF NOT EXISTS
-FOR (st:StoryThread) ON (st.settingName)
+// Index on adventureName for filtering by adventure
+CREATE INDEX story_thread_adventure IF NOT EXISTS
+FOR (st:StoryThread) ON (st.adventureName)
 ```
 
 ## Applying Constraints in Production

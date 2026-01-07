@@ -1,11 +1,11 @@
 {#include base}
-    {#title}Campaign Setting Ingestion{/title}
+    {#title}Document Ingestion{/title}
 
     {#stylesheets}
     <link rel="stylesheet" href="/ingest.css">
     {/stylesheets}
 
-    {#header-title}Campaign Setting Ingestion{/header-title}
+    {#header-title}Document Ingestion{/header-title}
 
     {#content}
     <div id="main-container">
@@ -19,33 +19,14 @@
             <strong>Error:</strong> {flash:error}
         </div>
         {/if}
+        {#if flash:warning}
+        <div class="flash-message warning">
+            <strong>Warning:</strong> {flash:warning}
+        </div>
+        {/if}
 
         <div id="ingest-form-container">
-            <form id="ingest-form" action="/load-setting" method="post" enctype="multipart/form-data">
-                <div class="form-group">
-                    <label for="setting-name">Setting Name</label>
-                    <input
-                        type="text"
-                        id="setting-name"
-                        name="settingName"
-                        list="settings-list"
-                        placeholder="e.g., Forgotten Realms, Eberron, Custom Campaign"
-                        required
-                    >
-                    <datalist id="settings-list">
-                        {#for setting in availableSettings}
-                        <option value="{setting}">{setting}</option>
-                        {/for}
-                    </datalist>
-                    <p class="help-text">
-                        {#if availableSettings.isEmpty()}
-                        Enter a name to identify this campaign setting
-                        {#else}
-                        Choose an existing setting or enter a new name
-                        {/if}
-                    </p>
-                </div>
-
+            <form id="ingest-form" action="/ingest" method="post" enctype="multipart/form-data">
                 <div class="form-group">
                     <label for="documents">Campaign Documents</label>
                     <input

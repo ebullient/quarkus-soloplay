@@ -16,7 +16,7 @@ import io.quarkiverse.langchain4j.RegisterAiService;
  *
  * This is the main GM interface for solo play.
  */
-@RegisterAiService(tools = StoryTools.class, retrievalAugmentor = LoreRetriever.class)
+@RegisterAiService(tools = { StoryTools.class, LoreTools.class }, retrievalAugmentor = LoreRetriever.class)
 @ApplicationScoped
 public interface PlayAssistant {
 
@@ -26,7 +26,6 @@ public interface PlayAssistant {
             Story Context:
             - Story Thread ID: {storyThreadId}
             - Story Thread Name: {storyName}
-            - Setting: {settingName}
             - Current Day: {currentDay}
             {#if adventureName}
             - Adventure: {adventureName}
@@ -40,8 +39,9 @@ public interface PlayAssistant {
 
             You have access to:
             1. Setting lore (via retrieval augmented generation) - use this for world-building questions
-            2. Campaign state tools - use these to track and query characters, locations, events, and relationships
-            3. Current story context (current situation, day counter)
+            2. Lore document retrieval - use getLoreDocument to resolve cross-references by filename
+            3. Campaign state tools - use these to track and query characters, locations, events, and relationships
+            4. Current story context (current situation, day counter)
 
             Your responsibilities:
             - Respond to player actions and questions naturally as a GM would
@@ -64,7 +64,6 @@ public interface PlayAssistant {
             Remember: You're facilitating collaborative storytelling. Balance structure with player agency.
             """)
     String chat(
-            @V("settingName") String settingName,
             @V("storyName") String storyName,
             @V("storyThreadId") String storyThreadId,
             @V("currentDay") Long currentDay,

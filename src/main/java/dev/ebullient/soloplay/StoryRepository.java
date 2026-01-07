@@ -679,16 +679,14 @@ public class StoryRepository {
      * Validates slug uniqueness and sets optional adventure/followingMode fields.
      *
      * @param name Story thread display name
-     * @param settingName Setting name (must exist in RAG embeddings)
      * @param adventureName Optional adventure name (can be null or blank)
      * @param followingMode Optional following mode (can be null or blank, defaults to LOOSE if adventure specified)
      * @return The created story thread
      * @throws IllegalArgumentException if slug already exists or followingMode is invalid
      */
-    public StoryThread createStoryThread(String name, String settingName,
-            String adventureName, String followingMode) {
-        // Create new thread with name and setting
-        StoryThread thread = new StoryThread(name, settingName);
+    public StoryThread createStoryThread(String name, String adventureName, String followingMode) {
+        // Create new thread with name
+        StoryThread thread = new StoryThread(name);
 
         // Check if slug already exists
         if (findStoryThreadBySlug(thread.getSlug()) != null) {
@@ -761,36 +759,6 @@ public class StoryRepository {
                 """;
         var session = sessionFactory.openSession();
         return toList(session.query(StoryThread.class, cypher, Map.of()));
-    }
-
-    /**
-     * Get list of all available setting names from ingested embeddings.
-     * Returns empty list if no settings have been ingested yet.
-     */
-    public List<String> getAvailableSettings() {
-        var session = sessionFactory.openSession();
-        List<String> settingNames = new ArrayList<>();
-
-        try {
-            // Query for distinct setting names from embedding documents
-            // The Neo4j LangChain4j extension stores embeddings with metadata properties
-            Iterable<Map<String, Object>> results = session.query(
-                    "MATCH (n:Document) WHERE n.settingName IS NOT NULL " +
-                            "RETURN DISTINCT n.settingName as settingName ORDER BY n.settingName",
-                    Map.of());
-
-            results.forEach(row -> {
-                String settingName = (String) row.get("settingName");
-                if (isPresent(settingName)) {
-                    settingNames.add(settingName);
-                }
-            });
-        } catch (Exception e) {
-            // Log the warning but don't fail - this happens when no embeddings exist yet
-            Log.debugf("No setting data found yet: %s", e.getMessage());
-        }
-
-        return settingNames;
     }
 
     /**

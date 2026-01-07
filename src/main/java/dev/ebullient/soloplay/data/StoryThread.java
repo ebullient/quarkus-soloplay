@@ -6,8 +6,8 @@ import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.NodeEntity;
 
 /**
- * Represents a story thread (save file/playthrough) in a specific setting.
- * Multiple story threads can exist for the same setting.
+ * Represents a story thread (save file/playthrough).
+ * Multiple story threads can exist in the same database.
  *
  * Uses slug as primary ID for human-friendly URLs and simpler data model.
  * Display name can be changed, but slug is immutable once created.
@@ -18,7 +18,6 @@ public class StoryThread {
     private String slug; // Primary ID: URL-friendly identifier (e.g., "summer-2024-adventure")
 
     private String name; // Display name: e.g., "Summer 2024 Adventure!" (can be edited)
-    private String settingName; // Links to RAG embeddings
 
     private StoryStatus status;
 
@@ -44,11 +43,10 @@ public class StoryThread {
      * Create a new story thread.
      * Slug will be auto-generated from name and must be made unique by caller.
      */
-    public StoryThread(String name, String settingName) {
+    public StoryThread(String name) {
         this();
         this.name = name;
         this.slug = slugify(name);
-        this.settingName = settingName;
     }
 
     /**
@@ -106,14 +104,6 @@ public class StoryThread {
     public void setName(String name) {
         this.name = name;
         // Slug remains unchanged
-    }
-
-    public String getSettingName() {
-        return settingName;
-    }
-
-    public void setSettingName(String settingName) {
-        this.settingName = settingName;
     }
 
     public StoryStatus getStatus() {

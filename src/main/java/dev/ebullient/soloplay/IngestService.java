@@ -15,7 +15,6 @@ import org.neo4j.ogm.session.SessionFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
-import dev.ebullient.soloplay.ai.LoreAssistant;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
@@ -56,13 +55,10 @@ public class IngestService {
     EmbeddingModel embeddingModel; // Ollama nomic-embed-text
 
     @Inject
-    LoreAssistant settingAssistant; // For RAG queries regarding the setting
-
-    @Inject
     SessionFactory sessionFactory;
 
-    public void loadSetting(String settingName, String filename, String content) {
-        Log.infof("Processing file: %s for setting: %s (size: %d bytes)", filename, settingName, content.length());
+    public void ingestFile(String filename, String content) {
+        Log.infof("Processing file: %s (size: %d bytes)", filename, content.length());
 
         if (content.contains(TOOLS_DOC_SEPARATOR)) {
             String[] parts = content.split(TOOLS_DOC_SEPARATOR);
@@ -72,24 +68,23 @@ public class IngestService {
                 String trimmed = part.trim();
                 // Skip empty parts and parts that are just the separator
                 if (!trimmed.isBlank() && !trimmed.equals("============")) {
-                    processStructuredMarkdown(settingName, filename, trimmed);
+                    processStructuredMarkdown(filename, trimmed);
                     processedCount++;
                 }
             }
             Log.infof("Processed %d non-empty sections from %s", processedCount, filename);
         } else {
-            splitDocument(settingName, filename, content);
+            splitDocument(filename, content);
         }
 
         Log.infof("Completed processing file: %s", filename);
     }
 
-    private void processStructuredMarkdown(String settingName, String filename, String content) {
+    private void processStructuredMarkdown(String filename, String content) {
         // Parse YAML frontmatter
         Map<String, String> yamlMetadata = parseYamlFrontmatter(content);
         String cleanContent = removeYamlFrontmatter(content);
         Metadata common = Metadata.from(yamlMetadata)
-                .put("settingName", settingName)
                 // Note: structured frontmatter includes a filename
                 // indicate the source file for traceability
                 .put("sourceFile", filename)
@@ -162,7 +157,7 @@ public class IngestService {
     }
 
     // Split document into smaller segments, generate embeddings, and store them
-    void splitDocument(String settingName, String filename, String content) {
+    void splitDocument(String filename, String content) {
         var doc = Document.from(content);
         var splitter = DocumentSplitters.recursive(
                 chunkSize, // max chunk size in characters
@@ -175,7 +170,6 @@ public class IngestService {
         for (int i = 0; i < segments.size(); i++) {
             TextSegment segment = segments.get(i);
             segment.metadata()
-                    .put("settingName", settingName)
                     .put("sourceFile", filename)
                     .put("canonical", "true") // source material
                     .put("chunkIndex", i);
@@ -308,7 +302,7 @@ public class IngestService {
             // Split into parts: ["monster", "cr", "8"]
             String[] parts = path.split("/");
 
-            if (parts.length == 0) {
+            if (parts.length == 0 || "compendium".equals(parts[0])) {
                 continue;
             }
 
@@ -352,34 +346,30 @@ public class IngestService {
     }
 
     /**
-     * List all ingested files with their settings and embedding counts.
-     * Returns a map of setting name -> list of file info maps.
+     * List all ingested files with their embedding counts.
+     * Returns a list of file info maps.
      */
-    public Map<String, List<Map<String, Object>>> listIngestedFiles() {
+    public List<Map<String, Object>> listIngestedFiles() {
         var session = sessionFactory.openSession();
-        Map<String, List<Map<String, Object>>> result = new HashMap<>();
+        List<Map<String, Object>> result = new ArrayList<>();
 
         try {
-            // Query for files grouped by setting with counts
             String cypher = """
                     MATCH (n:Document)
-                    WHERE n.settingName IS NOT NULL AND n.sourceFile IS NOT NULL
-                    RETURN n.settingName as settingName,
-                           n.sourceFile as sourceFile,
+                    WHERE n.sourceFile IS NOT NULL
+                    RETURN n.sourceFile as sourceFile,
                            count(*) as embeddingCount
-                    ORDER BY n.settingName, n.sourceFile
+                    ORDER BY n.sourceFile
                     """;
 
             Iterable<Map<String, Object>> results = session.query(cypher, Map.of());
             results.forEach(row -> {
-                String settingName = (String) row.get("settingName");
                 String sourceFile = (String) row.get("sourceFile");
                 Long embeddingCount = (Long) row.get("embeddingCount");
 
-                result.computeIfAbsent(settingName, k -> new ArrayList<>())
-                        .add(Map.of(
-                                "sourceFile", sourceFile,
-                                "embeddingCount", embeddingCount));
+                result.add(Map.of(
+                        "sourceFile", sourceFile,
+                        "embeddingCount", embeddingCount));
             });
         } catch (Exception e) {
             Log.errorf(e, "Error listing ingested files: %s", e.getMessage());
@@ -389,79 +379,24 @@ public class IngestService {
     }
 
     /**
-     * List all available adventures from ingested documents.
-     * Adventures are identified by having "adventures" in the sourceFile path.
-     * Returns a map of setting name -> list of adventure names (from YAML sources
-     * field).
-     */
-    public Map<String, List<String>> listAdventures() {
-        var session = sessionFactory.openSession();
-        Map<String, List<String>> result = new HashMap<>();
-
-        try {
-            // Query for documents with "adventures" in path and extract sources
-            String cypher = """
-                    MATCH (n:Document)
-                    WHERE n.sourceFile IS NOT NULL
-                      AND toLower(n.sourceFile) CONTAINS 'adventures'
-                      AND n.sources IS NOT NULL
-                    RETURN DISTINCT n.settingName as settingName,
-                           n.sources as adventureName
-                    ORDER BY n.settingName, n.sources
-                    """;
-
-            Iterable<Map<String, Object>> results = session.query(cypher, Map.of());
-            results.forEach(row -> {
-                String settingName = (String) row.get("settingName");
-                String adventureName = (String) row.get("adventureName");
-
-                if (settingName != null && adventureName != null) {
-                    result.computeIfAbsent(settingName, k -> new ArrayList<>())
-                            .add(adventureName);
-                }
-            });
-        } catch (Exception e) {
-            Log.errorf(e, "Error listing adventures: %s", e.getMessage());
-        }
-
-        return result;
-    }
-
-    /**
-     * Validate that an adventure exists in the ingested documents for a given
-     * setting.
-     * Returns true if the adventure is found, false otherwise.
-     */
-    public boolean validateAdventureExists(String settingName, String adventureName) {
-        if (settingName == null || adventureName == null) {
-            return false;
-        }
-
-        Map<String, List<String>> adventures = listAdventures();
-        List<String> settingAdventures = adventures.get(settingName);
-
-        return settingAdventures != null && settingAdventures.contains(adventureName);
-    }
-
-    /**
-     * Delete all embeddings for a specific file in a setting.
+     * Delete all embeddings for a specific file.
      * Returns the number of embeddings deleted.
      */
-    public int deleteFile(String settingName, String sourceFile) {
+    public int deleteFile(String sourceFile) {
         var session = sessionFactory.openSession();
         var tx = session.beginTransaction();
 
         try {
             String cypher = """
                     MATCH (n:Document)
-                    WHERE n.settingName = $settingName AND n.sourceFile = $sourceFile
+                    WHERE n.sourceFile = $sourceFile
                     WITH n, count(*) as deleteCount
                     DETACH DELETE n
                     RETURN deleteCount
                     """;
 
             Iterable<Map<String, Object>> results = session.query(cypher,
-                    Map.of("settingName", settingName, "sourceFile", sourceFile));
+                    Map.of("sourceFile", sourceFile));
 
             int deleteCount = 0;
             for (Map<String, Object> row : results) {
@@ -469,7 +404,7 @@ public class IngestService {
             }
 
             tx.commit();
-            Log.infof("Deleted %d embeddings for file: %s in setting: %s", deleteCount, sourceFile, settingName);
+            Log.infof("Deleted %d embeddings for file: %s", deleteCount, sourceFile);
             return deleteCount;
         } catch (Exception e) {
             tx.rollback();
@@ -481,25 +416,23 @@ public class IngestService {
     }
 
     /**
-     * Delete all embeddings for a specific setting.
+     * Delete all document embeddings.
      * Returns the number of embeddings deleted.
      */
-    public int deleteSetting(String settingName) {
+    public int deleteAllDocuments() {
         var session = sessionFactory.openSession();
         var tx = session.beginTransaction();
 
         try {
             String cypher = """
                     MATCH (n:Document)
-                    WHERE n.settingName = $settingName
                     WITH count(n) as deleteCount
                     MATCH (n:Document)
-                    WHERE n.settingName = $settingName
                     DETACH DELETE n
                     RETURN deleteCount
                     """;
 
-            Iterable<Map<String, Object>> results = session.query(cypher, Map.of("settingName", settingName));
+            Iterable<Map<String, Object>> results = session.query(cypher, Map.of());
 
             int deleteCount = 0;
             for (Map<String, Object> row : results) {
@@ -507,12 +440,12 @@ public class IngestService {
             }
 
             tx.commit();
-            Log.infof("Deleted %d embeddings for setting: %s", deleteCount, settingName);
+            Log.infof("Deleted %d document embeddings", deleteCount);
             return deleteCount;
         } catch (Exception e) {
             tx.rollback();
-            Log.errorf(e, "Error deleting setting: %s", e.getMessage());
-            throw new RuntimeException("Failed to delete setting: " + e.getMessage(), e);
+            Log.errorf(e, "Error deleting documents: %s", e.getMessage());
+            throw new RuntimeException("Failed to delete documents: " + e.getMessage(), e);
         } finally {
             tx.close();
         }
@@ -544,22 +477,20 @@ public class IngestService {
     }
 
     /**
-     * Ingest multiple document files for a setting.
+     * Ingest multiple document files.
      * Processes all files and returns a result with successes and failures.
      *
-     * @param settingName The setting name to associate documents with
-     * @param files       List of file uploads to process
+     * @param files List of file uploads to process
      * @return IngestResult containing processed files and any errors
      */
-    public IngestResult ingestDocuments(String settingName,
-            List<org.jboss.resteasy.reactive.multipart.FileUpload> files) {
+    public IngestResult ingestDocuments(List<org.jboss.resteasy.reactive.multipart.FileUpload> files) {
         List<String> processedFiles = new ArrayList<>();
         List<FileError> errors = new ArrayList<>();
 
         for (var file : files) {
             try {
                 String content = java.nio.file.Files.readString(file.uploadedFile());
-                loadSetting(settingName, file.fileName(), content);
+                ingestFile(file.fileName(), content);
                 processedFiles.add(file.fileName());
             } catch (Exception e) {
                 Log.errorf(e, "Error processing file: %s", file.fileName());

@@ -27,22 +27,6 @@
     <h2>Basic Information</h2>
 
     <div class="form-group">
-      <label for="settingName">Setting Name *</label>
-      {#if availableSettings.isEmpty()}
-      <p>⚠️ No settings found. Please upload lore documents first via <a
-          href="/ingest">/ingest</a></p>
-      {#else}
-      <select id="settingName" name="settingName" required>
-        <option value="">-- Select a Setting --</option>
-        {#for setting in availableSettings}
-        <option value="{setting}">{setting}</option>
-        {/for}
-      </select>
-      <small>Select from settings with uploaded lore documents</small>
-      {/if}
-    </div>
-
-    <div class="form-group">
       <label for="name">Story Thread Name *</label>
       <input type="text" id="name" name="name" required placeholder="e.g., Summer 2024 Adventure" autocomplete="off"><br />
       <small>Give your playthrough a memorable name</small>
