@@ -64,12 +64,12 @@
                     </div>
                     {#if location.createdAt}
                     <div class="meta-item">
-                        <strong>Created:</strong> {location.createdAt.format('yyyy-MM-dd HH:mm')}
+                        <strong>Created:</strong> {location.createdAt.formatUtc('yyyy-MM-dd HH:mm')}
                     </div>
                     {/if}
                     {#if location.updatedAt}
                     <div class="meta-item">
-                        <strong>Updated:</strong> {location.updatedAt.format('yyyy-MM-dd HH:mm')}
+                        <strong>Updated:</strong> {location.updatedAt.formatUtc('yyyy-MM-dd HH:mm')}
                     </div>
                     {/if}
                 </div>

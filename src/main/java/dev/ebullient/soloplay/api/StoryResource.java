@@ -1,6 +1,5 @@
 package dev.ebullient.soloplay.api;
 
-import java.time.Instant;
 import java.util.List;
 
 import jakarta.enterprise.context.ApplicationScoped;
@@ -10,7 +9,6 @@ import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
-import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
@@ -20,8 +18,8 @@ import org.jboss.resteasy.reactive.RestPath;
 
 import dev.ebullient.soloplay.LoreRepository;
 import dev.ebullient.soloplay.StoryRepository;
-import dev.ebullient.soloplay.ai.MarkdownAugmenter;
-import dev.ebullient.soloplay.ai.PlayAssistant;
+import dev.ebullient.soloplay.ai.CharacterCreatorService;
+import dev.ebullient.soloplay.ai.GameMasterService;
 import dev.ebullient.soloplay.data.Character;
 import dev.ebullient.soloplay.data.StoryThread;
 
@@ -37,10 +35,10 @@ public class StoryResource {
     StoryRepository storyRepository;
 
     @Inject
-    PlayAssistant playAssistant;
+    GameMasterService gameMaster;
 
     @Inject
-    MarkdownAugmenter prettify;
+    CharacterCreatorService characterCreator;
 
     @Inject
     LoreRepository loreRepository;
@@ -58,43 +56,36 @@ public class StoryResource {
     /**
      * Story-aware chat endpoint for solo play.
      * Integrates RAG (lore), story tools (campaign state), and story thread context.
+     *
+     * Context loading and timestamp updates are handled by GameMasterService.
      */
     @POST
     @Path("/play")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_HTML)
     public String play(PlayRequest request) {
-        // Load story thread by slug (primary ID)
-        StoryThread storyThread = storyRepository.findStoryThreadBySlug(request.storyThreadId);
-        if (storyThread == null) {
-            return "<p class='error'>Error: Story thread not found: " + request.storyThreadId + "</p>";
-        }
-
-        // Generate conversation ID for memory (maintains chat history per thread)
-        String conversationId = storyThread.getSlug() + "-play";
-
-        // Call AI with full story context
-        String response = playAssistant.chat(
-                storyThread.getName(),
-                storyThread.getSlug(),
-                storyThread.getCurrentDay(),
-                storyThread.getAdventureName(),
-                storyThread.getFollowingMode() != null ? storyThread.getFollowingMode().toString() : null,
-                storyThread.getCurrentSituation(),
-                conversationId,
-                request.message);
-
-        // Update last played timestamp
-        storyThread.setLastPlayedAt(Instant.now());
-        storyRepository.saveStoryThread(storyThread);
-
-        return prettify.markdownToHtml(response);
+        return gameMaster.chat(request.storyThreadId, request.message);
     }
 
     /**
      * Request model for play endpoint.
      */
     public record PlayRequest(String storyThreadId, String message) {
+    }
+
+    /**
+     * Character creation chat endpoint.
+     * Guides players through creating characters via conversational AI.
+     *
+     * @param request Contains storyThreadId and player message
+     * @return Character creator response as HTML
+     */
+    @POST
+    @Path("/character-creator")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.TEXT_HTML)
+    public String characterCreator(PlayRequest request) {
+        return characterCreator.chat(request.storyThreadId, request.message);
     }
 
     // ========== Story Thread CRUD Endpoints ==========
@@ -106,7 +97,7 @@ public class StoryResource {
     @Path("/{slug}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getStoryThread(@RestPath String slug) {
-        StoryThread thread = storyRepository.findStoryThreadBySlug(slug);
+        StoryThread thread = storyRepository.findStoryThreadById(slug);
         if (thread == null) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(new ErrorResponse("Story thread not found: " + slug))
@@ -173,7 +164,7 @@ public class StoryResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response updateStoryThreadState(@RestPath String slug, UpdateStoryThreadStateRequest request) {
-        StoryThread thread = storyRepository.findStoryThreadBySlug(slug);
+        StoryThread thread = storyRepository.findStoryThreadById(slug);
         if (thread == null) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(new ErrorResponse("Story thread not found: " + slug))
@@ -209,7 +200,7 @@ public class StoryResource {
     @Path("/{slug}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response deleteStoryThread(@RestPath String slug) {
-        StoryThread thread = storyRepository.findStoryThreadBySlug(slug);
+        StoryThread thread = storyRepository.findStoryThreadById(slug);
         if (thread == null) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(new ErrorResponse("Story thread not found: " + slug))
@@ -229,7 +220,7 @@ public class StoryResource {
     @Path("/{slug}/characters")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getCharacters(@RestPath String slug) {
-        StoryThread thread = storyRepository.findStoryThreadBySlug(slug);
+        StoryThread thread = storyRepository.findStoryThreadById(slug);
         if (thread == null) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(new ErrorResponse("Story thread not found: " + slug))
@@ -247,7 +238,7 @@ public class StoryResource {
     @Path("/{slug}/characters/{characterId}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getCharacter(@RestPath String slug, @RestPath String characterId) {
-        StoryThread thread = storyRepository.findStoryThreadBySlug(slug);
+        StoryThread thread = storyRepository.findStoryThreadById(slug);
         if (thread == null) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(new ErrorResponse("Story thread not found: " + slug))
@@ -272,7 +263,7 @@ public class StoryResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response createCharacter(@RestPath String slug, CreateCharacterRequest request) {
-        StoryThread thread = storyRepository.findStoryThreadBySlug(slug);
+        StoryThread thread = storyRepository.findStoryThreadById(slug);
         if (thread == null) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(new ErrorResponse("Story thread not found: " + slug))
@@ -291,14 +282,16 @@ public class StoryResource {
                     .build();
         }
 
-        // Create character with tags
+        // Create character with tags and aliases
         List<String> tags = request.tags != null ? request.tags : List.of();
+        List<String> aliases = request.aliases != null ? request.aliases : List.of();
         Character character = storyRepository.createCharacter(
                 slug,
                 request.name,
                 request.summary,
                 request.description,
-                tags);
+                tags,
+                aliases);
 
         // Update optional fields if provided
         if ((request.characterClass != null && !request.characterClass.isBlank()) || request.level != null) {
@@ -315,15 +308,18 @@ public class StoryResource {
     }
 
     /**
-     * Update an existing character.
+     * Update an existing character (partial update).
+     * Only fields provided in the request will be updated.
+     * Null or omitted fields will not be changed.
+     * To update tags, include the complete tag list (replaces all existing tags).
      */
-    @PUT
+    @PATCH
     @Path("/{slug}/characters/{characterId}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response updateCharacter(@RestPath String slug, @RestPath String characterId,
             UpdateCharacterRequest request) {
-        StoryThread thread = storyRepository.findStoryThreadBySlug(slug);
+        StoryThread thread = storyRepository.findStoryThreadById(slug);
         if (thread == null) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(new ErrorResponse("Story thread not found: " + slug))
@@ -373,7 +369,7 @@ public class StoryResource {
     @Path("/{slug}/characters/{characterId}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response deleteCharacter(@RestPath String slug, @RestPath String characterId) {
-        StoryThread thread = storyRepository.findStoryThreadBySlug(slug);
+        StoryThread thread = storyRepository.findStoryThreadById(slug);
         if (thread == null) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(new ErrorResponse("Story thread not found: " + slug))
@@ -389,6 +385,167 @@ public class StoryResource {
 
         storyRepository.deleteCharacter(characterId);
         return Response.ok(new MessageResponse("Character deleted: " + characterId)).build();
+    }
+
+    // ========== Location CRUD Endpoints ==========
+
+    /**
+     * Get all locations for a story thread.
+     */
+    @GET
+    @Path("/{slug}/locations")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getLocations(@RestPath String slug) {
+        StoryThread thread = storyRepository.findStoryThreadById(slug);
+        if (thread == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(new ErrorResponse("Story thread not found: " + slug))
+                    .build();
+        }
+
+        List<dev.ebullient.soloplay.data.Location> locations = storyRepository.findLocationsByStoryThreadId(slug);
+        return Response.ok(locations).build();
+    }
+
+    /**
+     * Get a specific location by ID.
+     */
+    @GET
+    @Path("/{slug}/locations/{locationId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getLocation(@RestPath String slug, @RestPath String locationId) {
+        StoryThread thread = storyRepository.findStoryThreadById(slug);
+        if (thread == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(new ErrorResponse("Story thread not found: " + slug))
+                    .build();
+        }
+
+        dev.ebullient.soloplay.data.Location location = storyRepository.findLocationById(locationId);
+        if (location == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(new ErrorResponse("Location not found: " + locationId))
+                    .build();
+        }
+
+        return Response.ok(location).build();
+    }
+
+    /**
+     * Create a new location in a story thread.
+     */
+    @POST
+    @Path("/{slug}/locations")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response createLocation(@RestPath String slug, CreateLocationRequest request) {
+        StoryThread thread = storyRepository.findStoryThreadById(slug);
+        if (thread == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(new ErrorResponse("Story thread not found: " + slug))
+                    .build();
+        }
+
+        if (request.name == null || request.name.isBlank()) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(new ErrorResponse("Location name is required"))
+                    .build();
+        }
+
+        if (request.summary == null || request.summary.isBlank()) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(new ErrorResponse("Location summary is required"))
+                    .build();
+        }
+
+        // Create location with tags
+        List<String> tags = request.tags != null ? request.tags : List.of();
+        dev.ebullient.soloplay.data.Location location = storyRepository.createLocation(
+                slug,
+                request.name,
+                request.summary,
+                request.description,
+                tags);
+
+        return Response.status(Response.Status.CREATED).entity(location).build();
+    }
+
+    /**
+     * Update an existing location (partial update).
+     * Only fields provided in the request will be updated.
+     * Null or omitted fields will not be changed.
+     * To update tags, include the complete tag list (replaces all existing tags).
+     */
+    @PATCH
+    @Path("/{slug}/locations/{locationId}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response updateLocation(@RestPath String slug, @RestPath String locationId,
+            UpdateLocationRequest request) {
+        StoryThread thread = storyRepository.findStoryThreadById(slug);
+        if (thread == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(new ErrorResponse("Story thread not found: " + slug))
+                    .build();
+        }
+
+        dev.ebullient.soloplay.data.Location location = storyRepository.findLocationById(locationId);
+        if (location == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(new ErrorResponse("Location not found: " + locationId))
+                    .build();
+        }
+
+        // Update location fields
+        location = storyRepository.updateLocation(
+                locationId,
+                request.name,
+                request.summary,
+                request.description);
+
+        // Update tags if provided - replace all existing tags
+        if (request.tags != null) {
+            // Remove all existing tags
+            List<String> currentTags = location.getTags();
+            if (!currentTags.isEmpty()) {
+                storyRepository.removeLocationTags(locationId, currentTags);
+            }
+
+            // Add new tags
+            if (!request.tags.isEmpty()) {
+                storyRepository.addLocationTags(locationId, request.tags);
+            }
+
+            // Reload location to get updated tags
+            location = storyRepository.findLocationById(locationId);
+        }
+
+        return Response.ok(location).build();
+    }
+
+    /**
+     * Delete a location from a story thread.
+     */
+    @DELETE
+    @Path("/{slug}/locations/{locationId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response deleteLocation(@RestPath String slug, @RestPath String locationId) {
+        StoryThread thread = storyRepository.findStoryThreadById(slug);
+        if (thread == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(new ErrorResponse("Story thread not found: " + slug))
+                    .build();
+        }
+
+        dev.ebullient.soloplay.data.Location location = storyRepository.findLocationById(locationId);
+        if (location == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(new ErrorResponse("Location not found: " + locationId))
+                    .build();
+        }
+
+        storyRepository.deleteLocation(locationId);
+        return Response.ok(new MessageResponse("Location deleted: " + locationId)).build();
     }
 
     // ========== Request/Response Models ==========
@@ -411,7 +568,8 @@ public class StoryResource {
             String description,
             String characterClass,
             Integer level,
-            List<String> tags) {
+            List<String> tags,
+            List<String> aliases) {
     }
 
     public record UpdateCharacterRequest(
@@ -420,6 +578,20 @@ public class StoryResource {
             String description,
             String characterClass,
             Integer level,
+            List<String> tags) {
+    }
+
+    public record CreateLocationRequest(
+            String name,
+            String summary,
+            String description,
+            List<String> tags) {
+    }
+
+    public record UpdateLocationRequest(
+            String name,
+            String summary,
+            String description,
             List<String> tags) {
     }
 

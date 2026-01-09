@@ -34,7 +34,6 @@ public class StoryEvent {
     private String storyThreadId; // Story thread slug (e.g., "summer-adventure")
 
     private Instant timestamp; // Real-world timestamp
-    private String conversationId; // Narrative thread this event belongs to
 
     private List<String> tags;
 
@@ -96,14 +95,6 @@ public class StoryEvent {
         if (this.slug != null) {
             this.id = storyThreadId + ":" + this.slug;
         }
-    }
-
-    public String getConversationId() {
-        return conversationId;
-    }
-
-    public void setConversationId(String conversationId) {
-        this.conversationId = conversationId;
     }
 
     public Instant getTimestamp() {

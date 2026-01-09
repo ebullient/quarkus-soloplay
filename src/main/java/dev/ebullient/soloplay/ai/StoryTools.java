@@ -46,7 +46,7 @@ public class StoryTools {
     }
 
     @Tool("""
-            Create a new character in the story thread with optional tags.
+            Create a new character in the story thread with optional tags and aliases.
 
             IMPORTANT: Choose meaningful names that will create good identifiers:
             - For named NPCs: use full names (e.g., "Thorin Oakenshield", "Gandalf the Grey")
@@ -65,16 +65,31 @@ public class StoryTools {
             - Status: "dead", "missing", "imprisoned", "retired"
 
             Tags parameter should be a list like: ["player-controlled", "protagonist"]
+
+            Aliases are alternative names the character may be known by.
+            For example, "Commodore Krux" might have aliases: ["Krux", "the Commodore"]
+            These can be extracted from lore document metadata or discovered during play.
             """)
     public String createCharacter(String storyThreadId, String name, String summary, String description,
-            List<String> tags) {
-        Character character = storyRepository.createCharacter(storyThreadId, name, summary, description, tags);
+            List<String> tags, List<String> aliases) {
+        Character character = storyRepository.createCharacter(storyThreadId, name, summary, description, tags, aliases);
         String tagInfo = tags != null && !tags.isEmpty() ? " with tags: " + String.join(", ", tags) : "";
-        return "Created character: " + character.getName() + " (ID: " + character.getId() + ")" + tagInfo;
+        String aliasInfo = aliases != null && !aliases.isEmpty() ? ", aliases: " + String.join(", ", aliases) : "";
+        return "Created character: " + character.getName() + " (ID: " + character.getId() + ")" + tagInfo + aliasInfo;
     }
 
     @Tool("""
-            Update an existing character's basic information (name, summary, description, class, level).
+            Update an existing character's basic information (partial update).
+            Only provide the fields you want to change - omit fields that should stay the same.
+
+            Parameters:
+            - characterId: Required - the character's ID
+            - name: Optional - new display name
+            - summary: Optional - new brief summary
+            - description: Optional - new detailed description
+            - characterClass: Optional - new class (e.g., "Fighter", "Wizard")
+            - level: Optional - new level
+
             For alignment, use addCharacterTags with tags like "alignment:lawful-good".
             For other tag management, use addCharacterTags or removeCharacterTags.
             """)
@@ -113,6 +128,47 @@ public class StoryTools {
         }
         return "Removed tags from " + character.getName() + ": " + String.join(", ", tags)
                 + "\nCurrent tags: " + String.join(", ", character.getTags());
+    }
+
+    @Tool("""
+            Add aliases (alternative names) to a character.
+            Use this when you discover a character is referred to by different names.
+            For example: "Commodore Krux" might also be called "Krux" or "the Commodore".
+            Aliases are case-insensitive and automatically normalized.
+            """)
+    public String addCharacterAliases(String characterId, List<String> aliases) {
+        Character character = storyRepository.addCharacterAliases(characterId, aliases);
+        if (character == null) {
+            return "Error: Character not found with ID: " + characterId;
+        }
+        return "Added aliases to " + character.getName() + ": " + String.join(", ", aliases)
+                + "\nCurrent aliases: " + String.join(", ", character.getAliases());
+    }
+
+    @Tool("""
+            Remove aliases from a character.
+            """)
+    public String removeCharacterAliases(String characterId, List<String> aliases) {
+        Character character = storyRepository.removeCharacterAliases(characterId, aliases);
+        if (character == null) {
+            return "Error: Character not found with ID: " + characterId;
+        }
+        return "Removed aliases from " + character.getName() + ": " + String.join(", ", aliases)
+                + "\nCurrent aliases: " + String.join(", ", character.getAliases());
+    }
+
+    @Tool("""
+            Find a character by name or alias.
+            Use this when you encounter a name and need to find the corresponding character.
+            Searches both the character's primary name and all registered aliases.
+            Returns null if no matching character is found.
+            """)
+    public String findCharacterByNameOrAlias(String storyThreadId, String nameOrAlias) {
+        Character character = storyRepository.findCharacterByNameOrAlias(storyThreadId, nameOrAlias);
+        if (character == null) {
+            return "No character found matching: " + nameOrAlias;
+        }
+        return Templates.characterDetail(character).render();
     }
 
     @Tool("""
@@ -181,7 +237,7 @@ public class StoryTools {
             Use this to see the complete cast of characters.
             """)
     public String getAllCharacters(String storyThreadId) {
-        List<Character> characters = storyRepository.findCharactersByStoryThreadId(storyThreadId);
+        List<Character> characters = storyRepository.findAllCharacters(storyThreadId);
         if (characters.isEmpty()) {
             return "No characters found in this story.";
         }
@@ -202,7 +258,16 @@ public class StoryTools {
     }
 
     @Tool("""
-            Update an existing location's basic information.
+            Update an existing location's basic information (partial update).
+            Only provide the fields you want to change - omit fields that should stay the same.
+
+            Parameters:
+            - locationId: Required - the location's ID
+            - name: Optional - new display name
+            - summary: Optional - new brief summary
+            - description: Optional - new detailed description
+
+            For tag management, use addLocationTags or removeLocationTags.
             """)
     public String updateLocation(String locationId, String name, String summary, String description) {
         Location location = storyRepository.updateLocation(locationId, name, summary, description);
@@ -369,7 +434,7 @@ public class StoryTools {
             This provides a high-level overview of the current story state.
             """)
     public String getStoryNetwork(String storyThreadId) {
-        List<Character> characters = storyRepository.findCharactersByStoryThreadId(storyThreadId);
+        List<Character> characters = storyRepository.findAllCharacters(storyThreadId);
         List<Location> locations = storyRepository.findLocationsByStoryThreadId(storyThreadId);
         List<StoryEvent> recentEvents = storyRepository.findRecentEvents(storyThreadId, 5);
 

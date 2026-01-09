@@ -93,7 +93,7 @@ public class Inspect extends Controller {
     @GET
     @Path("/story/{threadId}/characters")
     public TemplateInstance characters(@RestPath String threadId) {
-        List<Character> characters = storyRepository.findCharactersByStoryThreadId(threadId);
+        List<Character> characters = storyRepository.findAllCharacters(threadId);
         return Templates.characters(characters, threadId);
     }
 

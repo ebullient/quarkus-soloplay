@@ -55,7 +55,7 @@ public class InspectResource {
     @Path("/story/{threadId}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getStoryThread(@PathParam("threadId") String threadId) {
-        var result = storyRepository.findStoryThreadBySlug(threadId);
+        var result = storyRepository.findStoryThreadById(threadId);
         return result == null
                 ? Response.status(Status.NOT_FOUND).build()
                 : Response.ok(result).build();
@@ -68,7 +68,7 @@ public class InspectResource {
     @Path("/story/{threadId}/characters")
     @Produces(MediaType.APPLICATION_JSON)
     public List<Character> getCharacters(@PathParam("threadId") String threadId) {
-        return storyRepository.findCharactersByStoryThreadId(threadId);
+        return storyRepository.findAllCharacters(threadId);
     }
 
     /**

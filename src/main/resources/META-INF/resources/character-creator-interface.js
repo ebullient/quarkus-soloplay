@@ -1,9 +1,9 @@
 /**
- * Play Interface - Story-aware chat for solo play
- * Handles communication with /api/story/play endpoint
+ * Character Creator Interface - Conversational character creation
+ * Handles communication with /api/story/character-creator endpoint
  */
 
-class PlayInterface {
+class CharacterCreatorInterface {
     constructor() {
         this.messagesContainer = document.getElementById('chat-messages');
         this.messageInput = document.getElementById('message-input');
@@ -57,11 +57,11 @@ class PlayInterface {
         this.autoResize(); // Reset height after clearing
 
         // Add loading indicator
-        const loadingMsg = this.addAssistantMessage('Plotting with the GM...');
+        const loadingMsg = this.addAssistantMessage('Creating your character...');
         loadingMsg.classList.add('loading');
 
         try {
-            const response = await fetch('/api/story/play', {
+            const response = await fetch('/api/story/character-creator', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -82,12 +82,17 @@ class PlayInterface {
             loadingMsg.innerHTML = html;
             loadingMsg.classList.remove('loading');
 
+            // Check if character was created (look for success indicators)
+            if (this.isCharacterCreated(html)) {
+                this.showCharacterCreatedNotification();
+            }
+
             // Save to history
             this.saveChatHistory();
 
         } catch (error) {
             console.error('Error sending message:', error);
-            loadingMsg.innerHTML = '<p class="error">Error: Could not reach the GM. Please try again.</p>';
+            loadingMsg.innerHTML = '<p class="error">Error: Could not reach the character creator. Please try again.</p>';
             loadingMsg.classList.remove('loading');
         } finally {
             this.setInputEnabled(true);
@@ -131,39 +136,57 @@ class PlayInterface {
         this.sendButton.disabled = !enabled;
     }
 
-    // Save chat history to localStorage for this story thread
+    // Check if the response indicates character was created
+    isCharacterCreated(html) {
+        const lowerHtml = html.toLowerCase();
+        return lowerHtml.includes('created character') ||
+               lowerHtml.includes('character created') ||
+               lowerHtml.includes('successfully created');
+    }
+
+    // Show notification when character is created
+    showCharacterCreatedNotification() {
+        const notification = document.createElement('div');
+        notification.className = 'message system success';
+        notification.innerHTML = `
+            <p><strong>✅ Character Created!</strong></p>
+            <p>Your character has been saved to the story. You can now:</p>
+            <ul>
+                <li><a href="/story/${window.storyThread.id}/play">Start playing</a></li>
+                <li>Continue chatting to refine your character</li>
+                <li>Create another character for this story</li>
+            </ul>
+        `;
+        this.messagesContainer.appendChild(notification);
+        this.scrollToBottom();
+    }
+
+    // Save chat history to localStorage for this character creation session
     saveChatHistory() {
         try {
             const messages = [];
-            this.messagesContainer.querySelectorAll('.message:not(.system)').forEach(msg => {
+            this.messagesContainer.querySelectorAll('.message:not(.system):not(.success)').forEach(msg => {
                 messages.push({
                     role: msg.classList.contains('user') ? 'user' : 'assistant',
                     content: msg.innerHTML
                 });
             });
 
-            const key = `chat-history-${this.storyThreadId}`;
+            const key = `chargen-history-${this.storyThreadId}`;
             localStorage.setItem(key, JSON.stringify(messages));
         } catch (e) {
             console.warn('Could not save chat history:', e);
         }
     }
 
-    // Load chat history from localStorage for this story thread
+    // Load chat history from localStorage for this character creation session
     loadChatHistory() {
         try {
-            const key = `chat-history-${this.storyThreadId}`;
+            const key = `chargen-history-${this.storyThreadId}`;
             const stored = localStorage.getItem(key);
 
             if (stored) {
                 const messages = JSON.parse(stored);
-
-                // Clear current messages except system message
-                const systemMsg = this.messagesContainer.querySelector('.message.system');
-                this.messagesContainer.innerHTML = '';
-                if (systemMsg) {
-                    this.messagesContainer.appendChild(systemMsg);
-                }
 
                 // Restore messages
                 messages.forEach(msg => {
@@ -179,17 +202,17 @@ class PlayInterface {
         }
     }
 
-    // Clear chat history for this thread
+    // Clear chat history for this character creation session
     clearHistory() {
-        if (confirm('Clear chat history for this story thread?')) {
-            const key = `chat-history-${this.storyThreadId}`;
+        if (confirm('Clear character creation chat history?')) {
+            const key = `chargen-history-${this.storyThreadId}`;
             localStorage.removeItem(key);
 
-            // Reset to welcome message
-            const systemMsg = this.messagesContainer.querySelector('.message.system');
+            // Reset to initial greeting
+            const initialGreeting = document.getElementById('initial-greeting');
             this.messagesContainer.innerHTML = '';
-            if (systemMsg) {
-                this.messagesContainer.appendChild(systemMsg);
+            if (initialGreeting) {
+                this.messagesContainer.appendChild(initialGreeting.cloneNode(true));
             }
         }
     }
@@ -198,8 +221,8 @@ class PlayInterface {
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        window.playInterface = new PlayInterface();
+        window.characterCreatorInterface = new CharacterCreatorInterface();
     });
 } else {
-    window.playInterface = new PlayInterface();
+    window.characterCreatorInterface = new CharacterCreatorInterface();
 }

@@ -49,11 +49,11 @@ public class StoryRepository {
     // ===== CHARACTER METHODS =====
 
     /**
-     * Create a new character in the story thread with optional tags.
-     * Slug is auto-generated from the name.
+     * Create a new character in the story thread with optional tags and aliases.
+     * Id (slug-style) is auto-generated from the name.
      */
     public Character createCharacter(String storyThreadId, String name, String summary, String description,
-            List<String> tags) {
+            List<String> tags, List<String> aliases) {
         var session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
 
@@ -69,6 +69,9 @@ public class StoryRepository {
                 // Clear default "npc" tag if specific tags are provided
                 character.getTags().clear();
                 tags.forEach(character::addTag);
+            }
+            if (aliases != null && !aliases.isEmpty()) {
+                aliases.forEach(character::addAlias);
             }
 
             session.save(character);
@@ -177,6 +180,76 @@ public class StoryRepository {
     }
 
     /**
+     * Add aliases to a character.
+     */
+    public Character addCharacterAliases(String characterId, List<String> aliases) {
+        var session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+
+        try {
+            Character character = session.load(Character.class, characterId);
+            if (character == null) {
+                return null;
+            }
+
+            aliases.forEach(character::addAlias);
+
+            session.save(character);
+            transaction.commit();
+            return character;
+        } catch (Exception e) {
+            transaction.rollback();
+            throw e;
+        } finally {
+            transaction.close();
+        }
+    }
+
+    /**
+     * Remove aliases from a character.
+     */
+    public Character removeCharacterAliases(String characterId, List<String> aliases) {
+        var session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+
+        try {
+            Character character = session.load(Character.class, characterId);
+            if (character == null) {
+                return null;
+            }
+
+            aliases.forEach(character::removeAlias);
+
+            session.save(character);
+            transaction.commit();
+            return character;
+        } catch (Exception e) {
+            transaction.rollback();
+            throw e;
+        } finally {
+            transaction.close();
+        }
+    }
+
+    /**
+     * Find a character by name or alias (case-insensitive).
+     */
+    public Character findCharacterByNameOrAlias(String storyThreadId, String nameOrAlias) {
+        String normalized = nameOrAlias.trim().toLowerCase();
+        String cypher = """
+                MATCH (c:Character)
+                WHERE c.storyThreadId = $storyThreadId
+                  AND (toLower(c.name) = $name OR $name IN c.aliases)
+                RETURN c
+                LIMIT 1
+                """;
+        var session = sessionFactory.openSession();
+        var results = toList(session.query(Character.class, cypher,
+                Map.of("storyThreadId", storyThreadId, "name", normalized)));
+        return results.isEmpty() ? null : results.get(0);
+    }
+
+    /**
      * Find a character by ID.
      */
     public Character findCharacterById(String characterId) {
@@ -187,7 +260,7 @@ public class StoryRepository {
     /**
      * Find all characters in a story thread.
      */
-    public List<Character> findCharactersByStoryThreadId(String storyThreadId) {
+    public List<Character> findAllCharacters(String storyThreadId) {
         String cypher = """
                 MATCH (c:Character)
                 WHERE c.storyThreadId = $storyThreadId
@@ -676,20 +749,20 @@ public class StoryRepository {
 
     /**
      * Create and save a new story thread with validation.
-     * Validates slug uniqueness and sets optional adventure/followingMode fields.
+     * Validates id uniqueness and sets optional adventure/followingMode fields.
      *
      * @param name Story thread display name
      * @param adventureName Optional adventure name (can be null or blank)
      * @param followingMode Optional following mode (can be null or blank, defaults to LOOSE if adventure specified)
      * @return The created story thread
-     * @throws IllegalArgumentException if slug already exists or followingMode is invalid
+     * @throws IllegalArgumentException if id (slug) already exists or followingMode is invalid
      */
     public StoryThread createStoryThread(String name, String adventureName, String followingMode) {
         // Create new thread with name
         StoryThread thread = new StoryThread(name);
 
         // Check if slug already exists
-        if (findStoryThreadBySlug(thread.getSlug()) != null) {
+        if (findStoryThreadById(thread.getId()) != null) {
             throw new IllegalArgumentException(
                     "A story with the name '" + name + "' already exists. Please choose a different name.");
         }
@@ -721,16 +794,9 @@ public class StoryRepository {
     /**
      * Find a story thread by slug (primary ID).
      */
-    public StoryThread findStoryThreadBySlug(String slug) {
+    public StoryThread findStoryThreadById(String slug) {
         var session = sessionFactory.openSession();
         return session.load(StoryThread.class, slug);
-    }
-
-    /**
-     * Alias for findStoryThreadBySlug for backwards compatibility.
-     */
-    public StoryThread findStoryThreadById(String slug) {
-        return findStoryThreadBySlug(slug);
     }
 
     /**
@@ -843,9 +909,23 @@ public class StoryRepository {
     }
 
     /**
-     * Find all characters for a story thread (alias for findCharactersByStoryThreadId).
+     * Delete a location and all associated relationships.
      */
-    public List<Character> findAllCharacters(String storyThreadId) {
-        return findCharactersByStoryThreadId(storyThreadId);
+    public void deleteLocation(String locationId) {
+        var session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+
+        try {
+            Location location = session.load(Location.class, locationId);
+            if (location != null) {
+                session.delete(location);
+            }
+            transaction.commit();
+        } catch (Exception e) {
+            transaction.rollback();
+            throw e;
+        } finally {
+            transaction.close();
+        }
     }
 }

@@ -38,9 +38,9 @@ public class IngestService {
 
     // Regex pattern for markdown section headers (## Header)
     // (?m) enables multiline mode (^ matches line starts)
-    // ^## matches headers at line start
+    // Positive lookahead (?=^##) splits before headers without consuming them
     static final java.util.regex.Pattern SECTION_HEADER_PATTERN = java.util.regex.Pattern
-            .compile("(?m)^## ");
+            .compile("(?m)(?=^## )");
 
     @ConfigProperty(name = "campaign.chunk.size", defaultValue = "500")
     int chunkSize;
@@ -82,11 +82,12 @@ public class IngestService {
 
     private void processStructuredMarkdown(String filename, String content) {
         // Parse YAML frontmatter
-        Map<String, String> yamlMetadata = parseYamlFrontmatter(content);
-        String cleanContent = removeYamlFrontmatter(content);
+        Map<String, Object> yamlMetadata = parseYamlFrontmatter(content);
+        String cleanContent = removeYamlFrontmatter(content)
+                .replaceAll("\\^[a-z0-9]+$", ""); // replace block references
+        // Note: structured frontmatter includes the real filename
+        // Keep ingest sourceFile for traceability + allow re-processing
         Metadata common = Metadata.from(yamlMetadata)
-                // Note: structured frontmatter includes a filename
-                // indicate the source file for traceability
                 .put("sourceFile", filename)
                 .put("canonical", "true"); // source material
 
@@ -106,45 +107,37 @@ public class IngestService {
                     var splitter = DocumentSplitters.recursive(chunkSize, chunkOverlap);
                     List<TextSegment> subSegments = splitter.split(doc);
 
-                    for (int j = 0; j < subSegments.size(); j++) {
-                        TextSegment subSegment = subSegments.get(j);
+                    for (TextSegment subSegment : subSegments) {
+                        final var index = segments.size();
                         subSegment.metadata()
                                 .put("section", sectionTitle)
-                                .put("sectionIndex", i)
-                                .put("chunkIndex", j)
-                                .merge(common);
+                                .put("sectionIndex", index)
+                                .put("sourceFile", filename)
+                                .put("canonical", "true");
+                        subSegment.metadata().putAll(yamlMetadata);
                         segments.add(subSegment);
                     }
-                } else {
+                } else if (!section.isBlank()) {
+                    final var index = segments.size();
                     TextSegment segment = TextSegment.from(
                             section,
                             Metadata.from("section", sectionTitle)
-                                    .put("sectionIndex", i)
+                                    .put("sectionIndex", index)
                                     .merge(common));
                     segments.add(segment);
                 }
             }
-        } else {
+        } else if (!cleanContent.isBlank()) {
+            final var index = segments.size();
             TextSegment segment = TextSegment.from(
                     cleanContent,
                     common);
+            segment.metadata().put("sectionIndex", index);
             segments.add(segment);
         }
 
         // Generate embeddings and store
         Log.infof("Generating embeddings for %d segments from %s", segments.size(), filename);
-
-        // Validate segments before sending to embedding model
-        for (int i = 0; i < segments.size(); i++) {
-            TextSegment seg = segments.get(i);
-            if (seg.text() == null || seg.text().isBlank()) {
-                Log.warnf("Skipping empty segment %d in %s", i, filename);
-                segments.remove(i);
-                i--; // Adjust index after removal
-            } else if (seg.text().length() > 8000) {
-                Log.warnf("Segment %d in %s is very large (%d chars), may fail", i, filename, seg.text().length());
-            }
-        }
 
         if (segments.isEmpty()) {
             Log.warnf("No valid segments to embed for %s", filename);
@@ -204,7 +197,9 @@ public class IngestService {
     private String extractFirstLine(String content) {
         int newlineIndex = content.indexOf('\n');
         if (newlineIndex > 0) {
-            return content.substring(0, newlineIndex).trim();
+            return content.substring(0, newlineIndex)
+                    .replaceAll("^#* ", "")
+                    .trim();
         }
         return content.trim();
     }
@@ -213,7 +208,7 @@ public class IngestService {
         return YAML_FRONTMATTER_PATTERN.matcher(content).replaceFirst("").trim();
     }
 
-    private Map<String, String> parseYamlFrontmatter(String content) {
+    private Map<String, Object> parseYamlFrontmatter(String content) {
         try {
             // Extract YAML content between --- delimiters using regex
             var matcher = YAML_FRONTMATTER_PATTERN.matcher(content);
@@ -238,7 +233,7 @@ public class IngestService {
             }
 
             // Convert to Map<String, String> for metadata
-            Map<String, String> result = new HashMap<>();
+            Map<String, Object> result = new HashMap<>();
 
             Object loreTags = rawMap.get("loreTags");
             if (loreTags instanceof List<?> loreTagList) {
@@ -281,7 +276,7 @@ public class IngestService {
      * @param loreTags List of hierarchical tags from YAML
      * @param metadata Metadata map to populate
      */
-    private void parseHierarchicalTags(List<?> loreTags, Map<String, String> metadata) {
+    private void parseHierarchicalTags(List<?> loreTags, Map<String, Object> metadata) {
         if (loreTags == null || loreTags.isEmpty()) {
             return;
         }
@@ -390,7 +385,9 @@ public class IngestService {
             String cypher = """
                     MATCH (n:Document)
                     WHERE n.sourceFile = $sourceFile
-                    WITH n, count(*) as deleteCount
+                    WITH count(n) as deleteCount
+                    MATCH (n:Document)
+                    WHERE n.sourceFile = $sourceFile
                     DETACH DELETE n
                     RETURN deleteCount
                     """;

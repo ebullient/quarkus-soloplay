@@ -2,8 +2,18 @@
     {#title}Create Character - {thread.name}{/title}
 
     {#stylesheets}
-    <link rel="stylesheet" href="/inspector.css">
+    <link rel="stylesheet" href="/play.css">
     {/stylesheets}
+
+    {#scripts}
+    <script>
+        // Store story thread info globally
+        window.storyThread = {
+            id: '{thread.id}',
+            name: '{thread.name}'
+        };
+    </script>
+    {/scripts}
 
     {#header-title}Create Your Character{/header-title}
 
@@ -11,109 +21,68 @@
         <p>{thread.name}</p>
     {/header-subtitle}
 
-    {#nav}
-    <nav>
-        <a href="/story/{thread.slug}/play">← Back to Play</a>
-    </nav>
-    {/nav}
-
     {#content}
-        {#if flash:error}
-        <div class="flash error">{flash:error}</div>
-        {/if}
-
-        <form action="/story/{thread.slug}/character/create" method="POST" class="story-form">
-            <div class="form-section">
-                <h2>Basic Information</h2>
-
-                <div class="form-group">
-                    <label for="name">Character Name *</label>
-                    <input type="text" id="name" name="name" required
-                           placeholder="e.g., Thorin Oakenshield"
-                           autocomplete="off">
-                    <small>Your character's full name</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="summary">Summary *</label>
-                    <input type="text" id="summary" name="summary" required
-                           placeholder="e.g., Aged dwarf warrior"
-                           maxlength="100"
-                           autocomplete="off">
-                    <small>Brief 5-10 word description (max 100 characters)</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="description">Description</label>
-                    <textarea id="description" name="description"
-                              rows="4"
-                              placeholder="Your character's background, personality, appearance, etc."></textarea>
-                    <small>Full character description (optional, can be filled in during play)</small>
-                </div>
+    <div class="play-container">
+        <!-- Info Sidebar -->
+        <aside class="party-sidebar">
+            <div class="party-header">
+                <h3>Character Creation</h3>
             </div>
 
-            <div class="form-section">
-                <h2>Character Stats</h2>
-
-                <div class="form-group">
-                    <label for="characterClass">Class</label>
-                    <input type="text" id="characterClass" name="characterClass"
-                           placeholder="e.g., Fighter, Wizard, Rogue"
-                           autocomplete="off">
-                    <small>D&D character class (optional)</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="level">Level</label>
-                    <input type="number" id="level" name="level"
-                           min="1" max="20" value="1">
-                    <small>Character level (1-20, default: 1)</small>
-                </div>
+            <div class="info-section">
+                <p>Chat with the assistant to create your character. The assistant will:</p>
+                <ul>
+                    <li>Guide you through character creation</li>
+                    <li>Provide adventure-specific recommendations</li>
+                    <li>Help with D&D rules and options</li>
+                    <li>Save your character when ready</li>
+                </ul>
+                <p class="tip">💡 <strong>Tip:</strong> If you know what you want, just tell the assistant your character concept directly!</p>
             </div>
 
-            <div class="form-section">
-                <h2>Character Tags</h2>
-                <p class="section-description">
-                    Add tags to categorize your character. This character will be marked as player-controlled automatically.
-                </p>
+            {#if thread.adventureName}
+            <div class="info-section">
+                <h4>Adventure</h4>
+                <p>{thread.adventureName}</p>
+            </div>
+            {/if}
 
-                <div class="form-group">
-                    <label>Role Tags</label>
-                    <div class="checkbox-group">
-                        <label><input type="checkbox" name="tags" value="protagonist"> Protagonist</label>
-                        <label><input type="checkbox" name="tags" value="companion"> Companion (NPC ally)</label>
+            <nav class="action-links sidebar-links" aria-label="Actions">
+                <a href="/story/{thread.id}/play">← Back to Play</a>
+            </nav>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main>
+            <header class="story-header">
+                <h1>Character Creation</h1>
+                <div class="story-meta">
+                    <span>✨ Guided by AI Assistant</span>
+                </div>
+            </header>
+
+            <section class="chat-area">
+                <div id="chat-messages">
+                    <div class="message system" id="initial-greeting">
+                        {initialGreeting.raw}
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>Alignment (select one or none)</label>
-                    <div class="checkbox-group">
-                        <label><input type="radio" name="tags" value="alignment:lawful-good"> Lawful Good</label>
-                        <label><input type="radio" name="tags" value="alignment:neutral-good"> Neutral Good</label>
-                        <label><input type="radio" name="tags" value="alignment:chaotic-good"> Chaotic Good</label>
-                        <label><input type="radio" name="tags" value="alignment:lawful-neutral"> Lawful Neutral</label>
-                        <label><input type="radio" name="tags" value="alignment:true-neutral"> True Neutral</label>
-                        <label><input type="radio" name="tags" value="alignment:chaotic-neutral"> Chaotic Neutral</label>
-                        <label><input type="radio" name="tags" value="alignment:lawful-evil"> Lawful Evil</label>
-                        <label><input type="radio" name="tags" value="alignment:neutral-evil"> Neutral Evil</label>
-                        <label><input type="radio" name="tags" value="alignment:chaotic-evil"> Chaotic Evil</label>
-                    </div>
-                    <small>Optional - alignment can shift during play</small>
+                <div class="input-area">
+                    <textarea
+                        id="message-input"
+                        placeholder="Tell me about your character..."
+                        autocomplete="off"
+                        autofocus
+                        rows="1"></textarea>
+                    <button id="send-button">Send</button>
                 </div>
-
-                <div class="form-group">
-                    <label for="customTags">Additional Tags (comma-separated)</label>
-                    <input type="text" id="customTags" name="customTags"
-                           placeholder="e.g., faction:harpers, profession:blacksmith, race:dwarf"
-                           autocomplete="off">
-                    <small>Custom tags for organization (optional)</small>
-                </div>
-            </div>
-
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Create Character</button>
-                <a href="/story/{thread.slug}/play" class="btn btn-cancel">Cancel</a>
-            </div>
-        </form>
+            </section>
+        </main>
+    </div>
     {/content}
+
+    {#footer-scripts}
+    <script src="/character-creator-interface.js"></script>
+    {/footer-scripts}
 {/include}

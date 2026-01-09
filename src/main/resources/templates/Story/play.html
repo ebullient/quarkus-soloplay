@@ -7,10 +7,9 @@
 
     {#scripts}
     <script>
-        // Store story thread info
-        const storyThread = {
+        // Store story thread info globally
+        window.storyThread = {
             id: '{thread.id}',
-            slug: '{thread.slug}',
             name: '{thread.name}'
         };
     </script>
@@ -24,7 +23,7 @@
         <aside class="party-sidebar">
             <div class="party-header">
                 <h3>Party</h3>
-                <a href="/story/{thread.slug}/character/create" class="btn btn-small">+ New Character</a>
+                <a href="/story/{thread.id}/character/create" class="btn btn-small">+ New Character</a>
             </div>
             {#if partyMembers.isEmpty()}
                 <p class="empty-party">No party members yet. Create your character to begin!</p>
@@ -33,7 +32,7 @@
                     <div class="party-member">
                         <div class="party-member-header">
                             <h4>{character.name}</h4>
-                            <a href="/story/{thread.slug}/character/{character.id}/edit" class="edit-link" title="Edit character">✏️</a>
+                            <a href="/story/{thread.id}/character/{character.id}/edit" class="edit-link" title="Edit character">✏️</a>
                         </div>
                         <p>{character.summary}</p>
                         {#if character.characterClass || character.level}
@@ -55,7 +54,7 @@
 
             <nav class="action-links sidebar-links" aria-label="Story actions">
                 <a href="/story">← Switch Story</a>
-                <a href="/story/{thread.slug}/configure">⚙️ Configure</a>
+                <a href="/story/{thread.id}/configure">⚙️ Configure</a>
                 <a href="/inspect?storyThreadId={thread.id}">🔍 Inspect Data</a>
                 <a href="/lore">📖 Query Lore</a>
             </nav>
@@ -85,19 +84,32 @@
 
             <section class="chat-area">
                 <div id="chat-messages">
+                    {#if partyMembers.isEmpty()}
                     <div class="message system">
-                        Welcome to your solo adventure! Describe what your character does, ask questions, or request a ruling from the GM.
+                        <p><strong>Welcome to {thread.name}!</strong></p>
+                        <p>Before you begin your adventure, you need to create at least one character.</p>
+                        <p><a href="/story/{thread.id}/character/create" class="btn btn-primary">Create Your Character</a></p>
                     </div>
+                    {#else}
+                    <div class="message system" id="initial-welcome">
+                        {#if gmGreeting}
+                        {gmGreeting.raw}
+                        {#else}
+                        <p>Welcome to your solo adventure! Describe what your character does, ask questions, or request a ruling from the GM.</p>
+                        {/if}
+                    </div>
+                    {/if}
                 </div>
 
                 <div class="input-area">
                     <textarea
                         id="message-input"
-                        placeholder="What do you do?"
+                        placeholder="{#if partyMembers.isEmpty()}Create a character first...{#else}What do you do?{/if}"
                         autocomplete="off"
-                        autofocus
+                        {#if !partyMembers.isEmpty()}autofocus{/if}
+                        {#if partyMembers.isEmpty()}disabled{/if}
                         rows="1"></textarea>
-                    <button id="send-button">Send</button>
+                    <button id="send-button" {#if partyMembers.isEmpty()}disabled{/if}>Send</button>
                 </div>
             </section>
         </main>

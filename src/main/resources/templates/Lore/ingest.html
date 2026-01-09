@@ -43,6 +43,16 @@
                 <button type="submit" id="submit-btn">Upload Documents</button>
             </form>
         </div>
+
+        <div id="loaded-files-container">
+            <div class="loaded-files-header">
+                <h2>Loaded Files</h2>
+                <button type="button" id="refresh-btn" class="btn-secondary">Refresh</button>
+            </div>
+            <div id="loaded-files-content">
+                <p class="loading-text">Loading...</p>
+            </div>
+        </div>
     </div>
     {/content}
 
@@ -54,5 +64,6 @@
             submitBtn.textContent = 'Uploading...';
         });
     </script>
+    <script src="/loaded-files.js"></script>
     {/footer-scripts}
 {/include}

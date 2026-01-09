@@ -54,7 +54,7 @@
 
             <div class="location-meta">
                 {#if location.createdAt}
-                <span class="created-at">Created: {location.createdAt.format('MMM dd, yyyy')}</span>
+                <span class="created-at">Created: {location.createdAt.formatUtc('MMM dd, yyyy')}</span>
                 {/if}
             </div>
         </div>

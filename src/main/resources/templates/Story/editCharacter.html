@@ -13,7 +13,7 @@
 
     {#nav}
     <nav>
-        <a href="/story/{thread.slug}/play">← Back to Play</a>
+        <a href="/story/{thread.id}/play">← Back to Play</a>
     </nav>
     {/nav}
 
@@ -22,7 +22,7 @@
         <div class="flash error">{flash:error}</div>
         {/if}
 
-        <form action="/story/{thread.slug}/character/{character.id}/edit" method="POST" class="story-form">
+        <form action="/story/{thread.id}/character/{character.id}/edit" method="POST" class="story-form">
             <div class="form-section">
                 <h2>Basic Information</h2>
 
@@ -122,9 +122,10 @@
                 </div>
             </div>
 
+            {#authenticityToken/}
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary">Save Changes</button>
-                <a href="/story/{thread.slug}/play" class="btn btn-cancel">Cancel</a>
+                <a href="/story/{thread.id}/play" class="btn btn-cancel">Cancel</a>
             </div>
         </form>
     {/content}

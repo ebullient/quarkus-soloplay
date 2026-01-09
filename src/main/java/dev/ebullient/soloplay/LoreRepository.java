@@ -59,28 +59,27 @@ public class LoreRepository {
 
     /**
      * List all available adventures from ingested documents.
-     * Adventures are identified by having "adventures" in the sourceFile path.
-     * Returns a list of adventure names (from YAML sources field).
+     * Adventures are identified by having an "adventureName" attribute
+     * (typically from contentType="adventure-part" or "adventure-reference").
+     * Returns a list of distinct adventure names.
      */
     public List<String> listAdventures() {
         var session = sessionFactory.openSession();
         List<String> result = new ArrayList<>();
 
         try {
-            // Query for documents with "adventures" in path and extract sources
+            // Query for documents with adventureName attribute
             String cypher = """
                     MATCH (n:Document)
-                    WHERE n.sourceFile IS NOT NULL
-                      AND toLower(n.sourceFile) CONTAINS 'adventures'
-                      AND n.sources IS NOT NULL
-                    RETURN DISTINCT n.sources as adventureName
-                    ORDER BY n.sources
+                    WHERE n.adventureName IS NOT NULL
+                    RETURN DISTINCT n.adventureName as adventureName
+                    ORDER BY adventureName
                     """;
 
             Iterable<Map<String, Object>> results = session.query(cypher, Map.of());
             results.forEach(row -> {
                 String adventureName = (String) row.get("adventureName");
-                if (adventureName != null) {
+                if (adventureName != null && !adventureName.isBlank()) {
                     result.add(adventureName);
                 }
             });

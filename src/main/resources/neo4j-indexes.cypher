@@ -47,10 +47,6 @@ FOR (e:Event) ON (e.storyThreadId);
 CREATE INDEX event_timestamp IF NOT EXISTS
 FOR (e:Event) ON (e.timestamp);
 
-// Index on conversationId for narrative thread tracking
-CREATE INDEX event_conversation_id IF NOT EXISTS
-FOR (e:Event) ON (e.conversationId);
-
 // Composite index for story_thread + timestamp (most common query)
 CREATE INDEX event_story_thread_timestamp IF NOT EXISTS
 FOR (e:Event) ON (e.storyThreadId, e.timestamp);

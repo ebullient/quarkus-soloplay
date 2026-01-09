@@ -54,7 +54,7 @@
 
             <footer class="character-meta">
                 {#if character.createdAt}
-                <span class="created-at">Created: {character.createdAt.format('MMM dd, yyyy')}</span>
+                <span class="created-at">Created: {character.createdAt.formatUtc('MMM dd, yyyy')}</span>
                 {/if}
             </footer>
         </article>

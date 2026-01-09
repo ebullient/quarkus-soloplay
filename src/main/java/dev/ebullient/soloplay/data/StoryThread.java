@@ -67,22 +67,6 @@ public class StoryThread {
     // Getters and setters
 
     /**
-     * Get the slug (primary ID).
-     * This is immutable after creation.
-     */
-    public String getSlug() {
-        return slug;
-    }
-
-    /**
-     * Set the slug (primary ID).
-     * Should only be called during initialization or migration.
-     */
-    public void setSlug(String slug) {
-        this.slug = slug;
-    }
-
-    /**
      * For backwards compatibility with code expecting getId().
      * Returns the slug.
      */

@@ -34,6 +34,7 @@ public class Character {
     private Instant updatedAt;
 
     private List<String> tags;
+    private List<String> aliases; // Alternative names (e.g., "Krux" for "Commodore Krux")
     private String name; // Display name (mutable, e.g., "Thorin Oakenshield")
     private String summary; // Short, stable identifier (e.g., "Aged wizard", "Young warrior")
     private String description; // Full narrative that can evolve over time
@@ -44,6 +45,7 @@ public class Character {
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
         this.tags = new ArrayList<>();
+        this.aliases = new ArrayList<>();
     }
 
     /**
@@ -168,6 +170,66 @@ public class Character {
         return checkTags.stream()
                 .map(t -> t.trim().toLowerCase())
                 .allMatch(tags::contains);
+    }
+
+    // ===== ALIAS METHODS =====
+
+    public List<String> getAliases() {
+        return aliases;
+    }
+
+    public void setAliases(List<String> aliases) {
+        this.aliases = aliases != null ? aliases : new ArrayList<>();
+        this.updatedAt = Instant.now();
+    }
+
+    /**
+     * Add an alias to this character (case-insensitive, normalized to lowercase).
+     */
+    public void addAlias(String alias) {
+        if (alias == null || alias.isBlank()) {
+            return;
+        }
+        String normalized = alias.trim().toLowerCase();
+        if (!aliases.contains(normalized)) {
+            aliases.add(normalized);
+            this.updatedAt = Instant.now();
+        }
+    }
+
+    /**
+     * Remove an alias from this character (case-insensitive).
+     */
+    public void removeAlias(String alias) {
+        if (alias == null || alias.isBlank()) {
+            return;
+        }
+        String normalized = alias.trim().toLowerCase();
+        if (aliases.remove(normalized)) {
+            this.updatedAt = Instant.now();
+        }
+    }
+
+    /**
+     * Check if this character has a specific alias (case-insensitive).
+     */
+    public boolean hasAlias(String alias) {
+        if (alias == null || alias.isBlank()) {
+            return false;
+        }
+        String normalized = alias.trim().toLowerCase();
+        return aliases.contains(normalized);
+    }
+
+    /**
+     * Check if a name matches this character's name or any alias (case-insensitive).
+     */
+    public boolean matchesNameOrAlias(String nameOrAlias) {
+        if (nameOrAlias == null || nameOrAlias.isBlank()) {
+            return false;
+        }
+        String normalized = nameOrAlias.trim().toLowerCase();
+        return name.toLowerCase().equals(normalized) || aliases.contains(normalized);
     }
 
     public String getName() {

@@ -43,7 +43,15 @@
     <div class="form-group">
       <label for="adventureName">Adventure Name</label>
       <input type="text" id="adventureName" name="adventureName" placeholder="e.g., Lost Mine of Phandelver"
-        autocomplete="off">
+        list="adventures" autocomplete="off">
+      {#if adventures && !adventures.isEmpty()}
+      <datalist id="adventures">
+        {#for adventure in adventures}
+        <option value="{adventure}">{adventure}</option>
+        {/for}
+      </datalist>
+      <small>Select from discovered adventures or enter your own</small>
+      {/if}
     </div>
 
     <div class="form-group">

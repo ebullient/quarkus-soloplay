@@ -67,12 +67,12 @@
 
                 {#if character.createdAt}
                 <dt>Created:</dt>
-                <dd>{character.createdAt.format('yyyy-MM-dd HH:mm')}</dd>
+                <dd>{character.createdAt.formatUtc('yyyy-MM-dd HH:mm')}</dd>
                 {/if}
 
                 {#if character.updatedAt}
                 <dt>Updated:</dt>
-                <dd>{character.updatedAt.format('yyyy-MM-dd HH:mm')}</dd>
+                <dd>{character.updatedAt.formatUtc('yyyy-MM-dd HH:mm')}</dd>
                 {/if}
             </dl>
         </aside>
