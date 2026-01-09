@@ -158,7 +158,7 @@ public interface PlayAgent {
      * @return GM response as markdown
      */
     @Agent
-    @ToolBox({StoryTools.class, LoreTools.class})
+    @ToolBox({ StoryTools.class, LoreTools.class })
     String chat(
             @MemoryId String storyThreadId,
             String storyName,
