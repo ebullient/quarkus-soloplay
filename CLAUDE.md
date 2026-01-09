@@ -15,7 +15,7 @@ Act as a pair programming partner:
 ## Quick Commands
 
 ```bash
-./mvnw quarkus:dev              # Dev mode with live reload
+./mvnw quarkus:dev              # Dev mode with live reload (ask first)
 ./mvnw test                     # Run tests
 ./mvnw test -Dtest=ClassName    # Single test
 ```
@@ -36,6 +36,8 @@ public List<Movie> findAll() {
 
 - Read-only: Open session, execute, return (no transaction)
 - Writes: Use `session.beginTransaction()`, commit/rollback, close transaction
+
+**Common Warning (Harmless):** When starting a new story thread with no characters, you'll see a Neo4j OGM warning about `storyThreadId` property not found. This is expected and disappears after the first Character is created. See [docs/neo4j-migrations.md](docs/neo4j-migrations.md) for details.
 
 ### Renarde MVC
 
