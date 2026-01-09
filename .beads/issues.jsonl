@@ -1,0 +1,1 @@
+{"id":"quarkus-soloplay-qsu","title":"WebSocket streaming play + server-side memory","description":"Replace /api/story/play request/response with WS streaming; persist memory in Neo4j; remove localStorage history.","status":"open","priority":2,"issue_type":"epic","created_at":"2026-01-09T14:46:37.592207-05:00","created_by":"elh","updated_at":"2026-01-09T14:46:37.592207-05:00"}
