@@ -1,0 +1,110 @@
+package dev.ebullient.soloplay.api.ws;
+
+import java.time.Instant;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+
+/**
+ * Messages sent from server to client over the Play WebSocket.
+ *
+ * Protocol:
+ * - {@link Session}: Sent on connection open with story thread info
+ * - {@link History}: Response to history_request with past messages
+ * - {@link AssistantStart}: Indicates GM response is starting (includes message ID)
+ * - {@link AssistantDelta}: Streaming token(s) from GM response
+ * - {@link AssistantDone}: GM response complete with final markdown/HTML
+ * - {@link Error}: Error occurred during processing
+ */
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
+@JsonSubTypes({
+        @JsonSubTypes.Type(value = PlayWsServerMessage.Session.class, name = "session"),
+        @JsonSubTypes.Type(value = PlayWsServerMessage.History.class, name = "history"),
+        @JsonSubTypes.Type(value = PlayWsServerMessage.AssistantStart.class, name = "assistant_start"),
+        @JsonSubTypes.Type(value = PlayWsServerMessage.AssistantDelta.class, name = "assistant_delta"),
+        @JsonSubTypes.Type(value = PlayWsServerMessage.AssistantDone.class, name = "assistant_done"),
+        @JsonSubTypes.Type(value = PlayWsServerMessage.Error.class, name = "error")
+})
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public sealed interface PlayWsServerMessage {
+
+    /**
+     * Sent immediately on WebSocket connection open.
+     * Contains story thread metadata for the connected session.
+     *
+     * @param storyThreadId The story thread slug
+     * @param storyName Display name of the story
+     */
+    record Session(
+            String storyThreadId,
+            String storyName) implements PlayWsServerMessage {
+    }
+
+    /**
+     * Response to a history_request.
+     * Contains past conversation messages for this story thread.
+     *
+     * @param messages List of past messages in chronological order
+     */
+    record History(List<HistoryMessage> messages) implements PlayWsServerMessage {
+    }
+
+    /**
+     * A single message in the conversation history.
+     *
+     * @param role "user" or "assistant"
+     * @param markdown Original markdown content
+     * @param html Rendered HTML content
+     * @param ts Timestamp when message was created
+     */
+    record HistoryMessage(
+            String role,
+            String markdown,
+            String html,
+            Instant ts) {
+    }
+
+    /**
+     * Indicates the GM is starting to respond.
+     * The client should prepare to receive streaming deltas.
+     *
+     * @param id Server-generated message ID for correlation
+     */
+    record AssistantStart(String id) implements PlayWsServerMessage {
+    }
+
+    /**
+     * A streaming chunk of the GM's response.
+     * Multiple deltas may be sent before AssistantDone.
+     *
+     * @param id Message ID (same as AssistantStart)
+     * @param text Token(s) to append to the response
+     */
+    record AssistantDelta(String id, String text) implements PlayWsServerMessage {
+    }
+
+    /**
+     * GM response is complete.
+     * Contains the full response with final formatting.
+     *
+     * @param id Message ID (same as AssistantStart)
+     * @param markdown Full response as markdown
+     * @param html Full response rendered as HTML
+     */
+    record AssistantDone(
+            String id,
+            String markdown,
+            String html) implements PlayWsServerMessage {
+    }
+
+    /**
+     * An error occurred during processing.
+     *
+     * @param id Message ID if error is related to a specific request (may be null)
+     * @param message Human-readable error description
+     */
+    record Error(String id, String message) implements PlayWsServerMessage {
+    }
+}

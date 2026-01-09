@@ -178,3 +178,75 @@
     font-style: italic;
     font-size: var(--font-size-sm);
 }
+
+// WebSocket streaming states
+.message.streaming {
+    .streaming-content {
+        white-space: pre-wrap;
+        font-family: inherit;
+    }
+
+    // Blinking cursor effect during streaming
+    &::after {
+        content: '▊';
+        animation: blink 0.8s infinite;
+        color: var(--color-text-accent);
+        margin-left: 2px;
+    }
+}
+
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+}
+
+// Connection status indicator
+.connection-status {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: var(--spacing-xs);
+
+    &.connected { background-color: var(--color-success-border); }
+    &.connecting, &.reconnecting {
+        background-color: var(--color-warning-border);
+        animation: pulse 1s infinite;
+    }
+    &.disconnected, &.error { background-color: var(--color-error-border); }
+}
+
+// Sidebar links layout fix
+.sidebar-links {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.party-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-sm);
+
+    h3 {
+        margin: 0;
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+}
+
+.party-member-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+
+    .edit-link {
+        opacity: 0.5;
+        text-decoration: none;
+        font-size: var(--font-size-xs);
+
+        &:hover {
+            opacity: 1;
+        }
+    }
+}

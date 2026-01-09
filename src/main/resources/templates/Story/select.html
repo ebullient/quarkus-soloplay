@@ -3,6 +3,20 @@
 
     {#stylesheets}
     <link rel="stylesheet" href="/inspector.css">
+    <style>
+        .story-card.last-played {
+            border: 2px solid var(--color-text-accent);
+            box-shadow: 0 0 12px rgba(var(--color-text-accent-rgb, 139, 92, 246), 0.3);
+        }
+        .story-card.last-played .continue-badge {
+            background: var(--color-text-accent);
+            color: var(--color-bg-base);
+            padding: 0.25rem 0.5rem;
+            border-radius: var(--border-radius-sm);
+            font-size: var(--font-size-xs);
+            font-weight: 500;
+        }
+    </style>
     {/stylesheets}
 
     {#header-title}Solo Play - Story Threads{/header-title}
@@ -33,9 +47,10 @@
 
                 <div class="story-threads-grid grid">
                     {#for thread in threads}
-                        <article class="story-card card">
+                        <article class="story-card card" data-thread-id="{thread.id}">
                             <header class="story-header">
                                 <h2>{thread.name}</h2>
+                                <span class="continue-badge" style="display: none;">Continue</span>
                                 <span class="badge status-badge">{thread.status}</span>
                             </header>
 
@@ -74,4 +89,8 @@
             {/if}
         </section>
     {/content}
+
+    {#scripts}
+    <script src="/story-highlight.js"></script>
+    {/scripts}
 {/include}

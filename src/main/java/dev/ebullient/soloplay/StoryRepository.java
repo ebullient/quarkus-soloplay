@@ -12,6 +12,7 @@ import org.neo4j.ogm.transaction.Transaction;
 
 import dev.ebullient.soloplay.data.Character;
 import dev.ebullient.soloplay.data.CharacterRelationship;
+import dev.ebullient.soloplay.data.ConversationMessage;
 import dev.ebullient.soloplay.data.Location;
 import dev.ebullient.soloplay.data.StoryEvent;
 import dev.ebullient.soloplay.data.StoryThread;
@@ -927,5 +928,74 @@ public class StoryRepository {
         } finally {
             transaction.close();
         }
+    }
+
+    // ===== CONVERSATION TRANSCRIPT METHODS =====
+
+    /**
+     * Get the next sequence number for a story thread's conversation.
+     */
+    private Long getNextConversationSeq(String storyThreadId) {
+        var session = sessionFactory.openSession();
+        Iterable<Map<String, Object>> results = session.query(
+                "MATCH (m:ConversationMessage {storyThreadId: $storyThreadId}) " +
+                        "RETURN COALESCE(MAX(m.seq), 0) + 1 AS nextSeq",
+                Map.of("storyThreadId", storyThreadId));
+
+        for (Map<String, Object> row : results) {
+            return ((Number) row.get("nextSeq")).longValue();
+        }
+        return 1L;
+    }
+
+    /**
+     * Add a message to the conversation transcript.
+     */
+    public ConversationMessage addConversationMessage(String storyThreadId, String role,
+            String markdown, String html) {
+        var session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+
+        try {
+            Long seq = getNextConversationSeq(storyThreadId);
+            ConversationMessage message = new ConversationMessage(storyThreadId, seq, role, markdown, html);
+            session.save(message);
+            transaction.commit();
+            return message;
+        } catch (Exception e) {
+            transaction.rollback();
+            throw e;
+        } finally {
+            transaction.close();
+        }
+    }
+
+    /**
+     * Get conversation history for a story thread.
+     * Returns messages ordered oldest to newest, limited to the last N messages.
+     */
+    public List<ConversationMessage> getConversationHistory(String storyThreadId, int limit) {
+        var session = sessionFactory.openSession();
+        // Get last N messages ordered by seq ascending (oldest first)
+        Iterable<ConversationMessage> results = session.query(
+                ConversationMessage.class,
+                "MATCH (m:ConversationMessage {storyThreadId: $storyThreadId}) " +
+                        "RETURN m ORDER BY m.seq DESC LIMIT $limit",
+                Map.of("storyThreadId", storyThreadId, "limit", limit));
+
+        List<ConversationMessage> messages = toList(results);
+        // Reverse to get oldest-first order
+        java.util.Collections.reverse(messages);
+        return messages;
+    }
+
+    /**
+     * Delete all conversation messages for a story thread.
+     */
+    public void deleteConversationHistory(String storyThreadId) {
+        var session = sessionFactory.openSession();
+        session.query(
+                "MATCH (m:ConversationMessage {storyThreadId: $storyThreadId}) DELETE m",
+                Map.of("storyThreadId", storyThreadId));
     }
 }

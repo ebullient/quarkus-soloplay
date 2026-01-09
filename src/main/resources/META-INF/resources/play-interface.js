@@ -1,6 +1,6 @@
 /**
- * Play Interface - Story-aware chat for solo play
- * Handles communication with /api/story/play endpoint
+ * Play Interface - Story-aware WebSocket chat for solo play
+ * Handles streaming communication with /ws/story/{storyThreadId} endpoint
  */
 
 class PlayInterface {
@@ -9,17 +9,31 @@ class PlayInterface {
         this.messageInput = document.getElementById('message-input');
         this.sendButton = document.getElementById('send-button');
 
-        // Story thread info comes from inline script in template
-        this.storyThreadId = window.storyThread?.id || window.storyThread?.id;
+        // Story thread info: server-rendered template preferred, localStorage as fallback
+        this.storyThreadId = window.storyThread?.id
+            || localStorage.getItem('currentStoryThread');
 
         if (!this.storyThreadId) {
             console.error('No story thread ID found');
-            this.addSystemMessage('Error: No story thread selected');
+            this.addSystemMessage('Error: No story thread selected. Please choose a story from the Story Threads page.');
             return;
         }
 
+        // WebSocket state
+        this.ws = null;
+        this.reconnectAttempts = 0;
+        this.maxReconnectAttempts = 5;
+        this.reconnectDelay = 1000; // Start with 1 second
+
+        // Message tracking
+        this.currentAssistantMessage = null;
+        this.currentMessageId = null;
+
+        // Cache storyThreadId for other pages (Inspect, etc.)
+        this.cacheStoryThread();
+
         this.setupEventListeners();
-        this.loadChatHistory();
+        this.connect();
     }
 
     setupEventListeners() {
@@ -37,14 +51,247 @@ class PlayInterface {
         });
     }
 
+    // ===== WebSocket Connection =====
+
+    connect() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws/story/${this.storyThreadId}`;
+
+        console.log('Connecting to WebSocket:', wsUrl);
+        this.updateConnectionStatus('connecting');
+
+        this.ws = new WebSocket(wsUrl);
+
+        this.ws.onopen = () => {
+            console.log('WebSocket connected');
+            this.reconnectAttempts = 0;
+            this.reconnectDelay = 1000;
+            this.updateConnectionStatus('connected');
+
+            // Request conversation history
+            this.requestHistory();
+        };
+
+        this.ws.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data);
+                this.handleServerMessage(message);
+            } catch (e) {
+                console.error('Error parsing WebSocket message:', e);
+            }
+        };
+
+        this.ws.onclose = (event) => {
+            console.log('WebSocket closed:', event.code, event.reason);
+            this.updateConnectionStatus('disconnected');
+
+            // Attempt reconnect unless intentionally closed
+            if (event.code !== 1000) {
+                this.attemptReconnect();
+            }
+        };
+
+        this.ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            this.updateConnectionStatus('error');
+        };
+    }
+
+    attemptReconnect() {
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            console.error('Max reconnect attempts reached');
+            this.addSystemMessage('Connection lost. Please refresh the page.');
+            return;
+        }
+
+        this.reconnectAttempts++;
+        const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+
+        console.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
+        this.updateConnectionStatus('reconnecting');
+
+        setTimeout(() => this.connect(), delay);
+    }
+
+    updateConnectionStatus(status) {
+        // Update connection indicator if present
+        const indicator = document.getElementById('connection-status');
+        if (indicator) {
+            indicator.className = `connection-status ${status}`;
+            indicator.title = status.charAt(0).toUpperCase() + status.slice(1);
+        }
+    }
+
+    /**
+     * Cache storyThreadId in localStorage for cross-page continuity.
+     * Uses the same key as StorySelector so Inspect pages auto-select this story.
+     */
+    cacheStoryThread() {
+        try {
+            localStorage.setItem('currentStoryThread', this.storyThreadId);
+            // Dispatch event for any listening components (e.g., StorySelector)
+            window.dispatchEvent(new CustomEvent('storyThreadChanged', {
+                detail: { storyThreadId: this.storyThreadId }
+            }));
+        } catch (e) {
+            console.warn('Could not cache storyThreadId:', e);
+        }
+    }
+
+    // ===== Message Handling =====
+
+    handleServerMessage(message) {
+        const type = message.type;
+
+        switch (type) {
+            case 'session':
+                console.log('Session established:', message.storyThreadId, message.storyName);
+                break;
+
+            case 'history':
+                this.handleHistory(message.messages);
+                break;
+
+            case 'assistant_start':
+                this.handleAssistantStart(message.id);
+                break;
+
+            case 'assistant_delta':
+                this.handleAssistantDelta(message.id, message.text);
+                break;
+
+            case 'assistant_done':
+                this.handleAssistantDone(message.id, message.markdown, message.html);
+                break;
+
+            case 'error':
+                this.handleError(message.id, message.message);
+                break;
+
+            default:
+                console.warn('Unknown message type:', type);
+        }
+    }
+
+    requestHistory() {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({
+                type: 'history_request',
+                limit: 50
+            }));
+        }
+    }
+
+    handleHistory(messages) {
+        console.log('Received history:', messages?.length, 'messages');
+
+        if (!messages || messages.length === 0) {
+            return;
+        }
+
+        // Clear existing messages except the initial welcome
+        const welcomeMsg = document.getElementById('initial-welcome');
+        this.messagesContainer.innerHTML = '';
+
+        // Restore messages from history
+        messages.forEach(msg => {
+            if (msg.role === 'user') {
+                this.addUserMessage(msg.markdown);
+            } else {
+                // Use HTML if available, otherwise markdown
+                this.addAssistantMessage(msg.html || msg.markdown);
+            }
+        });
+
+        this.scrollToBottom();
+    }
+
+    handleAssistantStart(messageId) {
+        console.log('Assistant starting:', messageId);
+        this.currentMessageId = messageId;
+
+        // Create placeholder for streaming content
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'message assistant streaming';
+        msgDiv.id = `msg-${messageId}`;
+
+        // Use a pre element for streaming text to preserve formatting
+        const streamingContent = document.createElement('div');
+        streamingContent.className = 'streaming-content';
+        msgDiv.appendChild(streamingContent);
+
+        this.messagesContainer.appendChild(msgDiv);
+        this.currentAssistantMessage = msgDiv;
+        this.scrollToBottom();
+    }
+
+    handleAssistantDelta(messageId, text) {
+        if (messageId !== this.currentMessageId || !this.currentAssistantMessage) {
+            console.warn('Delta for unknown message:', messageId);
+            return;
+        }
+
+        // Append text to streaming content
+        const streamingContent = this.currentAssistantMessage.querySelector('.streaming-content');
+        if (streamingContent) {
+            streamingContent.textContent += text;
+            this.scrollToBottom();
+        }
+    }
+
+    handleAssistantDone(messageId, markdown, html) {
+        console.log('Assistant done:', messageId);
+
+        if (messageId !== this.currentMessageId || !this.currentAssistantMessage) {
+            console.warn('Done for unknown message:', messageId);
+            return;
+        }
+
+        // Replace streaming content with final HTML
+        this.currentAssistantMessage.innerHTML = html;
+        this.currentAssistantMessage.classList.remove('streaming');
+
+        // Reset state
+        this.currentAssistantMessage = null;
+        this.currentMessageId = null;
+
+        // Re-enable input
+        this.setInputEnabled(true);
+        this.messageInput.focus();
+        this.scrollToBottom();
+    }
+
+    handleError(messageId, errorMessage) {
+        console.error('Server error:', messageId, errorMessage);
+
+        if (this.currentAssistantMessage) {
+            this.currentAssistantMessage.innerHTML = `<p class="error">Error: ${errorMessage}</p>`;
+            this.currentAssistantMessage.classList.remove('streaming');
+            this.currentAssistantMessage = null;
+            this.currentMessageId = null;
+        } else {
+            this.addSystemMessage(`Error: ${errorMessage}`);
+        }
+
+        this.setInputEnabled(true);
+    }
+
+    // ===== UI Methods =====
+
     autoResize() {
         this.messageInput.style.height = 'auto';
         this.messageInput.style.height = this.messageInput.scrollHeight + 'px';
     }
 
-    async sendMessage() {
+    sendMessage() {
         const message = this.messageInput.value.trim();
         if (!message) return;
+
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+            this.addSystemMessage('Not connected. Attempting to reconnect...');
+            this.connect();
+            return;
+        }
 
         // Disable input while processing
         this.setInputEnabled(false);
@@ -54,45 +301,13 @@ class PlayInterface {
 
         // Clear input
         this.messageInput.value = '';
-        this.autoResize(); // Reset height after clearing
+        this.autoResize();
 
-        // Add loading indicator
-        const loadingMsg = this.addAssistantMessage('Plotting with the GM...');
-        loadingMsg.classList.add('loading');
-
-        try {
-            const response = await fetch('/api/story/play', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    storyThreadId: this.storyThreadId,
-                    message: message
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const html = await response.text();
-
-            // Replace loading message with actual response
-            loadingMsg.innerHTML = html;
-            loadingMsg.classList.remove('loading');
-
-            // Save to history
-            this.saveChatHistory();
-
-        } catch (error) {
-            console.error('Error sending message:', error);
-            loadingMsg.innerHTML = '<p class="error">Error: Could not reach the GM. Please try again.</p>';
-            loadingMsg.classList.remove('loading');
-        } finally {
-            this.setInputEnabled(true);
-            this.messageInput.focus();
-        }
+        // Send to server
+        this.ws.send(JSON.stringify({
+            type: 'user_message',
+            text: message
+        }));
     }
 
     addUserMessage(text) {
@@ -131,65 +346,13 @@ class PlayInterface {
         this.sendButton.disabled = !enabled;
     }
 
-    // Save chat history to localStorage for this story thread
-    saveChatHistory() {
-        try {
-            const messages = [];
-            this.messagesContainer.querySelectorAll('.message:not(.system)').forEach(msg => {
-                messages.push({
-                    role: msg.classList.contains('user') ? 'user' : 'assistant',
-                    content: msg.innerHTML
-                });
-            });
-
-            const key = `chat-history-${this.storyThreadId}`;
-            localStorage.setItem(key, JSON.stringify(messages));
-        } catch (e) {
-            console.warn('Could not save chat history:', e);
-        }
-    }
-
-    // Load chat history from localStorage for this story thread
-    loadChatHistory() {
-        try {
-            const key = `chat-history-${this.storyThreadId}`;
-            const stored = localStorage.getItem(key);
-
-            if (stored) {
-                const messages = JSON.parse(stored);
-
-                // Clear current messages except system message
-                const systemMsg = this.messagesContainer.querySelector('.message.system');
-                this.messagesContainer.innerHTML = '';
-                if (systemMsg) {
-                    this.messagesContainer.appendChild(systemMsg);
-                }
-
-                // Restore messages
-                messages.forEach(msg => {
-                    if (msg.role === 'user') {
-                        this.addUserMessage(msg.content);
-                    } else {
-                        this.addAssistantMessage(msg.content);
-                    }
-                });
-            }
-        } catch (e) {
-            console.warn('Could not load chat history:', e);
-        }
-    }
-
-    // Clear chat history for this thread
+    // Clear chat history (now server-side, just clears UI)
     clearHistory() {
-        if (confirm('Clear chat history for this story thread?')) {
-            const key = `chat-history-${this.storyThreadId}`;
-            localStorage.removeItem(key);
-
-            // Reset to welcome message
-            const systemMsg = this.messagesContainer.querySelector('.message.system');
+        if (confirm('Clear chat display? (Server history will remain)')) {
+            const welcomeMsg = document.getElementById('initial-welcome');
             this.messagesContainer.innerHTML = '';
-            if (systemMsg) {
-                this.messagesContainer.appendChild(systemMsg);
+            if (welcomeMsg) {
+                this.messagesContainer.appendChild(welcomeMsg);
             }
         }
     }

@@ -8,6 +8,7 @@ import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import io.quarkiverse.langchain4j.RegisterAiService;
 import io.quarkiverse.langchain4j.ToolBox;
+import io.smallrye.mutiny.Multi;
 
 /**
  * Story-aware AI assistant that combines:
@@ -22,10 +23,8 @@ import io.quarkiverse.langchain4j.ToolBox;
  */
 @RegisterAiService(tools = { StoryTools.class, LoreTools.class }, retrievalAugmentor = LoreRetriever.class)
 @ApplicationScoped
-public interface PlayAgent {
-
-    @SystemMessage("""
-            You are an expert D&D Game Master running a solo adventure. Your role is to create an engaging,
+@SystemMessage("""
+        You are an expert D&D Game Master running a solo adventure. Your role is to create an engaging,
             responsive, and immersive gaming experience.
 
             === STORY CONTEXT ===
@@ -131,8 +130,9 @@ public interface PlayAgent {
             These provide guidance on consequences, alternatives, or important context.
 
             **Cross-References**:
-            - [NPC Name](bestiary/npc/file.md) - Full NPC details
-            - [Location](locations/file.md#section%20name) - Specific section
+            - [NPC Name](bestiary/npc/npc-name.md) - NPC statbock
+            - [Creature](bestiary/aberration/beholder.md) - Information about creature and its statblock
+            - similar for spell references, classes, feats, races, rules, etc.
 
             Use getLoreDocument("bestiary/npc/file.md") to retrieve full content.
             Header references (like #section%20name) indicate specific subsections.
@@ -150,8 +150,11 @@ public interface PlayAgent {
             - You're facilitating collaborative storytelling - balance structure with player agency
             - When in doubt, ask the player for clarification or preference
             """)
+public interface PlayAgent {
+
     /**
-     * Chat with the GM for a specific story thread.
+     * Chat with the GM for a specific story thread (blocking).
+     * Used by REST endpoint POST /api/story/play.
      *
      * @param storyThreadId The story thread slug (used to load context and as memory ID)
      * @param userMessage The player's message
@@ -160,6 +163,27 @@ public interface PlayAgent {
     @Agent
     @ToolBox({ StoryTools.class, LoreTools.class })
     String chat(
+            @MemoryId String storyThreadId,
+            String storyName,
+            Long currentDay,
+            String adventureName,
+            String followingMode,
+            String currentSituation,
+            @UserMessage String userMessage);
+
+    /**
+     * Chat with the GM for a specific story thread (streaming).
+     * Used by WebSocket endpoint /ws/story/{storyThreadId}.
+     *
+     * Emits tokens as they are generated, enabling real-time streaming to clients.
+     *
+     * @param storyThreadId The story thread slug (used to load context and as memory ID)
+     * @param userMessage The player's message
+     * @return Stream of response tokens
+     */
+    @Agent
+    @ToolBox({ StoryTools.class, LoreTools.class })
+    Multi<String> chatStream(
             @MemoryId String storyThreadId,
             String storyName,
             Long currentDay,
