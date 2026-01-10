@@ -933,23 +933,8 @@ public class StoryRepository {
     // ===== CONVERSATION TRANSCRIPT METHODS =====
 
     /**
-     * Get the next sequence number for a story thread's conversation.
-     */
-    private Long getNextConversationSeq(String storyThreadId) {
-        var session = sessionFactory.openSession();
-        Iterable<Map<String, Object>> results = session.query(
-                "MATCH (m:ConversationMessage {storyThreadId: $storyThreadId}) " +
-                        "RETURN COALESCE(MAX(m.seq), 0) + 1 AS nextSeq",
-                Map.of("storyThreadId", storyThreadId));
-
-        for (Map<String, Object> row : results) {
-            return ((Number) row.get("nextSeq")).longValue();
-        }
-        return 1L;
-    }
-
-    /**
      * Add a message to the conversation transcript.
+     * Sequence number is calculated atomically within the transaction to prevent race conditions.
      */
     public ConversationMessage addConversationMessage(String storyThreadId, String role,
             String markdown, String html) {
@@ -957,7 +942,16 @@ public class StoryRepository {
         Transaction transaction = session.beginTransaction();
 
         try {
-            Long seq = getNextConversationSeq(storyThreadId);
+            // Get next seq inside transaction to prevent race conditions
+            Long seq = 1L;
+            Iterable<Map<String, Object>> results = session.query(
+                    "MATCH (m:ConversationMessage {storyThreadId: $storyThreadId}) " +
+                            "RETURN COALESCE(MAX(m.seq), 0) + 1 AS nextSeq",
+                    Map.of("storyThreadId", storyThreadId));
+            for (Map<String, Object> row : results) {
+                seq = ((Number) row.get("nextSeq")).longValue();
+            }
+
             ConversationMessage message = new ConversationMessage(storyThreadId, seq, role, markdown, html);
             session.save(message);
             transaction.commit();

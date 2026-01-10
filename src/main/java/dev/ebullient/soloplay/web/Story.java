@@ -37,8 +37,7 @@ public class Story extends Controller {
         public static native TemplateInstance configure(StoryThread thread);
 
         public static native TemplateInstance play(StoryThread thread,
-                List<Character> partyMembers,
-                String gmGreeting);
+                List<Character> partyMembers);
 
         public static native TemplateInstance createCharacter(StoryThread thread, String initialGreeting);
 
@@ -81,18 +80,19 @@ public class Story extends Controller {
 
     /**
      * Handle story thread creation form submission.
+     * Redirects to the play page on success to ensure URL matches the page.
      */
     @POST
     @Path("/create")
-    public TemplateInstance createPost(
+    public void createPost(
             @RestForm String name,
             @RestForm String adventureName,
             @RestForm String followingMode) {
 
         if (name == null || name.isBlank()) {
             flash("error", "Please provide a story thread name");
-            List<String> adventures = loreRepository.listAdventures();
-            return Templates.create(adventures);
+            create();
+            return;
         }
 
         StoryThread thread;
@@ -100,18 +100,12 @@ public class Story extends Controller {
             thread = storyRepository.createStoryThread(name, adventureName, followingMode);
         } catch (IllegalArgumentException e) {
             flash("error", e.getMessage());
-            List<String> adventures = loreRepository.listAdventures();
-            return Templates.create(adventures);
+            create();
+            return;
         }
 
         flash("success", "Story thread created: " + name);
-
-        // Fetch party members for the new thread (will be empty initially)
-        var partyMembers = storyRepository.findCharactersByAnyTag(
-                thread.getId(),
-                List.of("player-controlled", "companion"));
-
-        return Templates.play(thread, partyMembers, null);
+        redirect(Story.class).play(thread.getId());
     }
 
     /**
@@ -178,6 +172,7 @@ public class Story extends Controller {
 
     /**
      * Main play interface.
+     * WebSocket handles all GM interactions - no server-side greeting generation.
      */
     @GET
     @Path("/{slug}/play")
@@ -193,18 +188,7 @@ public class Story extends Controller {
                 thread.getId(),
                 List.of("player-controlled", "companion"));
 
-        // Generate initial GM greeting if there are characters but no events yet
-        String gmGreeting = null;
-        if (!partyMembers.isEmpty()) {
-            var recentEvents = storyRepository.findRecentEvents(thread.getId(), 1);
-            if (recentEvents.isEmpty()) {
-                // First time playing with this character - get GM to start the adventure
-                String initialPrompt = buildInitialPrompt(thread);
-                gmGreeting = gameMaster.chat(thread.getId(), initialPrompt);
-            }
-        }
-
-        return Templates.play(thread, partyMembers, gmGreeting);
+        return Templates.play(thread, partyMembers);
     }
 
     /**
@@ -323,59 +307,5 @@ public class Story extends Controller {
 
         flash("success", "Character updated: " + character.getName());
         return play(slug);
-    }
-
-    /**
-     * Build the initial prompt for the GM based on the story thread configuration.
-     * Adjusts the prompt based on adventure name and following mode.
-     */
-    private String buildInitialPrompt(StoryThread thread) {
-        StringBuilder prompt = new StringBuilder();
-        prompt.append("The player has just created their character and is ready to begin the adventure. ");
-
-        if (thread.getAdventureName() != null && !thread.getAdventureName().isBlank()) {
-            String followingMode = thread.getFollowingMode() != null ? thread.getFollowingMode().toString() : "LOOSE";
-
-            switch (followingMode) {
-                case "STRICT":
-                    prompt.append("This is the published adventure '")
-                            .append(thread.getAdventureName())
-                            .append("'. ");
-                    prompt.append("Look up the adventure's opening scene and starting hook from the source material. ");
-                    prompt.append(
-                            "Present the opening exactly as written in the adventure, establishing the initial situation, ");
-                    prompt.append("location, and hook that draws the characters into the story. ");
-                    prompt.append(
-                            "Set the scene following the adventure's structure and ask the player what they'd like to do.");
-                    break;
-
-                case "INSPIRATION":
-                    prompt.append("The adventure '")
-                            .append(thread.getAdventureName())
-                            .append("' is available as reference material, but don't use it yet. ");
-                    prompt.append("Set an appropriate opening scene for a D&D adventure and welcome the player. ");
-                    prompt.append("Ask them what they'd like to do. ");
-                    prompt.append("(You can reference the adventure later if the player asks.)");
-                    break;
-
-                case "LOOSE":
-                default:
-                    prompt.append("This is the published adventure '")
-                            .append(thread.getAdventureName())
-                            .append("'. ");
-                    prompt.append("Look up the adventure's opening scene and hook from the source material. ");
-                    prompt.append("Use this as your starting point, but feel free to adapt the presentation and details. ");
-                    prompt.append("Capture the spirit of the adventure while remaining flexible for player-driven choices. ");
-                    prompt.append("Set the opening scene and ask the player what they'd like to do.");
-                    break;
-            }
-        } else {
-            // No adventure specified - sandbox/homebrew
-            prompt.append("This is a sandbox adventure with no specific module. ");
-            prompt.append("Set an engaging opening scene appropriate for the setting and characters. ");
-            prompt.append("Welcome the player to the story and ask them what they'd like to do.");
-        }
-
-        return prompt.toString();
     }
 }

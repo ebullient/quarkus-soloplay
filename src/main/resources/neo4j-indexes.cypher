@@ -65,6 +65,26 @@ FOR ()-[r:RELATES_TO]-() ON (r.type);
 CREATE INDEX relationship_strength IF NOT EXISTS
 FOR ()-[r:RELATES_TO]-() ON (r.strength);
 
+// ===== ConversationMessage Indexes =====
+
+// Unique constraint on conversation message ID
+CREATE CONSTRAINT conversation_message_id_unique IF NOT EXISTS
+FOR (m:ConversationMessage) REQUIRE m.id IS UNIQUE;
+
+// Index on storyThreadId for listing messages by story thread
+CREATE INDEX conversation_message_story_thread IF NOT EXISTS
+FOR (m:ConversationMessage) ON (m.storyThreadId);
+
+// Composite index for story_thread + seq (most common query pattern)
+CREATE INDEX conversation_message_story_thread_seq IF NOT EXISTS
+FOR (m:ConversationMessage) ON (m.storyThreadId, m.seq);
+
+// ===== ChatMemory Indexes =====
+
+// Unique constraint on chat memory ID (storyThreadId)
+CREATE CONSTRAINT chat_memory_id_unique IF NOT EXISTS
+FOR (m:ChatMemory) REQUIRE m.id IS UNIQUE;
+
 // ===== Performance Notes =====
 
 // These indexes will significantly improve:

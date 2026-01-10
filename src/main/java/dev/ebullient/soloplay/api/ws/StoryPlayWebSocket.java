@@ -164,20 +164,29 @@ public class StoryPlayWebSocket {
         // Collect tokens for final markdown
         StringBuilder markdownBuilder = new StringBuilder();
 
+        // Track whether streaming succeeded (don't persist on failure)
+        AtomicBoolean streamSucceeded = new AtomicBoolean(true);
+
         // Transform token stream into WebSocket messages
         Multi<PlayWsServerMessage> tokenMessages = result.tokenStream()
                 .onItem().transform(token -> {
                     markdownBuilder.append(token);
                     return (PlayWsServerMessage) new AssistantDelta(messageId, token);
                 })
-                .onFailure().recoverWithItem(error -> {
+                .onFailure().invoke(error -> {
                     LOG.errorf(error, "Error during streaming (id: %s)", messageId);
+                    streamSucceeded.set(false);
                     generationInProgress.set(false);
-                    return new PlayWsServerMessage.Error(messageId, "Error: " + error.getMessage());
-                });
+                })
+                .onFailure().recoverWithItem(error -> new PlayWsServerMessage.Error(messageId, "Error: " + error.getMessage()));
 
         // Create done message as a deferred Multi (evaluated on completion)
+        // Skip persistence and done message on failure
         Multi<PlayWsServerMessage> doneMessage = Multi.createFrom().deferred(() -> {
+            if (!streamSucceeded.get()) {
+                return Multi.createFrom().empty();
+            }
+
             String markdown = markdownBuilder.toString();
             String html = gameMaster.markdownToHtml(markdown);
 

@@ -200,6 +200,11 @@
     51%, 100% { opacity: 0; }
 }
 
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
 // Connection status indicator
 .connection-status {
     width: 10px;

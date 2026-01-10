@@ -65,12 +65,13 @@
             <header class="story-header">
                 <h1>{thread.name}</h1>
                 <div class="story-meta">
-                    <span>📅 Day {thread.currentDay}</span>
+                    <span id="connection-status" class="connection-status" title="Connecting..."></span>
+                    <span>Day {thread.currentDay}</span>
                     {#if thread.adventureName}
-                        <span>📜 {thread.adventureName}</span>
+                        <span>{thread.adventureName}</span>
                     {/if}
                     {#if thread.followingMode}
-                        <span>🎯 {thread.followingMode}</span>
+                        <span>{thread.followingMode}</span>
                     {/if}
                 </div>
             </header>
@@ -92,11 +93,7 @@
                     </div>
                     {#else}
                     <div class="message system" id="initial-welcome">
-                        {#if gmGreeting}
-                        {gmGreeting.raw}
-                        {#else}
                         <p>Welcome to your solo adventure! Describe what your character does, ask questions, or request a ruling from the GM.</p>
-                        {/if}
                     </div>
                     {/if}
                 </div>
