@@ -29,6 +29,9 @@ class PlayInterface {
         this.currentAssistantMessage = null;
         this.currentMessageId = null;
 
+        // Track pending user message to avoid duplicate display from broadcast
+        this.pendingUserMessage = null;
+
         // Cache storyThreadId for other pages (Inspect, etc.)
         this.cacheStoryThread();
 
@@ -152,6 +155,10 @@ class PlayInterface {
                 this.handleHistory(message.messages);
                 break;
 
+            case 'user_echo':
+                this.handleUserEcho(message.text);
+                break;
+
             case 'assistant_start':
                 this.handleAssistantStart(message.id);
                 break;
@@ -204,6 +211,26 @@ class PlayInterface {
         });
 
         this.scrollToBottom();
+    }
+
+    /**
+     * Handle user_echo - broadcast of user message from server.
+     * This is how all tabs (including the sender) receive user messages.
+     * Avoids duplicate display by checking pendingUserMessage.
+     */
+    handleUserEcho(text) {
+        // If this is our own message we just sent, we already displayed it
+        if (this.pendingUserMessage === text) {
+            this.pendingUserMessage = null;
+            return;
+        }
+
+        // Message from another tab/user - display it
+        console.log('User echo from another connection:', text);
+        this.addUserMessage(text);
+
+        // Disable input since generation is starting from another tab
+        this.setInputEnabled(false);
     }
 
     handleAssistantStart(messageId) {
@@ -296,14 +323,17 @@ class PlayInterface {
         // Disable input while processing
         this.setInputEnabled(false);
 
-        // Add user message to chat
+        // Track this message so we don't duplicate when broadcast comes back
+        this.pendingUserMessage = message;
+
+        // Add user message to chat immediately (optimistic UI)
         this.addUserMessage(message);
 
         // Clear input
         this.messageInput.value = '';
         this.autoResize();
 
-        // Send to server
+        // Send to server (will broadcast to all connections including us)
         this.ws.send(JSON.stringify({
             type: 'user_message',
             text: message

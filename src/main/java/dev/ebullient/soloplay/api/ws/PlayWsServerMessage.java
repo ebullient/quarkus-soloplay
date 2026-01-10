@@ -13,6 +13,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
  * Protocol:
  * - {@link Session}: Sent on connection open with story thread info
  * - {@link History}: Response to history_request with past messages
+ * - {@link UserEcho}: Broadcast of user message to all connections (for multi-tab/multiplayer sync)
  * - {@link AssistantStart}: Indicates GM response is starting (includes message ID)
  * - {@link AssistantDelta}: Streaming token(s) from GM response
  * - {@link AssistantDone}: GM response complete with final markdown/HTML
@@ -22,6 +23,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 @JsonSubTypes({
         @JsonSubTypes.Type(value = PlayWsServerMessage.Session.class, name = "session"),
         @JsonSubTypes.Type(value = PlayWsServerMessage.History.class, name = "history"),
+        @JsonSubTypes.Type(value = PlayWsServerMessage.UserEcho.class, name = "user_echo"),
         @JsonSubTypes.Type(value = PlayWsServerMessage.AssistantStart.class, name = "assistant_start"),
         @JsonSubTypes.Type(value = PlayWsServerMessage.AssistantDelta.class, name = "assistant_delta"),
         @JsonSubTypes.Type(value = PlayWsServerMessage.AssistantDone.class, name = "assistant_done"),
@@ -49,6 +51,15 @@ public sealed interface PlayWsServerMessage {
      * @param messages List of past messages in chronological order
      */
     record History(List<HistoryMessage> messages) implements PlayWsServerMessage {
+    }
+
+    /**
+     * Broadcast of a user message to all connections watching this story.
+     * Enables multi-tab sync and limited multiplayer - other tabs/users see input from peers.
+     *
+     * @param text The user's message text
+     */
+    record UserEcho(String text) implements PlayWsServerMessage {
     }
 
     /**
