@@ -82,3 +82,31 @@ label {
     box-shadow: var(--shadow-focus-ai);
   }
 }
+
+// Tag hints collapsible section
+.tag-hints {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-sm);
+  background: var(--color-bg-overlay);
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-sm);
+
+  summary {
+    cursor: pointer;
+    color: var(--color-text-accent);
+    font-weight: 500;
+
+    &:hover {
+      color: var(--color-text-accent-bright);
+    }
+  }
+
+  .hint-section {
+    margin-top: var(--spacing-sm);
+    color: var(--color-text-secondary);
+
+    strong {
+      color: var(--color-text-primary);
+    }
+  }
+}

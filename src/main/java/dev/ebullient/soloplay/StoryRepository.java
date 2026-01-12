@@ -3,6 +3,7 @@ package dev.ebullient.soloplay;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -168,6 +169,34 @@ public class StoryRepository {
             }
 
             tags.forEach(character::removeTag);
+
+            session.save(character);
+            transaction.commit();
+            return character;
+        } catch (Exception e) {
+            transaction.rollback();
+            throw e;
+        } finally {
+            transaction.close();
+        }
+    }
+
+    /**
+     * Replace all tags on a character with the given set.
+     */
+    public Character setCharacterTags(String characterId, Set<String> newTags) {
+        var session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+
+        try {
+            Character character = session.load(Character.class, characterId);
+            if (character == null) {
+                return null;
+            }
+
+            // Clear existing and set new tags
+            character.getTags().clear();
+            newTags.forEach(character::addTag);
 
             session.save(character);
             transaction.commit();

@@ -58,13 +58,18 @@ public interface CharacterCreatorAssistant {
                - Description (can be brief initially, will evolve during play)
 
                Then create the character using:
-               createCharacter(storyThreadId, name, summary, description, tags)
+               createCharacter(storyThreadId, name, summary, description, tags, aliases)
 
-               Essential tags to include:
-               - "player-controlled" (automatic, but confirm)
-               - "protagonist" (if main character)
+               CRITICAL - Tags MUST include:
+               - "player-controlled" - REQUIRED for all player characters (NOT automatic!)
+               - "protagonist" - for the main character
+
+               Optional tags to include:
                - alignment tag if discussed (e.g., "alignment:chaotic-good")
                - class tag if mentioned (e.g., "class:wizard")
+               - race/species tag (e.g., "race:giff", "race:elf")
+
+               Example: tags = ["player-controlled", "protagonist", "class:wizard", "race:giff"]
 
                After creating, you can update with class/level:
                updateCharacter(characterId, null, null, null, characterClass, level)

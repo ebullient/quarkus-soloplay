@@ -76,15 +76,15 @@ class CharacterCreatorInterface {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            const html = await response.text();
+            const data = await response.json();
 
             // Replace loading message with actual response
-            loadingMsg.innerHTML = html;
+            loadingMsg.innerHTML = data.html;
             loadingMsg.classList.remove('loading');
 
-            // Check if character was created (look for success indicators)
-            if (this.isCharacterCreated(html)) {
-                this.showCharacterCreatedNotification();
+            // Check if character was actually created (verified by server)
+            if (data.createdCharacter) {
+                this.showCharacterCreatedNotification(data.createdCharacter);
             }
 
             // Save to history
@@ -136,25 +136,18 @@ class CharacterCreatorInterface {
         this.sendButton.disabled = !enabled;
     }
 
-    // Check if the response indicates character was created
-    isCharacterCreated(html) {
-        const lowerHtml = html.toLowerCase();
-        return lowerHtml.includes('created character') ||
-               lowerHtml.includes('character created') ||
-               lowerHtml.includes('successfully created');
-    }
-
-    // Show notification when character is created
-    showCharacterCreatedNotification() {
+    // Show notification when character is created (with server-verified data)
+    showCharacterCreatedNotification(character) {
         const notification = document.createElement('div');
         notification.className = 'message system success';
         notification.innerHTML = `
-            <p><strong>✅ Character Created!</strong></p>
+            <p><strong>✅ Character Created: ${character.name}</strong></p>
+            ${character.summary ? `<p><em>${character.summary}</em></p>` : ''}
             <p>Your character has been saved to the story. You can now:</p>
             <ul>
                 <li><a href="/story/${window.storyThread.id}/play">Start playing</a></li>
-                <li>Continue chatting to refine your character</li>
-                <li>Create another character for this story</li>
+                <li><a href="/story/${window.storyThread.id}/character/${encodeURIComponent(character.id)}/edit">Edit character details</a></li>
+                <li>Continue chatting to create another character</li>
             </ul>
         `;
         this.messagesContainer.appendChild(notification);

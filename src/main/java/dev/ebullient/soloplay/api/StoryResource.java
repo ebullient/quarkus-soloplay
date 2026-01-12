@@ -76,16 +76,35 @@ public class StoryResource {
     /**
      * Character creation chat endpoint.
      * Guides players through creating characters via conversational AI.
+     * Returns JSON with HTML response and created character info (if any).
      *
      * @param request Contains storyThreadId and player message
-     * @return Character creator response as HTML
+     * @return JSON with html field and optional createdCharacter field
      */
     @POST
     @Path("/character-creator")
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.TEXT_HTML)
-    public String characterCreator(PlayRequest request) {
-        return characterCreator.chat(request.storyThreadId, request.message);
+    @Produces(MediaType.APPLICATION_JSON)
+    public CharacterCreatorResponse characterCreator(PlayRequest request) {
+        var result = characterCreator.chat(request.storyThreadId, request.message);
+        CharacterSummary characterSummary = null;
+        if (result.createdCharacter() != null) {
+            var c = result.createdCharacter();
+            characterSummary = new CharacterSummary(c.getId(), c.getName(), c.getSummary());
+        }
+        return new CharacterCreatorResponse(result.html(), characterSummary);
+    }
+
+    /**
+     * Response for character creator endpoint.
+     */
+    public record CharacterCreatorResponse(String html, CharacterSummary createdCharacter) {
+    }
+
+    /**
+     * Summary of a created character for the response.
+     */
+    public record CharacterSummary(String id, String name, String summary) {
     }
 
     // ========== Story Thread CRUD Endpoints ==========

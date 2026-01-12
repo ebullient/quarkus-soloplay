@@ -1,7 +1,8 @@
 package dev.ebullient.soloplay.web;
 
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
@@ -278,24 +279,14 @@ public class Story extends Controller {
                 characterClass,
                 level);
 
-        // Update tags - remove all existing tags and add new ones
-        // First, get current tags to remove them all
-        var currentTags = new ArrayList<>(character.getTags());
-        if (!currentTags.isEmpty()) {
-            storyRepository.removeCharacterTags(characterId, currentTags);
-        }
-
-        // Build new tag list - always include "player-controlled" for player characters
-        List<String> allTags = new ArrayList<>();
-        allTags.add("player-controlled");
-
-        if (tags != null && !tags.isEmpty()) {
+        // Build new tag set from form selections
+        Set<String> allTags = new HashSet<>();
+        if (tags != null) {
             allTags.addAll(tags);
         }
 
         if (customTags != null && !customTags.isBlank()) {
-            String[] customTagArray = customTags.split(",");
-            for (String tag : customTagArray) {
+            for (String tag : customTags.split(",")) {
                 String trimmed = tag.trim();
                 if (!trimmed.isEmpty()) {
                     allTags.add(trimmed);
@@ -303,7 +294,7 @@ public class Story extends Controller {
             }
         }
 
-        storyRepository.addCharacterTags(characterId, allTags);
+        storyRepository.setCharacterTags(characterId, allTags);
 
         flash("success", "Character updated: " + character.getName());
         return play(slug);

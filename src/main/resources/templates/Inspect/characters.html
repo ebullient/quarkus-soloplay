@@ -56,6 +56,7 @@
                 {#if character.createdAt}
                 <span class="created-at">Created: {character.createdAt.formatUtc('MMM dd, yyyy')}</span>
                 {/if}
+                <a href="/story/{storyThreadId}/character/{character.id}/edit" class="btn btn-small">Edit</a>
             </footer>
         </article>
         {/for}

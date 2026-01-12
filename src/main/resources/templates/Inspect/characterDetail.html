@@ -23,7 +23,8 @@
     {#content}
     <nav class="character-detail-header actions">
         <a href="/inspect/story/{character.storyThreadId}/characters" class="btn btn-secondary">← Back to Characters</a>
-        <a href="/inspect/story/{character.storyThreadId}/characters/{character.slug}/relationships" class="btn btn-primary">View Relationships</a>
+        <a href="/story/{character.storyThreadId}/character/{character.id}/edit" class="btn btn-primary">Edit Character</a>
+        <a href="/inspect/story/{character.storyThreadId}/characters/{character.slug}/relationships" class="btn btn-secondary">View Relationships</a>
         <a href="/inspect/story/{character.storyThreadId}/ai/character-relationships/{character.slug}" class="btn btn-ai">AI View</a>
     </nav>
 
