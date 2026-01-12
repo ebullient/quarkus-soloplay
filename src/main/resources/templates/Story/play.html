@@ -10,7 +10,9 @@
         // Store story thread info globally
         window.storyThread = {
             id: '{thread.id}',
-            name: '{thread.name}'
+            name: '{thread.name}',
+            adventureName: {#if thread.adventureName}'{thread.adventureName}'{#else}null{/if},
+            followingMode: {#if thread.followingMode}'{thread.followingMode}'{#else}null{/if}
         };
     </script>
     {/scripts}
@@ -93,7 +95,7 @@
                     </div>
                     {#else}
                     <div class="message system" id="initial-welcome">
-                        <p>Welcome to your solo adventure! Describe what your character does, ask questions, or request a ruling from the GM.</p>
+                        <p>Finding the GM...</p>
                     </div>
                     {/if}
                 </div>

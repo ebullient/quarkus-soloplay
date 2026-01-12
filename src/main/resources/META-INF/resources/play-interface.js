@@ -192,13 +192,14 @@ class PlayInterface {
     handleHistory(messages) {
         console.log('Received history:', messages?.length, 'messages');
 
+        // Clear existing messages
+        this.messagesContainer.innerHTML = '';
+
         if (!messages || messages.length === 0) {
+            // Fresh start - show appropriate message
+            this.showFreshStartMessage();
             return;
         }
-
-        // Clear existing messages except the initial welcome
-        const welcomeMsg = document.getElementById('initial-welcome');
-        this.messagesContainer.innerHTML = '';
 
         // Restore messages from history
         messages.forEach(msg => {
@@ -211,6 +212,32 @@ class PlayInterface {
         });
 
         this.scrollToBottom();
+    }
+
+    /**
+     * Show fresh start message when no history exists.
+     * Includes adventure info if configured.
+     */
+    showFreshStartMessage() {
+        let message = 'This seems to be a fresh start.';
+
+        if (window.storyThread?.adventureName) {
+            const followingMode = window.storyThread.followingMode || 'LOOSE';
+            const modeDescription = {
+                'LOOSE': 'using it as inspiration',
+                'STRICT': 'following it closely',
+                'INSPIRATION': 'referencing it when you ask'
+            }[followingMode] || followingMode.toLowerCase();
+
+            message += ` You'll be playing <strong>${window.storyThread.adventureName}</strong>, ${modeDescription}.`;
+        }
+
+        message += ' Ready to play?';
+
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'message system';
+        msgDiv.innerHTML = `<p>${message}</p>`;
+        this.messagesContainer.appendChild(msgDiv);
     }
 
     /**
