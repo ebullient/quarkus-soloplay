@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -23,9 +25,9 @@ import io.quarkus.websockets.next.BasicWebSocketConnector;
 import io.quarkus.websockets.next.WebSocketClientConnection;
 
 @QuarkusTest
-class StoryPlayWebSocketTest {
+class PlayWebSocketTest {
 
-    @TestHTTPResource("/ws/story/test-story")
+    @TestHTTPResource("/ws/play")
     URI wsUri;
 
     @Inject
@@ -34,15 +36,8 @@ class StoryPlayWebSocketTest {
     @Inject
     ObjectMapper objectMapper;
 
-    @Inject
-    StoryRepository storyRepository;
-
     @BeforeEach
     void setup() {
-        // Ensure test story thread exists
-        if (storyRepository.findStoryThreadById("test-story") == null) {
-            storyRepository.createStoryThread("Test Story", null, null);
-        }
     }
 
     @Test
@@ -66,38 +61,6 @@ class StoryPlayWebSocketTest {
 
             JsonNode json = objectMapper.readTree(message);
             assertEquals("session", json.get("type").asText());
-            assertEquals("test-story", json.get("storyThreadId").asText());
-            assertNotNull(json.get("storyName"));
-        } finally {
-            connection.closeAndAwait();
-        }
-    }
-
-    @Test
-    void testInvalidStoryThreadReturnsError() throws Exception {
-        CountDownLatch latch = new CountDownLatch(1);
-        AtomicReference<String> receivedMessage = new AtomicReference<>();
-
-        // Connect to non-existent story thread
-        URI invalidUri = URI.create(wsUri.toString().replace("test-story", "non-existent-story"));
-
-        WebSocketClientConnection connection = connector
-                .baseUri(invalidUri)
-                .onTextMessage((c, msg) -> {
-                    receivedMessage.set(msg);
-                    latch.countDown();
-                })
-                .connectAndAwait();
-
-        try {
-            assertTrue(latch.await(5, TimeUnit.SECONDS), "Should receive error message");
-
-            String message = receivedMessage.get();
-            assertNotNull(message);
-
-            JsonNode json = objectMapper.readTree(message);
-            assertEquals("error", json.get("type").asText());
-            assertTrue(json.get("message").asText().contains("not found"));
         } finally {
             connection.closeAndAwait();
         }
@@ -143,7 +106,52 @@ class StoryPlayWebSocketTest {
             JsonNode json = objectMapper.readTree(message);
             assertEquals("history", json.get("type").asText());
             assertTrue(json.get("messages").isArray());
-            assertEquals(0, json.get("messages").size()); // Empty until qsu.4
+            assertEquals(0, json.get("messages").size());
+        } finally {
+            connection.closeAndAwait();
+        }
+    }
+
+    @Test
+    void testUserMessageStreamsAssistantResponse() throws Exception {
+        CountDownLatch sessionLatch = new CountDownLatch(1);
+        CountDownLatch doneLatch = new CountDownLatch(1);
+        List<String> messageTypes = new CopyOnWriteArrayList<>();
+        AtomicReference<String> assistantId = new AtomicReference<>();
+
+        WebSocketClientConnection connection = connector
+                .baseUri(wsUri)
+                .onTextMessage((c, msg) -> {
+                    try {
+                        JsonNode json = objectMapper.readTree(msg);
+                        String type = json.get("type").asText();
+                        messageTypes.add(type);
+                        if ("session".equals(type)) {
+                            sessionLatch.countDown();
+                        }
+                        if ("assistant_start".equals(type)) {
+                            assistantId.set(json.get("id").asText());
+                        }
+                        if ("assistant_done".equals(type)) {
+                            doneLatch.countDown();
+                        }
+                    } catch (Exception e) {
+                        // ignore
+                    }
+                })
+                .connectAndAwait();
+
+        try {
+            assertTrue(sessionLatch.await(5, TimeUnit.SECONDS), "Should receive session message");
+
+            connection.sendTextAndAwait("{\"type\":\"user_message\",\"text\":\"hello\"}");
+
+            assertTrue(doneLatch.await(5, TimeUnit.SECONDS), "Should receive assistant_done");
+            assertTrue(messageTypes.contains("user_echo"), "Should echo user message");
+            assertTrue(messageTypes.contains("assistant_start"), "Should start assistant stream");
+            assertTrue(messageTypes.contains("assistant_delta"), "Should stream assistant deltas");
+            assertTrue(messageTypes.contains("assistant_done"), "Should finish assistant stream");
+            assertNotNull(assistantId.get());
         } finally {
             connection.closeAndAwait();
         }

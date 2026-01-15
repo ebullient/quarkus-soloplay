@@ -1,6 +1,6 @@
 /**
- * Play Interface - Story-aware WebSocket chat for solo play
- * Handles streaming communication with /ws/story/{storyThreadId} endpoint
+ * Play Interface - WebSocket chat for solo play
+ * Handles streaming communication with `/ws/play`
  */
 
 class PlayInterface {
@@ -8,16 +8,6 @@ class PlayInterface {
         this.messagesContainer = document.getElementById('chat-messages');
         this.messageInput = document.getElementById('message-input');
         this.sendButton = document.getElementById('send-button');
-
-        // Story thread info: server-rendered template preferred, localStorage as fallback
-        this.storyThreadId = window.storyThread?.id
-            || localStorage.getItem('currentStoryThread');
-
-        if (!this.storyThreadId) {
-            console.error('No story thread ID found');
-            this.addSystemMessage('Error: No story thread selected. Please choose a story from the Story Threads page.');
-            return;
-        }
 
         // WebSocket state
         this.ws = null;
@@ -31,9 +21,6 @@ class PlayInterface {
 
         // Track pending user message to avoid duplicate display from broadcast
         this.pendingUserMessage = null;
-
-        // Cache storyThreadId for other pages (Inspect, etc.)
-        this.cacheStoryThread();
 
         this.setupEventListeners();
         this.connect();
@@ -58,7 +45,7 @@ class PlayInterface {
 
     connect() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws/story/${this.storyThreadId}`;
+        const wsUrl = `${protocol}//${window.location.host}/ws/play`;
 
         console.log('Connecting to WebSocket:', wsUrl);
         this.updateConnectionStatus('connecting');
@@ -125,22 +112,6 @@ class PlayInterface {
         }
     }
 
-    /**
-     * Cache storyThreadId in localStorage for cross-page continuity.
-     * Uses the same key as StorySelector so Inspect pages auto-select this story.
-     */
-    cacheStoryThread() {
-        try {
-            localStorage.setItem('currentStoryThread', this.storyThreadId);
-            // Dispatch event for any listening components (e.g., StorySelector)
-            window.dispatchEvent(new CustomEvent('storyThreadChanged', {
-                detail: { storyThreadId: this.storyThreadId }
-            }));
-        } catch (e) {
-            console.warn('Could not cache storyThreadId:', e);
-        }
-    }
-
     // ===== Message Handling =====
 
     handleServerMessage(message) {
@@ -148,7 +119,7 @@ class PlayInterface {
 
         switch (type) {
             case 'session':
-                console.log('Session established:', message.storyThreadId, message.storyName);
+                console.log('Session established:', message.storyName);
                 break;
 
             case 'history':
@@ -216,27 +187,11 @@ class PlayInterface {
 
     /**
      * Show fresh start message when no history exists.
-     * Includes adventure info if configured.
      */
     showFreshStartMessage() {
-        let message = 'This seems to be a fresh start.';
-
-        if (window.storyThread?.adventureName) {
-            const followingMode = window.storyThread.followingMode || 'LOOSE';
-            const modeDescription = {
-                'LOOSE': 'using it as inspiration',
-                'STRICT': 'following it closely',
-                'INSPIRATION': 'referencing it when you ask'
-            }[followingMode] || followingMode.toLowerCase();
-
-            message += ` You'll be playing <strong>${window.storyThread.adventureName}</strong>, ${modeDescription}.`;
-        }
-
-        message += ' Ready to play?';
-
         const msgDiv = document.createElement('div');
         msgDiv.className = 'message system';
-        msgDiv.innerHTML = `<p>${message}</p>`;
+        msgDiv.innerHTML = '<p>This seems to be a fresh start. Ready to play?</p>';
         this.messagesContainer.appendChild(msgDiv);
     }
 
@@ -401,17 +356,6 @@ class PlayInterface {
     setInputEnabled(enabled) {
         this.messageInput.disabled = !enabled;
         this.sendButton.disabled = !enabled;
-    }
-
-    // Clear chat history (now server-side, just clears UI)
-    clearHistory() {
-        if (confirm('Clear chat display? (Server history will remain)')) {
-            const welcomeMsg = document.getElementById('initial-welcome');
-            this.messagesContainer.innerHTML = '';
-            if (welcomeMsg) {
-                this.messagesContainer.appendChild(welcomeMsg);
-            }
-        }
     }
 }
 

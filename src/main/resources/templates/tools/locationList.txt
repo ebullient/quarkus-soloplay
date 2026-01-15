@@ -1,5 +1,0 @@
-Locations in campaign:
-
-{#for location in locations}
-{location.name}{#if location.tags} [{#each location.tags}{it}{#if it_hasNext}, {/if}{/each}]{/if}{#if location.summary} - {location.summary}{/if} - ID: {location.id}
-{/for}
