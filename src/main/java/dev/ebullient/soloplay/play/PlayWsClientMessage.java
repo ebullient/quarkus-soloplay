@@ -1,4 +1,4 @@
-package dev.ebullient.soloplay.api.ws;
+package dev.ebullient.soloplay.play;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
@@ -8,7 +8,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
  *
  * Protocol:
  * - {@link HistoryRequest}: Request conversation history
- * - {@link UserMessage}: Send a player message to the GM
+ * - {@link UserMessage}: Send a user message to the server
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
 @JsonSubTypes({
@@ -18,7 +18,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 public sealed interface PlayWsClientMessage {
 
     /**
-     * Request conversation history for this story thread.
+     * Request conversation history.
      *
      * @param limit Maximum number of messages to return (default: 100)
      */
@@ -31,7 +31,7 @@ public sealed interface PlayWsClientMessage {
     }
 
     /**
-     * Player message to the GM.
+     * User message to the server.
      *
      * @param text The player's message text
      */

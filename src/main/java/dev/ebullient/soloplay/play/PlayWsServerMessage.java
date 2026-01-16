@@ -1,4 +1,4 @@
-package dev.ebullient.soloplay.api.ws;
+package dev.ebullient.soloplay.play;
 
 import java.time.Instant;
 import java.util.List;
@@ -11,12 +11,12 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
  * Messages sent from server to client over the Play WebSocket.
  *
  * Protocol:
- * - {@link Session}: Sent on connection open with story thread info
+ * - {@link Session}: Sent on connection open with basic session info
  * - {@link History}: Response to history_request with past messages
- * - {@link UserEcho}: Broadcast of user message to all connections (for multi-tab/multiplayer sync)
- * - {@link AssistantStart}: Indicates GM response is starting (includes message ID)
- * - {@link AssistantDelta}: Streaming token(s) from GM response
- * - {@link AssistantDone}: GM response complete with final markdown/HTML
+ * - {@link UserEcho}: Echo of the user message (includes sender)
+ * - {@link AssistantStart}: Indicates assistant response is starting (includes message ID)
+ * - {@link AssistantDelta}: Streaming chunk(s) from assistant response
+ * - {@link AssistantDone}: Assistant response complete with final markdown/HTML
  * - {@link Error}: Error occurred during processing
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
@@ -34,19 +34,19 @@ public sealed interface PlayWsServerMessage {
 
     /**
      * Sent immediately on WebSocket connection open.
-     * Contains story thread metadata for the connected session.
+     * Contains basic session metadata for the connected client.
      *
-     * @param storyThreadId The story thread slug
-     * @param storyName Display name of the story
+     * @param sessionId Server-generated session identifier (currently the connection id)
+     * @param gameId Stable game identifier (from the WebSocket path parameter)
      */
     record Session(
-            String storyThreadId,
-            String storyName) implements PlayWsServerMessage {
+            String sessionId,
+            String gameId) implements PlayWsServerMessage {
     }
 
     /**
      * Response to a history_request.
-     * Contains past conversation messages for this story thread.
+     * Contains past conversation messages for this session.
      *
      * @param messages List of past messages in chronological order
      */
@@ -54,12 +54,12 @@ public sealed interface PlayWsServerMessage {
     }
 
     /**
-     * Broadcast of a user message to all connections watching this story.
-     * Enables multi-tab sync and limited multiplayer - other tabs/users see input from peers.
+     * Echo of the user message. Used to confirm receipt and unify client-side flow.
      *
+     * @param senderSessionId Session ID of the client that sent the message
      * @param text The user's message text
      */
-    record UserEcho(String text) implements PlayWsServerMessage {
+    record UserEcho(String senderSessionId, String text) implements PlayWsServerMessage {
     }
 
     /**
@@ -78,7 +78,7 @@ public sealed interface PlayWsServerMessage {
     }
 
     /**
-     * Indicates the GM is starting to respond.
+     * Indicates the assistant is starting to respond.
      * The client should prepare to receive streaming deltas.
      *
      * @param id Server-generated message ID for correlation
@@ -87,7 +87,7 @@ public sealed interface PlayWsServerMessage {
     }
 
     /**
-     * A streaming chunk of the GM's response.
+     * A streaming chunk of the assistant's response.
      * Multiple deltas may be sent before AssistantDone.
      *
      * @param id Message ID (same as AssistantStart)
@@ -97,7 +97,7 @@ public sealed interface PlayWsServerMessage {
     }
 
     /**
-     * GM response is complete.
+     * Assistant response is complete.
      * Contains the full response with final formatting.
      *
      * @param id Message ID (same as AssistantStart)

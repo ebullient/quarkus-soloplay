@@ -1,6 +1,6 @@
 /**
  * Play Interface - WebSocket chat for solo play
- * Handles streaming communication with `/ws/play`
+ * Handles streaming communication with `/ws/play/{gameId}`
  */
 
 class PlayInterface {
@@ -8,6 +8,11 @@ class PlayInterface {
         this.messagesContainer = document.getElementById('chat-messages');
         this.messageInput = document.getElementById('message-input');
         this.sendButton = document.getElementById('send-button');
+
+        // Server-assigned session id (populated from the initial "session" message)
+        this.sessionId = null;
+        // Stable game id used in the WebSocket path
+        this.gameId = this.loadOrCreateGameId();
 
         // WebSocket state
         this.ws = null;
@@ -19,10 +24,8 @@ class PlayInterface {
         this.currentAssistantMessage = null;
         this.currentMessageId = null;
 
-        // Track pending user message to avoid duplicate display from broadcast
-        this.pendingUserMessage = null;
-
         this.setupEventListeners();
+        this.setInputEnabled(false);
         this.connect();
     }
 
@@ -45,7 +48,7 @@ class PlayInterface {
 
     connect() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws/play`;
+        const wsUrl = `${protocol}//${window.location.host}/ws/play/${encodeURIComponent(this.gameId)}`;
 
         console.log('Connecting to WebSocket:', wsUrl);
         this.updateConnectionStatus('connecting');
@@ -74,6 +77,7 @@ class PlayInterface {
         this.ws.onclose = (event) => {
             console.log('WebSocket closed:', event.code, event.reason);
             this.updateConnectionStatus('disconnected');
+            this.setInputEnabled(false);
 
             // Attempt reconnect unless intentionally closed
             if (event.code !== 1000) {
@@ -119,7 +123,14 @@ class PlayInterface {
 
         switch (type) {
             case 'session':
-                console.log('Session established:', message.storyName);
+                console.log('Session established:', message.gameId);
+                this.sessionId = message.sessionId;
+                if (message.gameId && message.gameId !== this.gameId) {
+                    this.gameId = message.gameId;
+                    localStorage.setItem('soloplay.gameId', this.gameId);
+                }
+                this.setInputEnabled(true);
+                this.messageInput.focus();
                 break;
 
             case 'history':
@@ -127,7 +138,7 @@ class PlayInterface {
                 break;
 
             case 'user_echo':
-                this.handleUserEcho(message.text);
+                this.handleUserEcho(message.senderSessionId, message.text);
                 break;
 
             case 'assistant_start':
@@ -149,6 +160,18 @@ class PlayInterface {
             default:
                 console.warn('Unknown message type:', type);
         }
+    }
+
+    loadOrCreateGameId() {
+        const existing = localStorage.getItem('soloplay.gameId');
+        if (existing) {
+            return existing;
+        }
+        const created = (globalThis.crypto?.randomUUID)
+            ? globalThis.crypto.randomUUID()
+            : `game-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        localStorage.setItem('soloplay.gameId', created);
+        return created;
     }
 
     requestHistory() {
@@ -198,12 +221,10 @@ class PlayInterface {
     /**
      * Handle user_echo - broadcast of user message from server.
      * This is how all tabs (including the sender) receive user messages.
-     * Avoids duplicate display by checking pendingUserMessage.
+     * Avoids duplicate display by checking senderSessionId.
      */
-    handleUserEcho(text) {
-        // If this is our own message we just sent, we already displayed it
-        if (this.pendingUserMessage === text) {
-            this.pendingUserMessage = null;
+    handleUserEcho(senderSessionId, text) {
+        if (this.sessionId && senderSessionId === this.sessionId) {
             return;
         }
 
@@ -296,6 +317,11 @@ class PlayInterface {
         const message = this.messageInput.value.trim();
         if (!message) return;
 
+        if (!this.sessionId) {
+            this.addSystemMessage('Connecting...');
+            return;
+        }
+
         if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
             this.addSystemMessage('Not connected. Attempting to reconnect...');
             this.connect();
@@ -304,9 +330,6 @@ class PlayInterface {
 
         // Disable input while processing
         this.setInputEnabled(false);
-
-        // Track this message so we don't duplicate when broadcast comes back
-        this.pendingUserMessage = message;
 
         // Add user message to chat immediately (optimistic UI)
         this.addUserMessage(message);

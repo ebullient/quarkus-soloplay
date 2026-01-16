@@ -17,4 +17,3 @@
      - `assistant_start`
      - one or more `assistant_delta`
      - `assistant_done`
-

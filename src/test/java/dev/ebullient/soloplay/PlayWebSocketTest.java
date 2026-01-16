@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -27,8 +28,8 @@ import io.quarkus.websockets.next.WebSocketClientConnection;
 @QuarkusTest
 class PlayWebSocketTest {
 
-    @TestHTTPResource("/ws/play")
-    URI wsUri;
+    @TestHTTPResource("/")
+    URI baseUri;
 
     @Inject
     BasicWebSocketConnector connector;
@@ -45,8 +46,9 @@ class PlayWebSocketTest {
         CountDownLatch latch = new CountDownLatch(1);
         AtomicReference<String> receivedMessage = new AtomicReference<>();
 
+        String gameId = "test-game-" + UUID.randomUUID();
         WebSocketClientConnection connection = connector
-                .baseUri(wsUri)
+                .baseUri(wsUri(gameId))
                 .onTextMessage((c, msg) -> {
                     receivedMessage.set(msg);
                     latch.countDown();
@@ -61,6 +63,7 @@ class PlayWebSocketTest {
 
             JsonNode json = objectMapper.readTree(message);
             assertEquals("session", json.get("type").asText());
+            assertEquals(gameId, json.get("gameId").asText());
         } finally {
             connection.closeAndAwait();
         }
@@ -72,8 +75,9 @@ class PlayWebSocketTest {
         CountDownLatch historyLatch = new CountDownLatch(1);
         AtomicReference<String> historyMessage = new AtomicReference<>();
 
+        String gameId = "test-game-" + UUID.randomUUID();
         WebSocketClientConnection connection = connector
-                .baseUri(wsUri)
+                .baseUri(wsUri(gameId))
                 .onTextMessage((c, msg) -> {
                     try {
                         JsonNode json = objectMapper.readTree(msg);
@@ -119,8 +123,9 @@ class PlayWebSocketTest {
         List<String> messageTypes = new CopyOnWriteArrayList<>();
         AtomicReference<String> assistantId = new AtomicReference<>();
 
+        String gameId = "test-game-" + UUID.randomUUID();
         WebSocketClientConnection connection = connector
-                .baseUri(wsUri)
+                .baseUri(wsUri(gameId))
                 .onTextMessage((c, msg) -> {
                     try {
                         JsonNode json = objectMapper.readTree(msg);
@@ -155,5 +160,9 @@ class PlayWebSocketTest {
         } finally {
             connection.closeAndAwait();
         }
+    }
+
+    private URI wsUri(String gameId) {
+        return baseUri.resolve("ws/play/" + gameId);
     }
 }
