@@ -24,6 +24,9 @@ class PlayInterface {
         this.currentAssistantMessage = null;
         this.currentMessageId = null;
 
+        // Latest drafts/state pushed from server
+        this.drafts = {};
+
         this.setupEventListeners();
         this.setInputEnabled(false);
         this.connect();
@@ -153,6 +156,10 @@ class PlayInterface {
                 this.handleAssistantDone(message.id, message.markdown, message.html);
                 break;
 
+            case 'draft_update':
+                this.handleDraftUpdate(message.key, message.draft);
+                break;
+
             case 'error':
                 this.handleError(message.id, message.message);
                 break;
@@ -214,7 +221,7 @@ class PlayInterface {
     showFreshStartMessage() {
         const msgDiv = document.createElement('div');
         msgDiv.className = 'message system';
-        msgDiv.innerHTML = '<p>This seems to be a fresh start. Ready to play?</p>';
+        msgDiv.innerHTML = '<p>This seems to be a fresh start. Try <code>/help</code> to see commands.</p>';
         this.messagesContainer.appendChild(msgDiv);
     }
 
@@ -229,7 +236,7 @@ class PlayInterface {
         }
 
         // Message from another tab/user - display it
-        console.log('User echo from another connection:', text);
+        console.debug('User echo from another connection:', text);
         this.addUserMessage(text);
 
         // Disable input since generation is starting from another tab
@@ -237,7 +244,7 @@ class PlayInterface {
     }
 
     handleAssistantStart(messageId) {
-        console.log('Assistant starting:', messageId);
+        console.debug('Assistant starting:', messageId);
         this.currentMessageId = messageId;
 
         // Create placeholder for streaming content
@@ -270,7 +277,7 @@ class PlayInterface {
     }
 
     handleAssistantDone(messageId, markdown, html) {
-        console.log('Assistant done:', messageId);
+        console.debug('Assistant done:', messageId);
 
         if (messageId !== this.currentMessageId || !this.currentAssistantMessage) {
             console.warn('Done for unknown message:', messageId);
@@ -289,6 +296,18 @@ class PlayInterface {
         this.setInputEnabled(true);
         this.messageInput.focus();
         this.scrollToBottom();
+    }
+
+    handleDraftUpdate(key, draft) {
+        if (!key) {
+            return;
+        }
+        if (draft == null) {
+            delete this.drafts[key];
+        } else {
+            this.drafts[key] = draft;
+        }
+        console.log('Draft update:', key, draft);
     }
 
     handleError(messageId, errorMessage) {

@@ -10,8 +10,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import jakarta.inject.Inject;
 
-import dev.ebullient.soloplay.GameRepository;
 import dev.ebullient.soloplay.ai.MarkdownAugmenter;
+import dev.ebullient.soloplay.play.GameEffect.DraftUpdate;
 import io.quarkus.logging.Log;
 import io.quarkus.websockets.next.OnClose;
 import io.quarkus.websockets.next.OnError;
@@ -59,9 +59,6 @@ public class PlayWebSocket {
 
     @Inject
     GameEngine gameEngine;
-
-    @Inject
-    GameRepository gameRepository;
 
     String gameId;
 
@@ -159,13 +156,27 @@ public class PlayWebSocket {
             broadcastToGameId(new PlayWsServerMessage.UserEcho(connection.id(), playerInput));
             broadcastToGameId(new PlayWsServerMessage.AssistantStart(assistantId));
 
-            broadcastToGameId(new PlayWsServerMessage.AssistantDelta(assistantId, "middle"));
-            var assistantMarkdown = "test";
-            var assistantHtml = prettify.markdownToHtml(assistantMarkdown);
+            GameEventEmitter emitter = text -> broadcastToGameId(new PlayWsServerMessage.AssistantDelta(assistantId, text));
+            GameResponse response = gameEngine.processRequest(gameId, playerInput, emitter);
 
-            broadcastToGameId(new PlayWsServerMessage.AssistantDone(assistantId, assistantMarkdown, assistantHtml));
+            if (response instanceof GameResponse.Error error) {
+                broadcastToGameId(new PlayWsServerMessage.Error(assistantId, error.message()));
+            } else if (response instanceof GameResponse.Reply reply) {
+                String assistantMarkdown = reply.assistantMarkdown() == null ? "" : reply.assistantMarkdown();
+                String assistantHtml = prettify.markdownToHtml(assistantMarkdown);
+                broadcastToGameId(new PlayWsServerMessage.AssistantDone(assistantId, assistantMarkdown, assistantHtml));
 
-            appendToHistory("assistant", assistantMarkdown, assistantHtml);
+                for (GameEffect effect : reply.effects()) {
+                    PlayWsServerMessage outbound = toServerMessage(effect);
+                    if (outbound != null) {
+                        broadcastToGameId(outbound);
+                    }
+                }
+
+                appendToHistory("assistant", assistantMarkdown, assistantHtml);
+            } else {
+                broadcastToGameId(new PlayWsServerMessage.Error(assistantId, "Unsupported response from GameEngine"));
+            }
         } catch (Exception e) {
             Log.errorf(e, "Error handling user message for gameId: %s", gameId);
             broadcastToGameId(new PlayWsServerMessage.Error(assistantId, "Internal error: " + e.getMessage()));
@@ -174,6 +185,13 @@ public class PlayWebSocket {
         }
 
         return Multi.createFrom().empty();
+    }
+
+    private static PlayWsServerMessage toServerMessage(GameEffect effect) {
+        if (effect instanceof DraftUpdate d) {
+            return new PlayWsServerMessage.DraftUpdate(d.key(), d.draft());
+        }
+        return null;
     }
 
     private void appendToHistory(String role, String markdown) {
