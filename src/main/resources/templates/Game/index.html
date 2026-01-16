@@ -1,0 +1,107 @@
+{#include base}
+    {#title}Games{/title}
+
+    {#header-title}Games{/header-title}
+
+    {#scripts}
+    <script src="/game-index.js" defer></script>
+    {/scripts}
+
+    {#content}
+    <div class="wide stack stack-lg">
+        {#if flash:error}
+        <div class="card card--error">
+            <p>{flash:error}</p>
+        </div>
+        {/if}
+
+        {#if flash:success}
+        <div class="card card--success">
+            <p>{flash:success}</p>
+        </div>
+        {/if}
+
+        <div class="card card--ai">
+            <h2>Your Games</h2>
+            <p>Continue an existing game or start a new one.</p>
+            <div class="cluster">
+                <a class="btn btn-primary" href="/game/create">+ New Game</a>
+            </div>
+        </div>
+
+        {#if games.isEmpty}
+        <div class="card">
+            <p>No games yet. Create one to get started!</p>
+        </div>
+        {#else}
+        <div class="grid">
+            {#for game in games}
+            <div class="card card--interactive" data-game-id="{game.gameId}">
+                <div class="card-header">
+                    <h3>{game.gameId}</h3>
+                    <div class="card-actions">
+                        <button class="btn btn-sm btn-outline btn-icon" title="Game Info" data-action="info" data-game-id="{game.gameId}">
+                            <span class="icon-info">i</span>
+                        </button>
+                        <button class="btn btn-sm btn-outline btn-icon btn-danger" title="Delete Game" data-action="delete" data-game-id="{game.gameId}">
+                            <span class="icon-trash">🗑</span>
+                        </button>
+                    </div>
+                </div>
+                {#if game.adventureName}
+                <p>{game.adventureName}</p>
+                {/if}
+                <a class="btn btn-primary" href="/play/{game.gameId}">Continue</a>
+            </div>
+            {/for}
+        </div>
+        {/if}
+    </div>
+
+    <!-- Info Modal -->
+    <div id="info-modal" class="modal" hidden>
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Game Details</h3>
+                <button class="modal-close" data-action="close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="info-loading" class="loading">Loading...</div>
+                <dl id="info-details" hidden>
+                    <dt>Game ID</dt>
+                    <dd id="info-game-id"></dd>
+                    <dt>Adventure</dt>
+                    <dd id="info-adventure"></dd>
+                    <dt>Phase</dt>
+                    <dd id="info-phase"></dd>
+                    <dt>Last Played</dt>
+                    <dd id="info-last-played"></dd>
+                </dl>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-cancel" data-action="close">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="modal" hidden>
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Delete Game</h3>
+                <button class="modal-close" data-action="close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong id="delete-game-name"></strong>?</p>
+                <p class="help-text">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-cancel" data-action="close">Cancel</button>
+                <button class="btn btn-danger" id="confirm-delete">Delete</button>
+            </div>
+        </div>
+    </div>
+    {/content}
+{/include}

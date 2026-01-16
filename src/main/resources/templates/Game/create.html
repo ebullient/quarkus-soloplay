@@ -1,0 +1,46 @@
+{#include base}
+    {#title}New Game{/title}
+
+    {#header-title}New Game{/header-title}
+
+    {#content}
+    <div class="wide stack stack-lg">
+        {#if flash:error}
+        <div class="card card--error">
+            <p>{flash:error}</p>
+        </div>
+        {/if}
+
+        <div class="card">
+            <h2>Create a New Game</h2>
+
+            <form method="POST" action="/game/create" class="stack">
+                <div class="form-group">
+                    <label for="name">Game Name</label>
+                    <input type="text" id="name" name="name" placeholder="e.g., dragon-heist" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="adventureName">Adventure (optional)</label>
+                    {#if adventures.isEmpty}
+                    <input type="text" id="adventureName" name="adventureName" placeholder="e.g., Waterdeep: Dragon Heist">
+                    {#else}
+                    <select id="adventureName" name="adventureName">
+                        <option value="">-- None --</option>
+                        {#for adventure in adventures}
+                        <option value="{adventure}">{adventure}</option>
+                        {/for}
+                    </select>
+                    {/if}
+                </div>
+
+                {#authenticityToken/}
+                <div class="cluster">
+                    <button type="submit" class="btn btn-primary">Create Game</button>
+                    <a href="/game" class="btn btn-outline">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+    {/content}
+{/include}

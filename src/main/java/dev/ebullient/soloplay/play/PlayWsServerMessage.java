@@ -7,6 +7,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
+import dev.ebullient.soloplay.play.model.Draft;
+
 /**
  * Messages sent from server to client over the Play WebSocket.
  *
@@ -17,6 +19,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
  * - {@link AssistantStart}: Indicates assistant response is starting (includes message ID)
  * - {@link AssistantDelta}: Streaming chunk(s) from assistant response
  * - {@link AssistantDone}: Assistant response complete with final markdown/HTML
+ * - {@link DraftUpdate}: Draft/state update for client-side UI
  * - {@link Error}: Error occurred during processing
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
@@ -27,6 +30,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
         @JsonSubTypes.Type(value = PlayWsServerMessage.AssistantStart.class, name = "assistant_start"),
         @JsonSubTypes.Type(value = PlayWsServerMessage.AssistantDelta.class, name = "assistant_delta"),
         @JsonSubTypes.Type(value = PlayWsServerMessage.AssistantDone.class, name = "assistant_done"),
+        @JsonSubTypes.Type(value = PlayWsServerMessage.DraftUpdate.class, name = "draft_update"),
         @JsonSubTypes.Type(value = PlayWsServerMessage.Error.class, name = "error")
 })
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -38,10 +42,14 @@ public sealed interface PlayWsServerMessage {
      *
      * @param sessionId Server-generated session identifier (currently the connection id)
      * @param gameId Stable game identifier (from the WebSocket path parameter)
+     * @param adventureName Display name for the adventure (may be null for new games)
+     * @param gamePhase Current phase of the game (e.g., "CHARACTER_CREATION", "UNKNOWN")
      */
     record Session(
             String sessionId,
-            String gameId) implements PlayWsServerMessage {
+            String gameId,
+            String adventureName,
+            String gamePhase) implements PlayWsServerMessage {
     }
 
     /**
@@ -108,6 +116,15 @@ public sealed interface PlayWsServerMessage {
             String id,
             String markdown,
             String html) implements PlayWsServerMessage {
+    }
+
+    /**
+     * Draft/state update for client-side UI rendering.
+     *
+     * @param key Draft key (e.g. "actor_creation")
+     * @param draft Draft payload (may be null to indicate clearing)
+     */
+    record DraftUpdate(String key, Draft draft) implements PlayWsServerMessage {
     }
 
     /**

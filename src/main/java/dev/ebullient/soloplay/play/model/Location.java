@@ -12,16 +12,16 @@ import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Relationship;
 
-import dev.ebullient.soloplay.play.model.Draft.ActorDraft;
+import dev.ebullient.soloplay.play.model.Draft.LocationDraft;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 
 @NodeEntity
-public class Actor extends BaseEntity {
+public class Location extends BaseEntity {
 
     @CheckedTemplate
     public static class Templates {
-        public static native TemplateInstance actorDetail(Actor actor);
+        public static native TemplateInstance locationDetail(Location location);
     }
 
     @Id
@@ -29,24 +29,24 @@ public class Actor extends BaseEntity {
     private String gameId;
 
     private String name;
-    private String summary; // Short, stable identifier (e.g., "Aged wizard", "Young warrior")
+    private String summary; // Short, stable identifier (e.g., "Ruined manor", "Bustling market")
     private String description; // Full narrative that can evolve over time
 
     private Set<String> aliases; // Alternative names (e.g., "Krux" for "Commodore Krux")
 
-    @Relationship(type = "PARTICIPATED_IN", direction = Relationship.Direction.OUTGOING)
+    @Relationship(type = "OCCURRED_AT", direction = Relationship.Direction.INCOMING)
     private Set<Event> events;
 
-    public Actor() {
+    public Location() {
         super();
         this.aliases = new HashSet<>();
         this.events = new HashSet<>();
     }
 
     /**
-     * Create a character from a draft.
+     * Create a location from a draft.
      */
-    public Actor(String gameId, ActorDraft draft) {
+    public Location(String gameId, LocationDraft draft) {
         this();
         this.gameId = gameId;
 
@@ -156,7 +156,7 @@ public class Actor extends BaseEntity {
     }
 
     /**
-     * Check if a name matches this character's name or any alias (case-insensitive).
+     * Check if a name matches this location's name or any alias (case-insensitive).
      */
     public boolean matchesNameOrAlias(String nameOrAlias) {
         if (nameOrAlias == null || nameOrAlias.isBlank()) {
@@ -172,11 +172,11 @@ public class Actor extends BaseEntity {
 
     public void addEvent(Event event) {
         if (events.add(event)) {
-            event.getParticipants().add(this);
+            event.getLocations().add(this);
         }
     }
 
     public String render() {
-        return Templates.actorDetail(this).render();
+        return Templates.locationDetail(this).render();
     }
 }

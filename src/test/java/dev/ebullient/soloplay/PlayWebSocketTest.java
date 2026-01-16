@@ -16,10 +16,15 @@ import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import dev.ebullient.soloplay.play.GameEngine;
+import dev.ebullient.soloplay.play.GameResponse;
+import dev.ebullient.soloplay.play.model.GameState;
+import io.quarkus.test.InjectMock;
 import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.websockets.next.BasicWebSocketConnector;
@@ -37,8 +42,20 @@ class PlayWebSocketTest {
     @Inject
     ObjectMapper objectMapper;
 
+    @InjectMock
+    GameEngine mockGameEngine;
+
     @BeforeEach
     void setup() {
+        Mockito.when(mockGameEngine.getGameState(Mockito.anyString()))
+                .thenAnswer(invocation -> {
+                    String gameId = invocation.getArgument(0);
+                    GameState game = new GameState();
+                    game.setGameId(gameId);
+                    game.setAdventureName("Test Adventure");
+                    game.setGamePhase(GameState.GamePhase.CHARACTER_CREATION);
+                    return game;
+                });
     }
 
     @Test
@@ -118,10 +135,20 @@ class PlayWebSocketTest {
 
     @Test
     void testUserMessageStreamsAssistantResponse() throws Exception {
+        Mockito.when(mockGameEngine.processRequest(Mockito.any(), Mockito.anyString(), Mockito.any(), Mockito.anyBoolean()))
+                .thenAnswer(invocation -> {
+                    var emitter = (dev.ebullient.soloplay.play.GameEventEmitter) invocation.getArgument(2);
+                    emitter.assistantDelta("working...");
+                    return GameResponse.reply("test");
+                });
+
         CountDownLatch sessionLatch = new CountDownLatch(1);
         CountDownLatch doneLatch = new CountDownLatch(1);
         List<String> messageTypes = new CopyOnWriteArrayList<>();
         AtomicReference<String> assistantId = new AtomicReference<>();
+
+        CountDownLatch historyLatch = new CountDownLatch(1);
+        AtomicReference<String> historyMessage = new AtomicReference<>();
 
         String gameId = "test-game-" + UUID.randomUUID();
         WebSocketClientConnection connection = connector
@@ -140,6 +167,10 @@ class PlayWebSocketTest {
                         if ("assistant_done".equals(type)) {
                             doneLatch.countDown();
                         }
+                        if ("history".equals(type)) {
+                            historyMessage.set(msg);
+                            historyLatch.countDown();
+                        }
                     } catch (Exception e) {
                         // ignore
                     }
@@ -157,6 +188,20 @@ class PlayWebSocketTest {
             assertTrue(messageTypes.contains("assistant_delta"), "Should stream assistant deltas");
             assertTrue(messageTypes.contains("assistant_done"), "Should finish assistant stream");
             assertNotNull(assistantId.get());
+
+            // Wait for session message
+            assertTrue(sessionLatch.await(5, TimeUnit.SECONDS), "Should receive session message");
+
+            // Send history request
+            connection.sendTextAndAwait("{\"type\":\"history_request\",\"limit\":100}");
+            assertTrue(historyLatch.await(5, TimeUnit.SECONDS), "Should receive history message");
+
+            String message = historyMessage.get();
+            assertNotNull(message);
+            JsonNode json = objectMapper.readTree(message);
+            assertEquals("history", json.get("type").asText());
+            assertTrue(json.get("messages").isArray());
+            assertEquals(2, json.get("messages").size()); // user message, done message
         } finally {
             connection.closeAndAwait();
         }

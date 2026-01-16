@@ -21,7 +21,7 @@ public class ChatMemoryCompactionListener {
      * Handle chat memory compaction by creating a StoryEvent.
      */
     public void onCompaction(@Observes ChatMemoryCompactedEvent event) {
-        String storyThreadId = event.storyThreadId();
+        String storyThreadId = event.gameId();
         List<ChatMessage> droppedMessages = event.droppedMessages();
 
         Log.infof("Processing compaction for %s: %d messages to summarize",

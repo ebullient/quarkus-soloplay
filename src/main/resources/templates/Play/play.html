@@ -6,7 +6,7 @@
     {/stylesheets}
 
     {#scripts}
-    <script src="/play-interface.js"></script>
+    <script src="/play-interface.js" defer></script>
     {/scripts}
 
     {#header-title}Play{/header-title}
@@ -17,7 +17,7 @@
     {/header-subtitle}
 
     {#content}
-    <div class="chat-area">
+    <div class="chat-area" data-game-id="{gameId}">
         <div id="chat-messages"></div>
 
         <div class="input-area">

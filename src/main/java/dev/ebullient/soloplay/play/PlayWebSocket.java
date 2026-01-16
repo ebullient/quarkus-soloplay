@@ -10,8 +10,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import jakarta.inject.Inject;
 
-import dev.ebullient.soloplay.GameRepository;
 import dev.ebullient.soloplay.ai.MarkdownAugmenter;
+import dev.ebullient.soloplay.play.GameEffect.DraftUpdate;
+import dev.ebullient.soloplay.play.model.GameState;
 import io.quarkus.logging.Log;
 import io.quarkus.websockets.next.OnClose;
 import io.quarkus.websockets.next.OnError;
@@ -42,6 +43,7 @@ public class PlayWebSocket {
 
     // Simple per-game connection counts to allow cleanup when the last client disconnects.
     private static final Map<String, Integer> ACTIVE_CONNECTIONS = new ConcurrentHashMap<>();
+
     /**
      * Shared generation locks per game.
      * Prevents concurrent generation across all connections to the same gameId.
@@ -60,10 +62,8 @@ public class PlayWebSocket {
     @Inject
     GameEngine gameEngine;
 
-    @Inject
-    GameRepository gameRepository;
-
     String gameId;
+    GameState gameState;
 
     /**
      * Called when a client connects to the WebSocket.
@@ -71,13 +71,21 @@ public class PlayWebSocket {
     @OnOpen
     public Uni<PlayWsServerMessage> onOpen(@PathParam String gameId) {
         Log.infof("WebSocket connection opened (connection: %s, gameId: %s)", connection.id(), gameId);
+
         this.gameId = gameId;
+        this.gameState = gameEngine.getGameState(gameId);
+        if (gameState == null) {
+            Log.warnf("Game not found: %s", gameId);
+            return Uni.createFrom().item(
+                    new PlayWsServerMessage.Error(null, "Game not found: " + gameId));
+        }
+
+        GENERATION_LOCKS.computeIfAbsent(gameId, k -> new AtomicBoolean(false));
         ACTIVE_CONNECTIONS.merge(gameId, 1, Integer::sum);
 
-        // Ensure generation lock exists for this gameId
-        GENERATION_LOCKS.computeIfAbsent(gameId, k -> new AtomicBoolean(false));
-
-        return Uni.createFrom().item(new PlayWsServerMessage.Session(connection.id(), gameId));
+        String phase = gameState.getGamePhase().name();
+        var initSession = new PlayWsServerMessage.Session(connection.id(), gameId, gameState.getAdventureName(), phase);
+        return Uni.createFrom().item(initSession);
     }
 
     /**
@@ -86,7 +94,6 @@ public class PlayWebSocket {
     @OnClose
     public void onClose() {
         Log.infof("WebSocket connection closed (connection: %s)", connection.id());
-
         if (gameId == null) {
             return;
         }
@@ -119,22 +126,20 @@ public class PlayWebSocket {
     @OnTextMessage
     @RunOnVirtualThread
     public Multi<PlayWsServerMessage> onMessage(PlayWsClientMessage message) {
-        if (message instanceof PlayWsClientMessage.HistoryRequest historyRequest) {
-            return Multi.createFrom().item(history(historyRequest.limit()));
-        }
-        if (message instanceof PlayWsClientMessage.UserMessage userMessage) {
-            return handleUserMessage(userMessage);
-        }
-        return Multi.createFrom().item(new PlayWsServerMessage.Error(null, "Unsupported message type"));
+        return switch (message) {
+            case PlayWsClientMessage.HistoryRequest req -> handleHistoryRequest(req, 100);
+            case PlayWsClientMessage.UserMessage msg -> handleUserMessage(msg);
+            default -> Multi.createFrom().item(new PlayWsServerMessage.Error(null, "Unsupported message type"));
+        };
     }
 
-    private PlayWsServerMessage.History history(int limit) {
+    private Multi<PlayWsServerMessage> handleHistoryRequest(PlayWsClientMessage.HistoryRequest historyRequest, int limit) {
         List<PlayWsServerMessage.HistoryMessage> allMessages = HISTORY.getOrDefault(gameId, List.of());
         if (allMessages.isEmpty()) {
-            return new PlayWsServerMessage.History(List.of());
+            return Multi.createFrom().item(new PlayWsServerMessage.History(List.of()));
         }
         int start = Math.max(0, allMessages.size() - limit);
-        return new PlayWsServerMessage.History(allMessages.subList(start, allMessages.size()));
+        return Multi.createFrom().item(new PlayWsServerMessage.History(allMessages.subList(start, allMessages.size())));
     }
 
     private Multi<PlayWsServerMessage> handleUserMessage(PlayWsClientMessage.UserMessage userMessage) {
@@ -142,6 +147,7 @@ public class PlayWebSocket {
         if (playerInput == null || playerInput.isBlank()) {
             return Multi.createFrom().item(new PlayWsServerMessage.Error(null, "Message text is required"));
         }
+        boolean resuming = HISTORY.getOrDefault(gameId, List.of()).isEmpty();
 
         // Enforce single in-flight generation per gameId
         AtomicBoolean lock = GENERATION_LOCKS.computeIfAbsent(gameId, k -> new AtomicBoolean(false));
@@ -152,20 +158,35 @@ public class PlayWebSocket {
 
         String assistantId = UUID.randomUUID().toString();
         try {
-            appendToHistory("user", playerInput);
-
             Log.infof("User message received (id: %s): %s", assistantId, truncate(playerInput, 100));
+            if (!playerInput.startsWith("/")) {
+                appendToHistory("user", playerInput);
+            }
 
             broadcastToGameId(new PlayWsServerMessage.UserEcho(connection.id(), playerInput));
             broadcastToGameId(new PlayWsServerMessage.AssistantStart(assistantId));
 
-            broadcastToGameId(new PlayWsServerMessage.AssistantDelta(assistantId, "middle"));
-            var assistantMarkdown = "test";
-            var assistantHtml = prettify.markdownToHtml(assistantMarkdown);
+            GameEventEmitter emitter = text -> broadcastToGameId(new PlayWsServerMessage.AssistantDelta(assistantId, text));
+            GameResponse response = gameEngine.processRequest(gameState, playerInput, emitter, resuming);
 
-            broadcastToGameId(new PlayWsServerMessage.AssistantDone(assistantId, assistantMarkdown, assistantHtml));
+            if (response instanceof GameResponse.Error error) {
+                broadcastToGameId(new PlayWsServerMessage.Error(assistantId, error.message()));
+            } else if (response instanceof GameResponse.Reply reply) {
+                String assistantMarkdown = reply.assistantMarkdown() == null ? "" : reply.assistantMarkdown();
+                String assistantHtml = prettify.markdownToHtml(assistantMarkdown);
+                broadcastToGameId(new PlayWsServerMessage.AssistantDone(assistantId, assistantMarkdown, assistantHtml));
 
-            appendToHistory("assistant", assistantMarkdown, assistantHtml);
+                for (GameEffect effect : reply.effects()) {
+                    PlayWsServerMessage outbound = toServerMessage(effect);
+                    if (outbound != null) {
+                        broadcastToGameId(outbound);
+                    }
+                }
+
+                appendToHistory("assistant", assistantMarkdown, assistantHtml);
+            } else {
+                broadcastToGameId(new PlayWsServerMessage.Error(assistantId, "Unsupported response from GameEngine"));
+            }
         } catch (Exception e) {
             Log.errorf(e, "Error handling user message for gameId: %s", gameId);
             broadcastToGameId(new PlayWsServerMessage.Error(assistantId, "Internal error: " + e.getMessage()));
@@ -174,6 +195,13 @@ public class PlayWebSocket {
         }
 
         return Multi.createFrom().empty();
+    }
+
+    private static PlayWsServerMessage toServerMessage(GameEffect effect) {
+        if (effect instanceof DraftUpdate d) {
+            return new PlayWsServerMessage.DraftUpdate(d.key(), d.draft());
+        }
+        return null;
     }
 
     private void appendToHistory(String role, String markdown) {
