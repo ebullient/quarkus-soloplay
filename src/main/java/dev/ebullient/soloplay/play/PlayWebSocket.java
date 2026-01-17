@@ -69,7 +69,6 @@ public class PlayWebSocket {
      * Called when a client connects to the WebSocket.
      */
     @OnOpen
-    @RunOnVirtualThread
     public Uni<PlayWsServerMessage> onOpen(@PathParam String gameId) {
         Log.infof("WebSocket connection opened (connection: %s, gameId: %s)", connection.id(), gameId);
 

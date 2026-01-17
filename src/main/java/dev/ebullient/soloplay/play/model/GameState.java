@@ -51,8 +51,8 @@ public class GameState {
      */
     public GamePhase getGamePhase() {
         return gamePhase == null
-            ? GamePhase.UNKNOWN
-            : gamePhase;
+                ? GamePhase.UNKNOWN
+                : gamePhase;
     }
 
     /**

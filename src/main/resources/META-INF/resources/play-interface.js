@@ -11,8 +11,8 @@ class PlayInterface {
 
         // Server-assigned session id (populated from the initial "session" message)
         this.sessionId = null;
-        // Stable game id used in the WebSocket path
-        this.gameId = this.loadOrCreateGameId();
+        // Game id from the page (set via data attribute from server)
+        this.gameId = this.getGameIdFromPage();
 
         // WebSocket state
         this.ws = null;
@@ -50,6 +50,13 @@ class PlayInterface {
     // ===== WebSocket Connection =====
 
     connect() {
+        if (!this.gameId) {
+            console.error('Cannot connect: no game ID');
+            this.updateConnectionStatus('error');
+            this.addSystemMessage('Error: No game ID found. Please return to the games list.');
+            return;
+        }
+
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}/ws/play/${encodeURIComponent(this.gameId)}`;
 
@@ -169,16 +176,21 @@ class PlayInterface {
         }
     }
 
-    loadOrCreateGameId() {
-        const existing = localStorage.getItem('soloplay.gameId');
-        if (existing) {
-            return existing;
+    getGameIdFromPage() {
+        const chatArea = document.querySelector('.chat-area[data-game-id]');
+        if (chatArea && chatArea.dataset.gameId) {
+            console.log('Game ID from data attribute:', chatArea.dataset.gameId);
+            return chatArea.dataset.gameId;
         }
-        const created = (globalThis.crypto?.randomUUID)
-            ? globalThis.crypto.randomUUID()
-            : `game-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-        localStorage.setItem('soloplay.gameId', created);
-        return created;
+        // Fallback: extract from URL path /play/{gameId}
+        const match = window.location.pathname.match(/\/play\/([^/]+)/);
+        if (match) {
+            const gameId = decodeURIComponent(match[1]);
+            console.log('Game ID from URL:', gameId);
+            return gameId;
+        }
+        console.error('No game ID found in page or URL');
+        return null;
     }
 
     requestHistory() {
@@ -198,7 +210,7 @@ class PlayInterface {
 
         if (!messages || messages.length === 0) {
             // Fresh start - show appropriate message
-            this.showFreshStartMessage();
+            this.sendMessage('/start');
             return;
         }
 
@@ -213,16 +225,6 @@ class PlayInterface {
         });
 
         this.scrollToBottom();
-    }
-
-    /**
-     * Show fresh start message when no history exists.
-     */
-    showFreshStartMessage() {
-        const msgDiv = document.createElement('div');
-        msgDiv.className = 'message system';
-        msgDiv.innerHTML = '<p>This seems to be a fresh start. Try <code>/help</code> to see commands.</p>';
-        this.messagesContainer.appendChild(msgDiv);
     }
 
     /**
@@ -332,8 +334,8 @@ class PlayInterface {
         this.messageInput.style.height = this.messageInput.scrollHeight + 'px';
     }
 
-    sendMessage() {
-        const message = this.messageInput.value.trim();
+    sendMessage(message = '') {
+        message = message || this.messageInput.value.trim();
         if (!message) return;
 
         if (!this.sessionId) {

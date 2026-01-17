@@ -91,4 +91,17 @@ public class GameRepository {
             tx.commit();
         }
     }
+
+    public void deleteGame(String gameId) {
+        var session = sessionFactory.openSession();
+        try (Transaction tx = session.beginTransaction()) {
+            // Delete all nodes related to this game
+            String cypher = """
+                    MATCH (n {gameId: $gameId})
+                    DETACH DELETE n
+                    """;
+            session.query(cypher, Map.of("gameId", gameId));
+            tx.commit();
+        }
+    }
 }

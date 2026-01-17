@@ -34,7 +34,7 @@ public class Game extends Controller {
     LoreRepository loreRepository;
 
     /**
-     * Landing page - show all story threads with option to create new.
+     * Landing page - show all games with option to create new.
      */
     @GET
     @Path("/")
@@ -50,7 +50,7 @@ public class Game extends Controller {
     }
 
     /**
-     * Handle story thread creation form submission.
+     * Handle game creation form submission.
      * Redirects to the play page on success to ensure URL matches the page.
      */
     @POST
@@ -74,7 +74,7 @@ public class Game extends Controller {
             return;
         }
 
-        flash("success", "Story thread created: " + name);
+        flash("success", "Game created: " + name);
         redirect(Play.class).play(game.getGameId());
     }
 }
