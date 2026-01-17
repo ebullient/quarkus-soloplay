@@ -10,8 +10,8 @@ import jakarta.inject.Inject;
 import org.neo4j.ogm.session.SessionFactory;
 import org.neo4j.ogm.transaction.Transaction;
 
-import dev.ebullient.soloplay.play.GameState;
 import dev.ebullient.soloplay.play.model.Actor;
+import dev.ebullient.soloplay.play.model.GameState;
 
 @ApplicationScoped
 public class GameRepository {
@@ -40,6 +40,28 @@ public class GameRepository {
                 "gamePhase", GameState.GamePhase.CHARACTER_CREATION.name()));
     }
 
+    public GameState createGame(String gameId, String adventureName) {
+        GameState game = new GameState();
+        game.setGameId(gameId);
+        game.setAdventureName(adventureName);
+        game.setGamePhase(GameState.GamePhase.CHARACTER_CREATION);
+        saveGame(game);
+        return game;
+    }
+
+    public void saveGame(GameState game) {
+        var session = sessionFactory.openSession();
+        try (Transaction tx = session.beginTransaction()) {
+            session.save(game);
+            tx.commit();
+        }
+    }
+
+    public List<GameState> listGames() {
+        var session = sessionFactory.openSession();
+        return new ArrayList<>(session.loadAll(GameState.class));
+    }
+
     public boolean hasProtagonists(String gameId) {
         var session = sessionFactory.openSession();
         String cypher = """
@@ -66,14 +88,6 @@ public class GameRepository {
         var session = sessionFactory.openSession();
         try (Transaction tx = session.beginTransaction()) {
             session.save(actor);
-            tx.commit();
-        }
-    }
-
-    public void saveGame(GameState game) {
-        var session = sessionFactory.openSession();
-        try (Transaction tx = session.beginTransaction()) {
-            session.save(game);
             tx.commit();
         }
     }

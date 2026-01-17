@@ -12,6 +12,7 @@ import jakarta.inject.Inject;
 
 import dev.ebullient.soloplay.ai.MarkdownAugmenter;
 import dev.ebullient.soloplay.play.GameEffect.DraftUpdate;
+import dev.ebullient.soloplay.play.model.GameState;
 import io.quarkus.logging.Log;
 import io.quarkus.websockets.next.OnClose;
 import io.quarkus.websockets.next.OnError;
@@ -76,12 +77,10 @@ public class PlayWebSocket {
         this.gameState = gameEngine.getGameState(gameId);
 
         GENERATION_LOCKS.computeIfAbsent(gameId, k -> new AtomicBoolean(false));
-        int count = ACTIVE_CONNECTIONS.merge(gameId, 1, Integer::sum);
+        ACTIVE_CONNECTIONS.merge(gameId, 1, Integer::sum);
 
-        var initSession = new PlayWsServerMessage.Session(connection.id(), gameId);
-        if (count == 1) {
-            handleUserMessage(new PlayWsClientMessage.UserMessage("/start"));
-        }
+        String phase = gameState.getGamePhase().name();
+        var initSession = new PlayWsServerMessage.Session(connection.id(), gameId, gameState.getAdventureName(), phase);
         return Uni.createFrom().item(initSession);
     }
 

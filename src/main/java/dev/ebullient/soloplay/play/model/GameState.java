@@ -1,4 +1,4 @@
-package dev.ebullient.soloplay.play;
+package dev.ebullient.soloplay.play.model;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -8,8 +8,6 @@ import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Transient;
 
-import dev.ebullient.soloplay.play.model.Draft;
-
 @NodeEntity("Game")
 public class GameState {
 
@@ -17,7 +15,7 @@ public class GameState {
         CHARACTER_CREATION,
         UNKNOWN;
 
-        GamePhase next() {
+        public GamePhase next() {
             return switch (this) {
                 case CHARACTER_CREATION -> UNKNOWN;
                 default -> GamePhase.UNKNOWN;
@@ -29,6 +27,7 @@ public class GameState {
     String gameId;
     GamePhase gamePhase;
     Long lastPlayedAt;
+    String adventureName;
 
     @Transient
     Map<String, Draft> drafts;
@@ -51,7 +50,9 @@ public class GameState {
      * @return the gamePhase
      */
     public GamePhase getGamePhase() {
-        return gamePhase;
+        return gamePhase == null
+            ? GamePhase.UNKNOWN
+            : gamePhase;
     }
 
     /**
@@ -71,6 +72,14 @@ public class GameState {
 
     public void setLastPlayedAt(Instant now) {
         this.lastPlayedAt = now == null ? null : now.toEpochMilli();
+    }
+
+    public String getAdventureName() {
+        return adventureName;
+    }
+
+    public void setAdventureName(String adventureName) {
+        this.adventureName = adventureName;
     }
 
     /**
@@ -95,10 +104,5 @@ public class GameState {
             drafts = new HashMap<>();
         }
         this.drafts.put(key, value);
-    }
-
-    public String getAdventureName() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getAdventureName'");
     }
 }

@@ -12,12 +12,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.ebullient.soloplay.GameRepository;
 import dev.ebullient.soloplay.StringUtils;
 import dev.ebullient.soloplay.play.ActorCreationAssistant.ActorCreationResponse;
-import dev.ebullient.soloplay.play.GameState.GamePhase;
 import dev.ebullient.soloplay.play.model.Actor;
 import dev.ebullient.soloplay.play.model.Draft;
 import dev.ebullient.soloplay.play.model.Draft.ActorCreation;
 import dev.ebullient.soloplay.play.model.Draft.ActorDetails;
+import dev.ebullient.soloplay.play.model.GameState;
+import dev.ebullient.soloplay.play.model.GameState.GamePhase;
 import dev.ebullient.soloplay.play.model.Patch.ActorCreationPatch;
+import dev.langchain4j.exception.LangChain4jException;
 import io.quarkus.logging.Log;
 
 @ApplicationScoped
@@ -111,12 +113,14 @@ public class ActorCreationEngine {
             } else {
                 response = assistant.turn(state.getGameId(), state.getAdventureName(), currentDraft, playerInput);
             }
+        } catch (LangChain4jException ex) {
+            throw ex;
         } catch (Exception e) {
-            Log.debugf(e, "Exception reading turn response: %s", debugReturnValue(response));
+            Log.errorf(e, "Exception reading turn response: %s", debugReturnValue(response));
             throw new ActorResponseException("bad response format", e);
         }
         if (response == null || response.messageMarkdown() == null) {
-            Log.debugf("Markdown text response was missing", debugReturnValue(response));
+            Log.errorf("Markdown text response was missing", debugReturnValue(response));
             throw new ActorResponseException("Markdown response was missing");
         }
         return response;

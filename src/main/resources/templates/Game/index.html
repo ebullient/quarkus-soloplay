@@ -1,0 +1,47 @@
+{#include base}
+    {#title}Games{/title}
+
+    {#header-title}Games{/header-title}
+
+    {#content}
+    <div class="wide stack stack-lg">
+        {#if flash:error}
+        <div class="card card--error">
+            <p>{flash:error}</p>
+        </div>
+        {/if}
+
+        {#if flash:success}
+        <div class="card card--success">
+            <p>{flash:success}</p>
+        </div>
+        {/if}
+
+        <div class="card card--ai">
+            <h2>Your Games</h2>
+            <p>Continue an existing game or start a new one.</p>
+            <div class="cluster">
+                <a class="btn btn-primary" href="/game/create">+ New Game</a>
+            </div>
+        </div>
+
+        {#if games.isEmpty}
+        <div class="card">
+            <p>No games yet. Create one to get started!</p>
+        </div>
+        {#else}
+        <div class="grid">
+            {#for game in games}
+            <div class="card card--interactive">
+                <h3>{game.gameId}</h3>
+                {#if game.adventureName}
+                <p>{game.adventureName}</p>
+                {/if}
+                <a class="btn btn-primary" href="/play/{game.gameId}">Continue</a>
+            </div>
+            {/for}
+        </div>
+        {/if}
+    </div>
+    {/content}
+{/include}

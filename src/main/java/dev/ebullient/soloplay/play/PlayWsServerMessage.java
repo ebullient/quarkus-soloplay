@@ -42,10 +42,14 @@ public sealed interface PlayWsServerMessage {
      *
      * @param sessionId Server-generated session identifier (currently the connection id)
      * @param gameId Stable game identifier (from the WebSocket path parameter)
+     * @param adventureName Display name for the adventure (may be null for new games)
+     * @param gamePhase Current phase of the game (e.g., "CHARACTER_CREATION", "UNKNOWN")
      */
     record Session(
             String sessionId,
-            String gameId) implements PlayWsServerMessage {
+            String gameId,
+            String adventureName,
+            String gamePhase) implements PlayWsServerMessage {
     }
 
     /**

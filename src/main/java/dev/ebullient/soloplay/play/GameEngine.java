@@ -7,7 +7,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import dev.ebullient.soloplay.GameRepository;
-import dev.ebullient.soloplay.play.GameState.GamePhase;
+import dev.ebullient.soloplay.play.model.GameState;
+import dev.ebullient.soloplay.play.model.GameState.GamePhase;
 
 @ApplicationScoped
 public class GameEngine {
