@@ -18,27 +18,28 @@ public class GameEngine {
     @Inject
     ActorCreationEngine actorCreationEngine;
 
-    public GameResponse processRequest(String gameId, String playerInput, GameEventEmitter emitter) {
+    GameState getGameState(String gameId) {
+        return gameRepository.getOrCreateGameById(gameId);
+    }
+
+    public GameResponse processRequest(GameState game, String playerInput, GameEventEmitter emitter) {
         Objects.requireNonNull(emitter, "emitter");
-        GameState game = gameRepository.getOrCreateGameById(gameId);
 
         GamePhase phase = game.getGamePhase();
         boolean createActors = phase == GamePhase.CHARACTER_CREATION
-                || (phase == GamePhase.UNKNOWN && !gameRepository.hasProtagonists(gameId));
+                || (phase == GamePhase.UNKNOWN && !gameRepository.hasProtagonists(game.getGameId()));
 
         String trimmed = playerInput == null ? "" : playerInput.trim();
         if (isHelpCommand(trimmed)) {
             // Help responses do not change game state
             if (createActors) {
-                GameResponse response = actorCreationEngine.help(game);
-                return response;
+                return actorCreationEngine.help(game);
             }
-            GameResponse response = GameResponse.reply("""
+            return GameResponse.reply("""
                     Available commands:
 
                     - `/help` (or `help`, `?`): show commands
                     """);
-            return response;
         }
 
         GameResponse response = createActors

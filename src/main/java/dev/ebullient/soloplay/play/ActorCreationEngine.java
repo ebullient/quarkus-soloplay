@@ -22,7 +22,7 @@ import io.quarkus.logging.Log;
 
 @ApplicationScoped
 public class ActorCreationEngine {
-
+    static final Draft.ActorCreation EMPTY_DRAFT = new Draft.ActorCreation(null, null, null, null, false);
     static final String DRAFT_KEY = "actor_creation";
 
     private final Map<String, ActorCreation> draftsByGameId = new ConcurrentHashMap<>();
@@ -43,7 +43,7 @@ public class ActorCreationEngine {
         String gameId = game.getGameId();
         game.setGamePhase(GamePhase.CHARACTER_CREATION);
 
-        ActorCreation currentDraft = draftsByGameId.computeIfAbsent(gameId, k -> emptyDraft());
+        ActorCreation currentDraft = draftsByGameId.computeIfAbsent(gameId, k -> EMPTY_DRAFT);
 
         String trimmed = playerInput == null ? "" : playerInput.trim();
         if (GameEngine.isHelpCommand(trimmed)) {
@@ -82,10 +82,10 @@ public class ActorCreationEngine {
 
         ActorCreationResponse response = null;
         try {
-            response = parseResponse(game, currentDraft, playerInput); // may throw
+            response = handleAssistantResponse(game, currentDraft, trimmed); // may throw
         } catch (ActorResponseException actorEx) {
             emitter.assistantDelta("Hmmm. That didn't go as planned. Retrying…\n");
-            response = parseResponse(game, currentDraft, playerInput); // may throw
+            response = handleAssistantResponse(game, currentDraft, trimmed); // may throw
         }
 
         // All is well with parsed response
@@ -102,10 +102,15 @@ public class ActorCreationEngine {
                 new GameEffect.DraftUpdate(DRAFT_KEY, updatedDraft));
     }
 
-    private ActorCreationResponse parseResponse(GameState state, Draft.ActorCreation currentDraft, String playerInput) {
+    private ActorCreationResponse handleAssistantResponse(GameState state, Draft.ActorCreation currentDraft,
+            String playerInput) {
         ActorCreationResponse response = null;
         try {
-            response = assistant.turn(state.getGameId(), state.getAdventureName(), currentDraft, playerInput);
+            if ((playerInput.isBlank() || playerInput.equals("/start")) && currentDraft == EMPTY_DRAFT) {
+                response = assistant.start(state.getGameId(), state.getAdventureName());
+            } else {
+                response = assistant.turn(state.getGameId(), state.getAdventureName(), currentDraft, playerInput);
+            }
         } catch (Exception e) {
             Log.debugf(e, "Exception reading turn response: %s", debugReturnValue(response));
             throw new ActorResponseException("bad response format", e);
@@ -135,10 +140,6 @@ public class ActorCreationEngine {
             // no-op. Best effort
         }
         return value == null ? "null" : "unable to serialize";
-    }
-
-    static ActorCreation emptyDraft() {
-        return new Draft.ActorCreation(null, null, null, null, false);
     }
 
     static String missingRequired(ActorCreation draft) {

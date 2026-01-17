@@ -19,7 +19,7 @@ public class GameState {
 
         GamePhase next() {
             return switch (this) {
-                case CHARACTER_CREATION -> GamePhase.UNKNOWN;
+                case CHARACTER_CREATION -> UNKNOWN;
                 default -> GamePhase.UNKNOWN;
             };
         }

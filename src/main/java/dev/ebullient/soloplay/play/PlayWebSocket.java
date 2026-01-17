@@ -42,6 +42,7 @@ public class PlayWebSocket {
 
     // Simple per-game connection counts to allow cleanup when the last client disconnects.
     private static final Map<String, Integer> ACTIVE_CONNECTIONS = new ConcurrentHashMap<>();
+
     /**
      * Shared generation locks per game.
      * Prevents concurrent generation across all connections to the same gameId.
@@ -61,20 +62,27 @@ public class PlayWebSocket {
     GameEngine gameEngine;
 
     String gameId;
+    GameState gameState;
 
     /**
      * Called when a client connects to the WebSocket.
      */
     @OnOpen
+    @RunOnVirtualThread
     public Uni<PlayWsServerMessage> onOpen(@PathParam String gameId) {
         Log.infof("WebSocket connection opened (connection: %s, gameId: %s)", connection.id(), gameId);
+
         this.gameId = gameId;
-        ACTIVE_CONNECTIONS.merge(gameId, 1, Integer::sum);
+        this.gameState = gameEngine.getGameState(gameId);
 
-        // Ensure generation lock exists for this gameId
         GENERATION_LOCKS.computeIfAbsent(gameId, k -> new AtomicBoolean(false));
+        int count = ACTIVE_CONNECTIONS.merge(gameId, 1, Integer::sum);
 
-        return Uni.createFrom().item(new PlayWsServerMessage.Session(connection.id(), gameId));
+        var initSession = new PlayWsServerMessage.Session(connection.id(), gameId);
+        if (count == 1) {
+            handleUserMessage(new PlayWsClientMessage.UserMessage("/start"));
+        }
+        return Uni.createFrom().item(initSession);
     }
 
     /**
@@ -83,7 +91,6 @@ public class PlayWebSocket {
     @OnClose
     public void onClose() {
         Log.infof("WebSocket connection closed (connection: %s)", connection.id());
-
         if (gameId == null) {
             return;
         }
@@ -116,22 +123,20 @@ public class PlayWebSocket {
     @OnTextMessage
     @RunOnVirtualThread
     public Multi<PlayWsServerMessage> onMessage(PlayWsClientMessage message) {
-        if (message instanceof PlayWsClientMessage.HistoryRequest historyRequest) {
-            return Multi.createFrom().item(history(historyRequest.limit()));
-        }
-        if (message instanceof PlayWsClientMessage.UserMessage userMessage) {
-            return handleUserMessage(userMessage);
-        }
-        return Multi.createFrom().item(new PlayWsServerMessage.Error(null, "Unsupported message type"));
+        return switch (message) {
+            case PlayWsClientMessage.HistoryRequest req -> handleHistoryRequest(req, 100);
+            case PlayWsClientMessage.UserMessage msg -> handleUserMessage(msg);
+            default -> Multi.createFrom().item(new PlayWsServerMessage.Error(null, "Unsupported message type"));
+        };
     }
 
-    private PlayWsServerMessage.History history(int limit) {
+    private Multi<PlayWsServerMessage> handleHistoryRequest(PlayWsClientMessage.HistoryRequest historyRequest, int limit) {
         List<PlayWsServerMessage.HistoryMessage> allMessages = HISTORY.getOrDefault(gameId, List.of());
         if (allMessages.isEmpty()) {
-            return new PlayWsServerMessage.History(List.of());
+            return Multi.createFrom().item(new PlayWsServerMessage.History(List.of()));
         }
         int start = Math.max(0, allMessages.size() - limit);
-        return new PlayWsServerMessage.History(allMessages.subList(start, allMessages.size()));
+        return Multi.createFrom().item(new PlayWsServerMessage.History(allMessages.subList(start, allMessages.size())));
     }
 
     private Multi<PlayWsServerMessage> handleUserMessage(PlayWsClientMessage.UserMessage userMessage) {
@@ -149,15 +154,16 @@ public class PlayWebSocket {
 
         String assistantId = UUID.randomUUID().toString();
         try {
-            appendToHistory("user", playerInput);
-
             Log.infof("User message received (id: %s): %s", assistantId, truncate(playerInput, 100));
+            if (!playerInput.startsWith("/")) {
+                appendToHistory("user", playerInput);
+            }
 
             broadcastToGameId(new PlayWsServerMessage.UserEcho(connection.id(), playerInput));
             broadcastToGameId(new PlayWsServerMessage.AssistantStart(assistantId));
 
             GameEventEmitter emitter = text -> broadcastToGameId(new PlayWsServerMessage.AssistantDelta(assistantId, text));
-            GameResponse response = gameEngine.processRequest(gameId, playerInput, emitter);
+            GameResponse response = gameEngine.processRequest(gameState, playerInput, emitter);
 
             if (response instanceof GameResponse.Error error) {
                 broadcastToGameId(new PlayWsServerMessage.Error(assistantId, error.message()));
