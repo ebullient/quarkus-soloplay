@@ -74,24 +74,3 @@
   }
 }
 
-// Loading state
-#loading {
-  color: var(--color-text-accent);
-  font-style: italic;
-  align-self: flex-start;
-  animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 0.3; }
-    50% { opacity: 1; }
-}
-
-// Legacy class names for compatibility
-.user-message {
-  @extend .message--user;
-}
-
-.assistant-message {
-  @extend .message--assistant;
-}

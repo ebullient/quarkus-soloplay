@@ -14,7 +14,6 @@
 @use 'components/utilities';
 @use 'components/buttons';
 @use 'components/forms';
-@use 'components/badges';
 @use 'components/messages';
 @use 'components/flash';
 @use 'components/header';
@@ -72,19 +71,3 @@ footer {
     }
 }
 
-// Semantic aliases for card variants
-.data-section {
-    @extend .card;
-    @extend .card--interactive;
-}
-
-.ai-inspection {
-    @extend .card;
-    @extend .card--ai;
-}
-
-.empty-state {
-    text-align: center;
-    padding: 3rem var(--spacing-md);
-    color: var(--color-text-secondary);
-}

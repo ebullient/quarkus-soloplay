@@ -14,4 +14,8 @@
     &.error {
         @include status-message(var(--color-error-bg), var(--color-error-border), var(--color-error-text));
     }
+
+    &.warning {
+        @include status-message(var(--color-warning-bg), var(--color-warning-border), var(--color-warning-text));
+    }
 }
