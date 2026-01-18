@@ -36,5 +36,4 @@ public class LoreRetriever implements Supplier<RetrievalAugmentor> {
     public RetrievalAugmentor get() {
         return augmentor;
     }
-
 }

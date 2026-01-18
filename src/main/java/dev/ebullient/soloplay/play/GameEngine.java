@@ -1,6 +1,5 @@
 package dev.ebullient.soloplay.play;
 
-import java.time.Instant;
 import java.util.Objects;
 
 import jakarta.enterprise.context.ApplicationScoped;
@@ -19,8 +18,11 @@ public class GameEngine {
     @Inject
     ActorCreationEngine actorCreationEngine;
 
-    GameState getGameState(String gameId) {
-        return gameRepository.getOrCreateGameById(gameId);
+    @Inject
+    RollHandler rollHandler;
+
+    public GameState getGameState(String gameId) {
+        return gameRepository.findGameById(gameId);
     }
 
     public GameResponse processRequest(GameState game, String playerInput, GameEventEmitter emitter) {
@@ -28,28 +30,47 @@ public class GameEngine {
 
         GamePhase phase = game.getGamePhase();
         boolean createActors = phase == GamePhase.CHARACTER_CREATION
-                || (phase == GamePhase.UNKNOWN && !gameRepository.hasProtagonists(game.getGameId()));
+                || (phase == GamePhase.UNKNOWN && !gameRepository.hasProtagonists(game.getGameId()))
+                || "/newcharacter".equals(playerInput.trim());
 
         String trimmed = playerInput == null ? "" : playerInput.trim();
         if (isHelpCommand(trimmed)) {
-            // Help responses do not change game state
-            if (createActors) {
-                return actorCreationEngine.help(game);
-            }
-            return GameResponse.reply("""
-                    Available commands:
-
-                    - `/help` (or `help`, `?`): show commands
-                    """);
+            return handleHelpCommand(game, createActors);
         }
 
-        GameResponse response = createActors
-                ? actorCreationEngine.processRequest(game, playerInput, emitter)
-                : GameResponse.reply("Character creation is complete, but the next phase routing isn't implemented yet.");
+        final GameResponse response;
+        if (createActors) {
+            response = actorCreationEngine.processRequest(game, playerInput, emitter);
+        } else if (game.getGamePhase() == GamePhase.SCENE_INITIALIZATION) {
+            // This is not a turn: either a recap or session 0
+            emitter.assistantDelta("Looking up recent story events…\n");
 
-        game.setLastPlayedAt(Instant.now());
+            response = GameResponse.reply("Not quite here yet: check for events (recap) or start new");
+        } else {
+
+            response = GameResponse
+                    .reply("This phase of routing isn't implemented yet.");
+
+            // game.incrementTurn();
+        }
+
         gameRepository.saveGame(game);
         return response;
+    }
+
+    GameResponse handleHelpCommand(GameState game, boolean createActors) {
+        // Help responses do not change game state
+        if (createActors) {
+            return actorCreationEngine.help(game);
+        }
+        return GameResponse.reply("""
+                Available commands:
+
+                - `/newcharacter`: create new player character
+                - `/roll`: roll dice or enter roll result
+                - `/start`: start or resume play
+                - `/help` (or `help`, `?`): show commands
+                """);
     }
 
     static boolean isHelpCommand(String input) {

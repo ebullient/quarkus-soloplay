@@ -2,7 +2,7 @@ package dev.ebullient.soloplay.play;
 
 import dev.ebullient.soloplay.ai.LoreRetriever;
 import dev.ebullient.soloplay.ai.LoreTools;
-import dev.ebullient.soloplay.play.model.Draft.ActorCreation;
+import dev.ebullient.soloplay.play.model.Draft;
 import dev.ebullient.soloplay.play.model.Patch;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
@@ -106,7 +106,7 @@ import io.quarkiverse.langchain4j.RegisterAiService;
 @RegisterAiService(tools = LoreTools.class, retrievalAugmentor = LoreRetriever.class)
 public interface ActorCreationAssistant {
 
-    public record ActorCreationResponse(String messageMarkdown, Patch.ActorCreationPatch patch) {
+    public record ActorCreationResponse(String messageMarkdown, Patch.PlayerActorCreationPatch patch) {
     };
 
     @UserMessage("""
@@ -127,10 +127,11 @@ public interface ActorCreationAssistant {
 
             {playerInput}
             """)
-    ActorCreationResponse turn(
-            @MemoryId String gameId,
+    String turn(
+            @MemoryId String chatMemoryId,
+            String gameId,
             String adventureName,
-            ActorCreation currentDraft,
+            Draft.PlayerActorDraft currentDraft,
             String playerInput);
 
     @UserMessage("""
@@ -139,7 +140,8 @@ public interface ActorCreationAssistant {
             Introduce yourself and ask them about their character concept.
             What kind of character do they want to play?
             """)
-    ActorCreationResponse start(
-            @MemoryId String gameId,
+    String start(
+            @MemoryId String chatMemoryId,
+            String gameId,
             String adventureName);
 }

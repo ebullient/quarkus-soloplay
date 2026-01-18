@@ -74,6 +74,11 @@ public class PlayWebSocket {
 
         this.gameId = gameId;
         this.gameState = gameEngine.getGameState(gameId);
+        if (gameState == null) {
+            Log.warnf("Game not found: %s", gameId);
+            return Uni.createFrom().item(
+                    new PlayWsServerMessage.Error(null, "Game not found: " + gameId));
+        }
 
         GENERATION_LOCKS.computeIfAbsent(gameId, k -> new AtomicBoolean(false));
         ACTIVE_CONNECTIONS.merge(gameId, 1, Integer::sum);

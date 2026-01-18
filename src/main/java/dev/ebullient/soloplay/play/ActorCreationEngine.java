@@ -1,33 +1,31 @@
 package dev.ebullient.soloplay.play;
 
-import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import dev.ebullient.soloplay.GameRepository;
 import dev.ebullient.soloplay.StringUtils;
 import dev.ebullient.soloplay.play.ActorCreationAssistant.ActorCreationResponse;
-import dev.ebullient.soloplay.play.model.Actor;
 import dev.ebullient.soloplay.play.model.Draft;
-import dev.ebullient.soloplay.play.model.Draft.ActorCreation;
-import dev.ebullient.soloplay.play.model.Draft.ActorDetails;
+import dev.ebullient.soloplay.play.model.Draft.Details;
+import dev.ebullient.soloplay.play.model.Draft.PlayerActorDraft;
 import dev.ebullient.soloplay.play.model.GameState;
 import dev.ebullient.soloplay.play.model.GameState.GamePhase;
-import dev.ebullient.soloplay.play.model.Patch.ActorCreationPatch;
+import dev.ebullient.soloplay.play.model.Patch.PlayerActorCreationPatch;
+import dev.ebullient.soloplay.play.model.PlayerActor;
 import dev.langchain4j.exception.LangChain4jException;
 import io.quarkus.logging.Log;
 
 @ApplicationScoped
 public class ActorCreationEngine {
-    static final Draft.ActorCreation EMPTY_DRAFT = new Draft.ActorCreation(null, null, null, null, false);
+    static final PlayerActorDraft EMPTY_DRAFT = new PlayerActorDraft(null, null, null, null, false);
     static final String DRAFT_KEY = "actor_creation";
-
-    private final Map<String, ActorCreation> draftsByGameId = new ConcurrentHashMap<>();
 
     @Inject
     GameRepository gameRepository;
@@ -45,14 +43,14 @@ public class ActorCreationEngine {
         String gameId = game.getGameId();
         game.setGamePhase(GamePhase.CHARACTER_CREATION);
 
-        ActorCreation currentDraft = draftsByGameId.computeIfAbsent(gameId, k -> EMPTY_DRAFT);
+        var currentDraft = getCurrentDraft(game);
 
         String trimmed = playerInput == null ? "" : playerInput.trim();
         if (GameEngine.isHelpCommand(trimmed)) {
             return help(game);
         }
         if (trimmed.equalsIgnoreCase("/reset")) {
-            draftsByGameId.remove(gameId);
+            game.removeDraft(DRAFT_KEY);
             return GameResponse.reply("Ok — cleared your character draft.", new GameEffect.DraftUpdate(DRAFT_KEY, null));
         }
         if (trimmed.equalsIgnoreCase("/draft")) {
@@ -60,32 +58,33 @@ public class ActorCreationEngine {
         }
         if (trimmed.equalsIgnoreCase("/confirm")) {
             emitter.assistantDelta("Confirming character…\n");
-            ActorCreation confirmed = new ActorCreation(
-                    currentDraft.name(), currentDraft.actorClass(), currentDraft.level(),
-                    currentDraft.details(), true);
+            var confirmed = new PlayerActorDraft(
+                    currentDraft.name(),
+                    currentDraft.details(),
+                    currentDraft.actorClass(), currentDraft.level(),
+                    true);
 
             String missing = missingRequired(confirmed);
             if (missing != null) {
                 return GameResponse.error("Can't confirm yet: " + missing);
             }
 
-            Actor actor = new Actor(gameId, confirmed);
+            PlayerActor actor = new PlayerActor(gameId, confirmed);
             emitter.assistantDelta("Saving character…\n");
             gameRepository.saveActor(actor);
 
             game.setGamePhase(game.getGamePhase().next());
-
-            draftsByGameId.remove(gameId);
+            cleanupDraft(game);
             return GameResponse.reply("Created your character: **" + actor.getName() + "** (" + actor.getActorClass() + " "
                     + actor.getLevel() + ").");
         }
 
-        emitter.assistantDelta("Digging through the details…\n");
+        emitter.assistantDelta("The GM is thinking…\n");
 
         ActorCreationResponse response = null;
         try {
             response = handleAssistantResponse(game, currentDraft, trimmed); // may throw
-        } catch (ActorResponseException actorEx) {
+        } catch (AssistantResponseException actorEx) {
             emitter.assistantDelta("Hmmm. That didn't go as planned. Retrying…\n");
             response = handleAssistantResponse(game, currentDraft, trimmed); // may throw
         }
@@ -95,8 +94,8 @@ public class ActorCreationEngine {
         var patch = response.patch();
 
         emitter.assistantDelta("Updating your character…\n");
-        ActorCreation updatedDraft = applyPatch(currentDraft, patch);
-        draftsByGameId.put(gameId, updatedDraft);
+        PlayerActorDraft updatedDraft = applyPatch(currentDraft, patch);
+        updateDraft(game, updatedDraft);
 
         return GameResponse.reply(
                 (message == null ? "ok." : message) + "\n\n" + renderDraft(updatedDraft)
@@ -104,26 +103,45 @@ public class ActorCreationEngine {
                 new GameEffect.DraftUpdate(DRAFT_KEY, updatedDraft));
     }
 
-    private ActorCreationResponse handleAssistantResponse(GameState state, Draft.ActorCreation currentDraft,
+    private ActorCreationResponse handleAssistantResponse(GameState state, PlayerActorDraft currentDraft,
             String playerInput) {
-        ActorCreationResponse response = null;
+        String chatMemoryId = state.getGameId() + "-character";
+        String rawResponse;
+
         try {
             if ((playerInput.isBlank() || playerInput.equals("/start")) && currentDraft == EMPTY_DRAFT) {
-                response = assistant.start(state.getGameId(), state.getAdventureName());
+                rawResponse = assistant.start(chatMemoryId, state.getGameId(), state.getAdventureName());
             } else {
-                response = assistant.turn(state.getGameId(), state.getAdventureName(), currentDraft, playerInput);
+                rawResponse = assistant.turn(chatMemoryId, state.getGameId(), state.getAdventureName(), currentDraft,
+                        playerInput);
             }
         } catch (LangChain4jException ex) {
             throw ex;
+        }
+
+        return parseResponse(rawResponse);
+    }
+
+    ActorCreationResponse parseResponse(String rawResponse) {
+        if (rawResponse == null || rawResponse.isBlank()) {
+            Log.error("Empty response from assistant");
+            throw new AssistantResponseException("Empty response from assistant", true);
+        }
+
+        try {
+            ActorCreationResponse response = objectMapper.readValue(rawResponse, ActorCreationResponse.class);
+            if (response.messageMarkdown() == null) {
+                Log.errorf("Markdown text response was missing. Raw: %s", rawResponse);
+                throw new AssistantResponseException("Markdown response was missing", true);
+            }
+            return response;
+        } catch (JsonParseException | JsonMappingException e) {
+            Log.errorf(e, "Malformed JSON from assistant. Raw: %s", rawResponse);
+            throw new AssistantResponseException("Malformed JSON: " + e.getOriginalMessage(), e, true);
         } catch (Exception e) {
-            Log.errorf(e, "Exception reading turn response: %s", debugReturnValue(response));
-            throw new ActorResponseException("bad response format", e);
+            Log.errorf(e, "Failed to parse response. Raw: %s", rawResponse);
+            throw new AssistantResponseException("Unable to parse response: " + e.getMessage(), e, false);
         }
-        if (response == null || response.messageMarkdown() == null) {
-            Log.errorf("Markdown text response was missing", debugReturnValue(response));
-            throw new ActorResponseException("Markdown response was missing");
-        }
-        return response;
     }
 
     public GameResponse help(GameState game) {
@@ -146,7 +164,19 @@ public class ActorCreationEngine {
         return value == null ? "null" : "unable to serialize";
     }
 
-    static String missingRequired(ActorCreation draft) {
+    PlayerActorDraft getCurrentDraft(GameState game) {
+        return game.getDraftOrDefault(DRAFT_KEY, PlayerActorDraft.class, EMPTY_DRAFT);
+    }
+
+    void cleanupDraft(GameState game) {
+        game.removeDraft(DRAFT_KEY);
+    }
+
+    void updateDraft(GameState game, PlayerActorDraft updatedDraft) {
+        game.putDraft(DRAFT_KEY, updatedDraft);
+    }
+
+    static String missingRequired(PlayerActorDraft draft) {
         if (draft == null) {
             return "no draft";
         }
@@ -162,34 +192,34 @@ public class ActorCreationEngine {
         return null;
     }
 
-    static ActorCreation applyPatch(ActorCreation current, ActorCreationPatch patch) {
+    static PlayerActorDraft applyPatch(PlayerActorDraft current, PlayerActorCreationPatch patch) {
         if (patch == null) {
             return current;
         }
-        ActorDetails mergedDetails = mergeDetails(current.details(), patch.details());
-        return new Draft.ActorCreation(
+        Details mergedDetails = mergeDetails(current.details(), patch.details());
+        return new PlayerActorDraft(
                 StringUtils.firstNonBlank(patch.name(), current.name()),
+                mergedDetails,
                 StringUtils.firstNonBlank(patch.actorClass(), current.actorClass()),
                 patch.level() != null ? patch.level() : current.level(),
-                mergedDetails,
                 current.confirmed());
     }
 
-    static ActorDetails mergeDetails(ActorDetails current, ActorDetails patch) {
+    static Details mergeDetails(Details current, Details patch) {
         if (current == null) {
             return patch;
         }
         if (patch == null) {
             return current;
         }
-        return new Draft.ActorDetails(
+        return new Draft.Details(
                 StringUtils.firstNonBlank(patch.summary(), current.summary()),
                 StringUtils.firstNonBlank(patch.description(), current.description()),
                 patch.tags() != null ? patch.tags() : current.tags(),
                 patch.aliases() != null ? patch.aliases() : current.aliases());
     }
 
-    static String renderDraft(ActorCreation draft) {
+    static String renderDraft(PlayerActorDraft draft) {
         if (draft == null) {
             return "No current draft.";
         }

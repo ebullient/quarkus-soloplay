@@ -51,6 +51,7 @@ public class StringUtils {
         }
         return value.stream()
                 .map(s -> normalize(s))
+                .filter(s -> !s.isBlank())
                 .toList();
     }
 }

@@ -1,0 +1,7 @@
+- **Name:** {location.name}
+{#if location.summary}- **Summary:** {location.summary}
+{/if}{#if location.description}- **Description:** {location.description}
+{/if}{#if location.aliases}- **Aliases:** {#each location.aliases}{it}{#if it_hasNext}, {/if}{/each}
+{/if}{#if location.tags}- **Tags:** {#each location.tags}{it}{#if it_hasNext}, {/if}{/each}
+{/if}
+- created at {location.createdAt}; updated at {location.updatedAt}

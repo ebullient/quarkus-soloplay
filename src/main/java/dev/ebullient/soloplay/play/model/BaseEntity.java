@@ -6,24 +6,54 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.neo4j.ogm.annotation.NodeEntity;
+import org.neo4j.ogm.annotation.Transient;
 
 import dev.ebullient.soloplay.StringUtils;
 
-@NodeEntity
 public abstract class BaseEntity {
 
-    protected Instant createdAt;
-    protected Instant updatedAt;
+    protected Long createdAt;
+    protected Long updatedAt;
     protected Set<String> tags;
+
+    @Transient
     protected boolean dirty;
 
     protected BaseEntity() {
-        this.createdAt = Instant.now();
-        this.updatedAt = Instant.now();
+        this.createdAt = Instant.now().toEpochMilli();
+        this.updatedAt = Instant.now().toEpochMilli();
         this.tags = new HashSet<>();
+        this.dirty = false;
+    }
 
-        this.dirty = true; // must be persisted
+    /**
+     * @return the createdAt
+     */
+    public Long getCreatedAt() {
+        return createdAt;
+    }
+
+    /**
+     * @return the updatedAt
+     */
+    public Long getUpdatedAt() {
+        return updatedAt;
+    }
+
+    /**
+     * @return the dirty
+     */
+    public boolean isDirty() {
+        return dirty;
+    }
+
+    protected void markDirty() {
+        this.updatedAt = Instant.now().toEpochMilli();
+        this.dirty = true;
+    }
+
+    public void markClean() {
+        this.dirty = false;
     }
 
     public Collection<String> getTags() {
@@ -32,8 +62,7 @@ public abstract class BaseEntity {
 
     public void setTags(List<String> tags) {
         this.tags = new HashSet<>(StringUtils.normalize(tags));
-        this.updatedAt = Instant.now();
-        this.dirty = true;
+        markDirty();
     }
 
     /**
@@ -45,8 +74,7 @@ public abstract class BaseEntity {
         }
         String normalized = StringUtils.normalize(tag);
         if (tags.add(normalized)) {
-            this.updatedAt = Instant.now();
-            this.dirty = true;
+            markDirty();
         }
     }
 
@@ -59,8 +87,7 @@ public abstract class BaseEntity {
         }
         String normalized = StringUtils.normalize(tag);
         if (tags.remove(normalized)) {
-            this.updatedAt = Instant.now();
-            this.dirty = true;
+            markDirty();
         }
     }
 
@@ -98,5 +125,4 @@ public abstract class BaseEntity {
                 .map(t -> t.trim().toLowerCase())
                 .allMatch(tags::contains);
     }
-
 }

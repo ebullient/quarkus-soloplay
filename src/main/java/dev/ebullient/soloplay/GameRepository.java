@@ -54,6 +54,7 @@ public class GameRepository {
         try (Transaction tx = session.beginTransaction()) {
             session.save(game);
             tx.commit();
+            game.markClean();
         }
     }
 
@@ -62,10 +63,23 @@ public class GameRepository {
         return new ArrayList<>(session.loadAll(GameState.class));
     }
 
+    public void deleteGame(String gameId) {
+        var session = sessionFactory.openSession();
+        try (Transaction tx = session.beginTransaction()) {
+            // Delete all nodes related to this game
+            String cypher = """
+                    MATCH (n {gameId: $gameId})
+                    DETACH DELETE n
+                    """;
+            session.query(cypher, Map.of("gameId", gameId));
+            tx.commit();
+        }
+    }
+
     public boolean hasProtagonists(String gameId) {
         var session = sessionFactory.openSession();
         String cypher = """
-                MATCH (a:Actor {gameId: $gameId})
+                MATCH (a:PlayerActor {gameId: $gameId})
                 RETURN count(a) as c
                 """;
         Long count = session.queryForObject(Long.class, cypher, Map.of("gameId", gameId));
@@ -89,19 +103,7 @@ public class GameRepository {
         try (Transaction tx = session.beginTransaction()) {
             session.save(actor);
             tx.commit();
-        }
-    }
-
-    public void deleteGame(String gameId) {
-        var session = sessionFactory.openSession();
-        try (Transaction tx = session.beginTransaction()) {
-            // Delete all nodes related to this game
-            String cypher = """
-                    MATCH (n {gameId: $gameId})
-                    DETACH DELETE n
-                    """;
-            session.query(cypher, Map.of("gameId", gameId));
-            tx.commit();
+            actor.markClean();
         }
     }
 }

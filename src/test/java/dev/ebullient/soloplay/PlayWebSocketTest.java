@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import dev.ebullient.soloplay.play.GameEngine;
 import dev.ebullient.soloplay.play.GameResponse;
+import dev.ebullient.soloplay.play.model.GameState;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -46,6 +47,15 @@ class PlayWebSocketTest {
 
     @BeforeEach
     void setup() {
+        Mockito.when(mockGameEngine.getGameState(Mockito.anyString()))
+                .thenAnswer(invocation -> {
+                    String gameId = invocation.getArgument(0);
+                    GameState game = new GameState();
+                    game.setGameId(gameId);
+                    game.setAdventureName("Test Adventure");
+                    game.setGamePhase(GameState.GamePhase.CHARACTER_CREATION);
+                    return game;
+                });
     }
 
     @Test
