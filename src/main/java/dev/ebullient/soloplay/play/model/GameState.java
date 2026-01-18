@@ -79,6 +79,10 @@ public class GameState extends BaseEntity {
         return lastPlayedAt;
     }
 
+    public Integer getTurnNumber() {
+        return turnNumber;
+    }
+
     public void incrementTurn() {
         if (turnNumber == null) {
             turnNumber = 1;

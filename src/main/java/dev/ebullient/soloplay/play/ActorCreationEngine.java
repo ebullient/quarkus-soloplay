@@ -75,8 +75,11 @@ public class ActorCreationEngine {
 
             game.setGamePhase(game.getGamePhase().next());
             cleanupDraft(game);
-            return GameResponse.reply("Created your character: **" + actor.getName() + "** (" + actor.getActorClass() + " "
-                    + actor.getLevel() + ").");
+            return GameResponse.reply("""
+                        Created your character: **%s** (%s, level %s).
+
+                        Use `/newcharacter` to create an additional character, or `/start` to start or resume your game.
+                    """.formatted(actor.getName(), actor.getActorClass(), actor.getLevel()));
         }
 
         emitter.assistantDelta("The GM is thinking…\n");

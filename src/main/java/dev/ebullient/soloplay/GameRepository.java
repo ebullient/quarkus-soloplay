@@ -13,6 +13,7 @@ import org.neo4j.ogm.session.SessionFactory;
 import org.neo4j.ogm.transaction.Transaction;
 
 import dev.ebullient.soloplay.play.model.Actor;
+import dev.ebullient.soloplay.play.model.BaseEntity;
 import dev.ebullient.soloplay.play.model.Event;
 import dev.ebullient.soloplay.play.model.GameState;
 import dev.ebullient.soloplay.play.model.Location;
@@ -162,7 +163,9 @@ public class GameRepository {
                 RETURN a
                 LIMIT 1
                 """;
-        return session.queryForObject(Actor.class, cypher, Map.of("gameId", gameId, "name", normalized));
+        // Use query() instead of queryForObject() for polymorphic resolution
+        Iterable<Actor> result = session.query(Actor.class, cypher, Map.of("gameId", gameId, "name", normalized));
+        return result.iterator().hasNext() ? result.iterator().next() : null;
     }
 
     public List<Actor> findActorsByTag(String gameId, String tag) {
@@ -248,4 +251,22 @@ public class GameRepository {
         result.forEach(events::add);
         return events;
     }
+
+    public void saveAll(List<? extends BaseEntity> entities) {
+        if (entities.isEmpty()) {
+            return;
+        }
+
+        var session = sessionFactory.openSession();
+        try (Transaction tx = session.beginTransaction()) {
+            for (var entity : entities) {
+                if (entity.isDirty()) {
+                    session.save(entity);
+                    entity.markClean();
+                }
+            }
+            tx.commit();
+        }
+    }
+
 }

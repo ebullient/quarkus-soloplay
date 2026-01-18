@@ -1,5 +1,10 @@
 package dev.ebullient.soloplay.play;
 
+import static dev.ebullient.soloplay.StringUtils.valueOrPlaceholder;
+
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Objects;
 
@@ -39,7 +44,7 @@ public class GameEngine {
 
     public GameResponse processRequest(GameState game, String playerInput, GameEventEmitter emitter, boolean resuming) {
         Objects.requireNonNull(emitter, "emitter");
-        gameContext.setGameId(game.getGameId());
+        gameContext.setGameState(game, gamePlayEngine.listTheParty(game));
 
         GamePhase phase = game.getGamePhase();
         boolean createActors = phase == GamePhase.CHARACTER_CREATION
@@ -47,6 +52,9 @@ public class GameEngine {
                 || "/newcharacter".equals(playerInput.trim());
 
         String trimmed = playerInput == null ? "" : playerInput.trim();
+        if (isStatusCommand(trimmed)) {
+            return handleStatusCommand(game);
+        }
         if (isHelpCommand(trimmed)) {
             return handleHelpCommand(game, createActors);
         }
@@ -54,6 +62,7 @@ public class GameEngine {
         final GameResponse response;
         if (createActors) {
             response = actorCreationEngine.processRequest(game, playerInput, emitter);
+            gameRepository.refreshTheParty(game.getGameId());
         } else if (game.getGamePhase() == GamePhase.SCENE_INITIALIZATION || resuming) {
             // Check for existing chat history to decide: recap or fresh start
             List<ChatMessage> chatHistory = chatMemoryStore.getMessages(game.getGameId());
@@ -66,12 +75,10 @@ public class GameEngine {
                 String recentEvents = formatRecentEvents(chatHistory);
                 response = gamePlayEngine.recap(game, recentEvents, emitter);
             }
+            game.setGamePhase(game.getGamePhase().next());
         } else {
-
-            response = GameResponse
-                    .reply("This phase of routing isn't implemented yet.");
-
-            // game.incrementTurn();
+            response = gamePlayEngine.processRequest(game, playerInput, emitter);
+            game.incrementTurn();
         }
 
         gameRepository.saveGame(game);
@@ -89,6 +96,7 @@ public class GameEngine {
                 - `/newcharacter`: create new player character
                 - `/roll`: roll dice or enter roll result
                 - `/start`: start or resume play
+                - `/status`: show game state information
                 - `/help` (or `help`, `?`): show commands
                 """);
     }
@@ -100,6 +108,55 @@ public class GameEngine {
         return input.equalsIgnoreCase("/help")
                 || input.equalsIgnoreCase("help")
                 || input.equals("?");
+    }
+
+    static boolean isStatusCommand(String input) {
+        if (input == null || input.isBlank()) {
+            return false;
+        }
+        return input.equalsIgnoreCase("/status");
+    }
+
+    GameResponse handleStatusCommand(GameState game) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("**Game Status**\n\n");
+        sb.append("- **Phase**: ").append(game.getGamePhase().name()).append("\n");
+        sb.append("- **Turn**: ").append(valueOrPlaceholder(game.getTurnNumber())).append("\n");
+        sb.append("- **Adventure**: ").append(valueOrPlaceholder(game.getAdventureName())).append("\n");
+        sb.append("- **Location**: ").append(valueOrPlaceholder(game.getCurrentLocation())).append("\n");
+        sb.append("- **Last Played**: ").append(formatLastPlayed(game.getLastPlayedAt())).append("\n");
+
+        var party = gameRepository.findTheParty(game.getGameId());
+        if (!party.isEmpty()) {
+            sb.append("\n**Party Members**\n\n");
+            for (var member : party) {
+                sb.append("- **").append(member.getName()).append("**");
+                if (member instanceof dev.ebullient.soloplay.play.model.PlayerActor pa) {
+                    if (pa.getActorClass() != null) {
+                        sb.append(" (").append(pa.getActorClass());
+                        if (pa.getLevel() != null) {
+                            sb.append(" ").append(pa.getLevel());
+                        }
+                        sb.append(")");
+                    }
+                }
+                if (member.getSummary() != null) {
+                    sb.append(": ").append(member.getSummary());
+                }
+                sb.append("\n");
+            }
+        }
+
+        return GameResponse.reply(sb.toString());
+    }
+
+    private String formatLastPlayed(Long epochMillis) {
+        if (epochMillis == null) {
+            return "—";
+        }
+        return Instant.ofEpochMilli(epochMillis)
+                .atZone(ZoneId.systemDefault())
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
     }
 
     /**

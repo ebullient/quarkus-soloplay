@@ -1,5 +1,6 @@
 package dev.ebullient.soloplay.play;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -14,9 +15,16 @@ import dev.ebullient.soloplay.GameRepository;
 import dev.ebullient.soloplay.play.GamePlayAssistant.GamePlayResponse;
 import dev.ebullient.soloplay.play.GamePlayAssistant.PendingRoll;
 import dev.ebullient.soloplay.play.GamePlayAssistant.RollResult;
+import dev.ebullient.soloplay.play.model.Actor;
+import dev.ebullient.soloplay.play.model.BaseEntity;
 import dev.ebullient.soloplay.play.model.Draft.PendingRollDraft;
 import dev.ebullient.soloplay.play.model.GameState;
+import dev.ebullient.soloplay.play.model.Location;
 import dev.ebullient.soloplay.play.model.Patch;
+import dev.ebullient.soloplay.play.model.Patch.ActorPatch;
+import dev.ebullient.soloplay.play.model.Patch.LocationPatch;
+import dev.ebullient.soloplay.play.model.Patch.PlayerActorCreationPatch;
+import dev.ebullient.soloplay.play.model.PlayerActor;
 import io.quarkus.logging.Log;
 
 @ApplicationScoped
@@ -40,7 +48,7 @@ public class GamePlayEngine {
         String rawResponse = assistant.sceneStart(
                 game.getGameId(),
                 game.getAdventureName(),
-                findTheParty(game));
+                listTheParty(game));
 
         return processResponse(game, parseResponse(rawResponse), emitter);
     }
@@ -51,7 +59,7 @@ public class GamePlayEngine {
         String rawResponse = assistant.recap(
                 game.getGameId(),
                 game.getAdventureName(),
-                findTheParty(game),
+                listTheParty(game),
                 game.getCurrentLocation(),
                 recentEvents);
 
@@ -81,7 +89,7 @@ public class GamePlayEngine {
         String rawResponse = assistant.turn(
                 game.getGameId(),
                 game.getAdventureName(),
-                findTheParty(game),
+                listTheParty(game),
                 game.getCurrentLocation(),
                 playerInput);
 
@@ -102,11 +110,33 @@ public class GamePlayEngine {
         String rawResponse = assistant.resolveRoll(
                 game.getGameId(),
                 game.getAdventureName(),
-                findTheParty(game),
+                listTheParty(game),
                 game.getCurrentLocation(),
                 rollResult);
 
         return processResponse(game, parseResponse(rawResponse), emitter);
+    }
+
+    GamePlayResponse parseResponse(String rawResponse) {
+        if (rawResponse == null || rawResponse.isBlank()) {
+            Log.error("Empty response from assistant");
+            throw new AssistantResponseException("Empty response from assistant", true);
+        }
+
+        try {
+            GamePlayResponse response = objectMapper.readValue(rawResponse, GamePlayResponse.class);
+            if (response.narration() == null) {
+                Log.errorf("Narration was missing. Raw: %s", rawResponse);
+                throw new AssistantResponseException("Narration was missing", true);
+            }
+            return response;
+        } catch (JsonParseException | JsonMappingException e) {
+            Log.errorf(e, "Malformed JSON from assistant. Raw: %s", rawResponse);
+            throw new AssistantResponseException("Malformed JSON: " + e.getOriginalMessage(), e, true);
+        } catch (Exception e) {
+            Log.errorf(e, "Failed to parse response. Raw: %s", rawResponse);
+            throw new AssistantResponseException("Parse error: " + e.getMessage(), e, false);
+        }
     }
 
     private GameResponse processResponse(GameState game, GamePlayResponse response, GameEventEmitter emitter) {
@@ -140,44 +170,65 @@ public class GamePlayEngine {
         rollHandler.setPendingRoll(game, draft);
     }
 
-    private void applyPatches(GameState game, List<Patch> patches) {
-        for (Patch patch : patches) {
-            // TODO: apply each patch to the appropriate entity
-            // - actor patches -> update/create Actor nodes
-            // - location patches -> update/create Location nodes
-            // - plot flag patches -> game.addPlotFlag(...)
-        }
-    }
-
     private boolean isRollInput(String input) {
         // TODO: detect roll commands or dice notation
         // e.g., "/roll", "1d20+5", "15", etc.
         return input.startsWith("/roll") || input.matches("\\d+");
     }
 
-    GamePlayResponse parseResponse(String rawResponse) {
-        if (rawResponse == null || rawResponse.isBlank()) {
-            Log.error("Empty response from assistant");
-            throw new AssistantResponseException("Empty response from assistant", true);
+    private void applyPatches(GameState game, List<Patch> patches) {
+        List<BaseEntity> modified = new ArrayList<>();
+
+        for (Patch patch : patches) {
+            switch (patch) {
+                case PlayerActorCreationPatch p -> {
+                    var merged = handlePlayerActor(game, p);
+                    modified.add(merged);
+                }
+                case ActorPatch a -> {
+                    var merged = handleActor(game, a);
+                    modified.add(merged);
+                }
+                case LocationPatch l -> {
+                    var merged = handleLocation(game, l);
+                    modified.add(merged);
+                }
+            }
         }
 
-        try {
-            GamePlayResponse response = objectMapper.readValue(rawResponse, GamePlayResponse.class);
-            if (response.narration() == null) {
-                Log.errorf("Narration was missing. Raw: %s", rawResponse);
-                throw new AssistantResponseException("Narration was missing", true);
-            }
-            return response;
-        } catch (JsonParseException | JsonMappingException e) {
-            Log.errorf(e, "Malformed JSON from assistant. Raw: %s", rawResponse);
-            throw new AssistantResponseException("Malformed JSON: " + e.getOriginalMessage(), e, true);
-        } catch (Exception e) {
-            Log.errorf(e, "Failed to parse response. Raw: %s", rawResponse);
-            throw new AssistantResponseException("Parse error: " + e.getMessage(), e, false);
-        }
+        gameRepository.saveAll(modified); // single TX
     }
 
-    List<String> findTheParty(GameState game) {
+    // Very unlikely on this path. Player creation should happen only on actor creation path
+    Actor handlePlayerActor(GameState game, PlayerActorCreationPatch p) {
+        var actor = gameRepository.findActorByNameOrAlias(game.getGameId(), p.name());
+        if (actor == null) {
+            return null;
+        }
+        if (actor instanceof PlayerActor playerActor) {
+            // preserve extra player actor attributes
+            return playerActor.merge(p);
+        }
+        return actor.merge(p);
+    }
+
+    Actor handleActor(GameState game, ActorPatch p) {
+        var actor = gameRepository.findActorByNameOrAlias(game.getGameId(), p.name());
+        if (actor == null) {
+            return new Actor(game.getGameId(), p);
+        }
+        return actor.merge(p);
+    }
+
+    Location handleLocation(GameState game, LocationPatch p) {
+        var location = gameRepository.findLocationByNameOrAlias(game.getGameId(), p.name());
+        if (location == null) {
+            return new Location(game.getGameId(), p);
+        }
+        return location.merge(p);
+    }
+
+    List<String> listTheParty(GameState game) {
         return gameRepository.findTheParty(game.getGameId())
                 .stream().map(a -> a.getName()).toList();
     }

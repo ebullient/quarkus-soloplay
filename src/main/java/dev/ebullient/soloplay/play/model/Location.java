@@ -13,6 +13,7 @@ import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Relationship;
 
 import dev.ebullient.soloplay.play.model.Draft.LocationDraft;
+import dev.ebullient.soloplay.play.model.Patch.LocationPatch;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 
@@ -58,6 +59,21 @@ public class Location extends BaseEntity {
             this.description = draft.details().description();
             setAliases(draft.details().aliases());
             setTags(draft.details().tags());
+        }
+    }
+
+    public Location(String gameId, LocationPatch p) {
+        this();
+        this.gameId = gameId;
+
+        this.name = p.name();
+        this.id = gameId + ":" + slugify(this.name);
+
+        if (p.details() != null) {
+            this.summary = p.details().summary();
+            this.description = p.details().description();
+            setAliases(p.details().aliases());
+            setTags(p.details().tags());
         }
     }
 
@@ -178,5 +194,28 @@ public class Location extends BaseEntity {
 
     public String render() {
         return Templates.locationDetail(this).render();
+    }
+
+    public Location merge(LocationPatch p) {
+        if (!name.equals(p.name())) {
+            addAlias(p.name());
+        }
+        if (p.details() != null) {
+            var details = p.details();
+            if (details.summary() != null) {
+                this.summary = p.details().summary();
+            }
+            if (details.description() != null) {
+                this.description = p.details().description();
+            }
+            if (details.aliases() == null || details.aliases().isEmpty()) {
+                setAliases(details.aliases());
+            }
+            if (details.tags() == null || details.tags().isEmpty()) {
+                setTags(details.tags());
+            }
+        }
+        markDirty();
+        return this;
     }
 }

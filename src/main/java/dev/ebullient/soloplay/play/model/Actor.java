@@ -13,6 +13,8 @@ import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Relationship;
 
 import dev.ebullient.soloplay.play.model.Draft.ActorDraft;
+import dev.ebullient.soloplay.play.model.Patch.ActorPatch;
+import dev.ebullient.soloplay.play.model.Patch.PlayerActorCreationPatch;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 
@@ -28,14 +30,14 @@ public class Actor extends BaseEntity {
     private String id; // human readable slug
     private String gameId;
 
-    private String name;
-    private String summary; // Short, stable identifier (e.g., "Aged wizard", "Young warrior")
-    private String description; // Full narrative that can evolve over time
+    protected String name;
+    protected String summary; // Short, stable identifier (e.g., "Aged wizard", "Young warrior")
+    protected String description; // Full narrative that can evolve over time
 
-    private Set<String> aliases; // Alternative names (e.g., "Krux" for "Commodore Krux")
+    protected Set<String> aliases; // Alternative names (e.g., "Krux" for "Commodore Krux")
 
     @Relationship(type = "PARTICIPATED_IN", direction = Relationship.Direction.OUTGOING)
-    private Set<Event> events;
+    protected Set<Event> events;
 
     public Actor() {
         super();
@@ -58,6 +60,21 @@ public class Actor extends BaseEntity {
             this.description = draft.details().description();
             setAliases(draft.details().aliases());
             setTags(draft.details().tags());
+        }
+    }
+
+    public Actor(String gameId, ActorPatch p) {
+        this();
+        this.gameId = gameId;
+
+        this.name = p.name();
+        this.id = gameId + ":" + slugify(this.name);
+
+        if (p.details() != null) {
+            this.summary = p.details().summary();
+            this.description = p.details().description();
+            setAliases(p.details().aliases());
+            setTags(p.details().tags());
         }
     }
 
@@ -178,5 +195,51 @@ public class Actor extends BaseEntity {
 
     public String render() {
         return Templates.actorDetail(this).render();
+    }
+
+    public Actor merge(ActorPatch p) {
+        if (!name.equals(p.name())) {
+            addAlias(p.name());
+        }
+        if (p.details() != null) {
+            var details = p.details();
+            if (details.summary() != null) {
+                this.summary = p.details().summary();
+            }
+            if (details.description() != null) {
+                this.description = p.details().description();
+            }
+            if (details.aliases() == null || details.aliases().isEmpty()) {
+                setAliases(details.aliases());
+            }
+            if (details.tags() == null || details.tags().isEmpty()) {
+                setTags(details.tags());
+            }
+        }
+        markDirty();
+        return this;
+    }
+
+    public Actor merge(PlayerActorCreationPatch p) {
+        if (!name.equals(p.name())) {
+            addAlias(p.name());
+        }
+        if (p.details() != null) {
+            var details = p.details();
+            if (details.summary() != null) {
+                this.summary = p.details().summary();
+            }
+            if (details.description() != null) {
+                this.description = p.details().description();
+            }
+            if (details.aliases() == null || details.aliases().isEmpty()) {
+                setAliases(details.aliases());
+            }
+            if (details.tags() == null || details.tags().isEmpty()) {
+                setTags(details.tags());
+            }
+        }
+        markDirty();
+        return this;
     }
 }

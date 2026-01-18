@@ -17,7 +17,7 @@ import io.quarkiverse.langchain4j.RegisterAiService;
 
         Return a single JSON object matching:
 
-        { messageMarkdown: string, patch: { name: string|null, actorClass: string|null, level: number|null, details: { summary: string|null, description: string|null, tags: string[]|null, aliases: string[]|null }|null, rationale: string|null, sources: string[] } | null }
+        { messageMarkdown: string, patch: { type: "player_actor", name: string|null, actorClass: string|null, level: number|null, details: { summary: string|null, description: string|null, tags: string[]|null, aliases: string[]|null }|null, rationale: string|null, sources: string[] } | null }
 
         - null means no change; patch = null means no updates
         - details should be null if there are no updates to details
@@ -91,7 +91,7 @@ import io.quarkiverse.langchain4j.RegisterAiService;
 
         Return a single JSON object matching:
 
-        { messageMarkdown: string, patch: { name: string|null, actorClass: string|null, level: number|null, details: { summary: string|null, description: string|null, tags: string[]|null, aliases: string[]|null }|null, rationale: string|null, sources: string[] } | null }
+        { messageMarkdown: string, patch: { type: "player_actor", name: string|null, actorClass: string|null, level: number|null, details: { summary: string|null, description: string|null, tags: string[]|null, aliases: string[]|null }|null, rationale: string|null, sources: string[] } | null }
 
         - messageMarkdown: text response to the user in markdown format.
         - patch: Updated character attributes
