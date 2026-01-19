@@ -5,18 +5,19 @@ Thanks for your interest in contributing! This guide covers the technical archit
 ## Project Overview
 
 Soloplay is an AI-powered assistant for solo tabletop RPG gameplay that combines:
-- Story management (characters, locations, events, relationships) in a graph database
-- RAG (Retrieval Augmented Generation) queries against campaign documents
-- AI tools that can autonomously manage story elements
+- Game state management (games, actors, locations, events, plot flags) in a graph database
+- RAG (Retrieval Augmented Generation) queries against campaign/adventure documents
+- AI tools that can autonomously query and update game state
 - Local LLM inference (no cloud dependencies)
 
 **Tech Stack:**
 
 - **Java 21** - Modern Java features (records, pattern matching, etc.)
-- **Quarkus 3.30.2** - Supersonic Subatomic Java framework with Quarkus REST
+- **Quarkus 3.30.6** - Supersonic Subatomic Java framework with Quarkus REST
 - **LangChain4j** - AI service orchestration with declarative interfaces
-- **Ollama** - Local LLM inference (mistral-nemo:12b for chat, nomic-embed-text for embeddings)
-- **Neo4j** - Graph database for story data and vector embeddings (768 dimensions)
+- **Ollama** - Local LLM inference (default chat model: llama3.2; embeddings: nomic-embed-text)
+- **Neo4j** - Graph database for game state and vector embeddings (768 dimensions)
+- **Quarkus WebSockets Next** - Streaming gameplay UI via WebSocket
 - **Renarde MVC** - Type-safe server-side rendering
 - **Qute** - Templating engine
 - **CommonMark** - Markdown to HTML conversion
@@ -73,20 +74,18 @@ You'll need the following running locally:
    # Install Ollama from https://ollama.ai
 
    # Pull required models
-   ollama pull mistral-nemo:12b
+   ollama pull llama3.2
    ollama pull nomic-embed-text
    ```
 
 2. **Neo4j** database:
 
    ```bash
-   # Using Docker
-   docker run -d \
-     --name neo4j \
-     -p 7474:7474 -p 7687:7687 \
-     -e NEO4J_AUTH=neo4j/password \
-     neo4j:latest
+   # Using Docker Compose
+   docker compose -f compose.yaml up -d
    ```
+
+   Optional but recommended: apply indexes and constraints from `src/main/resources/neo4j-indexes.cypher` (see `NEO4J_SETUP.md`).
 
 ### Configuration
 
@@ -104,15 +103,32 @@ See [src/main/resources/application.properties](src/main/resources/application.p
 The application uses LangChain4j's declarative AI service interfaces:
 
 - **ChatAssistant**: Simple chat interface - methods are auto-implemented by LangChain4j
-- **SettingAssistant**: RAG-enabled queries - automatically retrieves relevant embeddings
+- **LoreAssistant**: RAG-enabled queries - automatically retrieves relevant embeddings
+- **ActorCreationAssistant**: Character creation assistant (RAG-enabled, structured JSON output)
+- **GamePlayAssistant**: GM assistant for play turns (RAG + tools, structured JSON output)
 
 These are plain Java interfaces annotated with `@RegisterAiService`. Quarkus LangChain4j generates the implementation at build time.
+
+### Gameplay Architecture (Games + Play)
+
+Solo play is modeled as a **Game** (identified by `gameId`) with a small state machine:
+
+- `CHARACTER_CREATION` → `SCENE_INITIALIZATION` → `ACTIVE_PLAY`
+
+Core components:
+
+- **GameEngine**: Routes user input to the appropriate engine based on phase and commands (e.g. `/help`, `/status`, `/newcharacter`, `/roll`, `/start`)
+- **ActorCreationEngine**: Runs a guided character creation flow backed by `ActorCreationAssistant` and a draft stored on the `GameState`
+- **GamePlayEngine**: Runs turn processing backed by `GamePlayAssistant` and applies returned patches to update world state
+- **PlayWebSocket**: Streams responses to the browser over WebSockets Next (`/ws/play/{gameId}`)
+
+Game state is persisted in Neo4j via **neo4j-ogm-quarkus** using nodes like `Game`, `Actor`, `PlayerActor`, `Location`, and `Event`.
 
 ### Document Processing Pipeline
 
 **IngestService** handles document ingestion:
 
-1. **Upload**: Accepts markdown files via multipart form data (through web UI at `/ingest`)
+1. **Upload**: Accepts markdown files via multipart form data (through web UI at `/ingest` or REST at `/api/lore/ingest`)
 2. **Parse**: Handles two formats:
    - Structured markdown with YAML frontmatter and section headers
    - Plain text with recursive chunking
@@ -121,29 +137,51 @@ These are plain Java interfaces annotated with `@RegisterAiService`. Quarkus Lan
 
 ### REST API
 
-The API is organized into three main areas:
+The HTTP API is organized into three main areas:
 
 - **ChatResource** (`/api/chat`) - Generic LLM chat (setting-independent)
     - `GET/POST /api/chat` - Direct LLM chat (no retrieval)
 
 - **LoreResource** (`/api/lore`) - RAG queries against ingested documents
     - `GET/POST /api/lore` - RAG queries with embedding retrieval
+    - `GET /api/lore/doc?filename=...` - Retrieve a raw ingested document by filename
+    - `GET /api/lore/files` - List ingested source files + counts
+    - `GET /api/lore/adventures` - List discovered adventure names
+    - `POST /api/lore/ingest` - Upload campaign documents (multipart form)
+    - `DELETE /api/lore/all` - Delete all documents
+    - `DELETE /api/lore/files?sourceFile=...` - Delete a specific source file
 
-- **StoryResource** (`/api/story`) - Story-specific operations
-    - `GET /api/story/list` - List story thread IDs
+- **GameResource** (`/api/game`) - Game state inspection and management
+    - `GET /api/game` - List games
+    - `GET /api/game/{gameId}` - Retrieve a single game
+    - `DELETE /api/game/{gameId}` - Delete a game (and all related nodes)
+    - `GET /api/game/{gameId}/actors` - List actors
+    - `GET /api/game/{gameId}/party` - List player-controlled actors
+    - `GET /api/game/{gameId}/locations` - List locations
+    - `GET /api/game/{gameId}/events` - List events
 
-All responses are converted from markdown to HTML.
+- `ChatResource` and `LoreResource` return HTML (markdown converted via CommonMark).
+- `GameResource` returns JSON snapshots of stored game state.
+- `PlayWebSocket` streams deltas and sends both markdown and rendered HTML on completion.
+
+### WebSocket API (Play)
+
+- **PlayWebSocket** (`/ws/play/{gameId}`) - Streaming play interactions (token-by-token deltas)
+  - Client sends `history_request` and `user_message`
+  - Server streams `assistant_start`, `assistant_delta`, and `assistant_done`
+
+See `docs/ws-play.md` for a simple smoke test and message shapes.
 
 ### Data Flow
 
 ```
-User Request → REST Endpoint → AI Service Interface → LangChain4j
-                                                     ↓
-                                        [RAG: Query Neo4j Embeddings]
-                                                     ↓
-                                              Ollama LLM
-                                                     ↓
-                                    Response → Markdown → HTML
+User Request → REST/WebSocket → Engine/Resource → AI Service Interface → LangChain4j
+                                                                     ↓
+                                                        [RAG: Query Neo4j Embeddings]
+                                                                     ↓
+                                                              Ollama LLM
+                                                                     ↓
+                                                    Response → Markdown → HTML
 ```
 
 ## Code Standards
@@ -185,7 +223,7 @@ When storing documents:
 
 Key settings in [application.properties](src/main/resources/application.properties):
 
-- `quarkus.langchain4j.ollama.chat-model.model-name` - LLM for chat (default: mistral-nemo:12b)
+- `quarkus.langchain4j.ollama.chat-model.model-name` - LLM for chat (default: llama3.2)
 - `quarkus.langchain4j.ollama.embedding-model.model-name` - Embedding model (default: nomic-embed-text)
 - `campaign.chunk.size` / `campaign.chunk.overlap` - Document chunking parameters
 - Neo4j connection and credentials
@@ -199,15 +237,30 @@ Quarkus configuration follows standard patterns:
 
 ```
 src/main/java/dev/ebullient/soloplay/
-├── ai/                        # AI/LangChain4j components
-│   ├── ChatAssistant.java     # AI chat interface (auto-implemented)
-│   ├── SettingAssistant.java  # RAG query interface (auto-implemented)
-│   └── StoryTools.java        # AI tools for story management
+├── ai/                        # AI/LangChain4j components (assistants, retrieval, tools)
+│   ├── ChatAssistant.java     # Basic chat assistant
+│   ├── LoreAssistant.java     # RAG lore assistant
+│   ├── LoreRetriever.java     # RetrievalAugmentor supplier
+│   ├── LoreTools.java         # Tool: retrieve ingested docs by filename
+│   └── memory/                # Chat memory persistence (Neo4j)
 ├── api/                       # REST API endpoints (Quarkus REST)
-├── data/                      # Domain models (Character, Location, Event, etc.)
+│   ├── ChatResource.java      # /api/chat
+│   ├── LoreResource.java      # /api/lore
+│   └── GameResource.java      # /api/game
+├── play/                      # Solo play engine + websocket transport
+│   ├── GameEngine.java        # Phase routing + command handling
+│   ├── ActorCreationEngine.java
+│   ├── GamePlayEngine.java
+│   ├── GameTools.java         # AI tools for game state lookup
+│   └── PlayWebSocket.java     # /ws/play/{gameId}
+├── play/model/                # Neo4j OGM entities + patch/draft models
+├── health/                    # Health checks (e.g., Neo4j availability)
+├── ollama/                    # Optional REST client for Ollama API
 ├── web/                       # Web UI controllers (Renarde MVC)
 ├── IngestService.java         # Document ingestion & embeddings
-└── StoryRepository.java       # Story data access layer
+├── GameRepository.java        # Game state persistence (Neo4j OGM)
+├── LoreRepository.java        # Lore queries (documents/adventures)
+└── StringUtils.java           # Shared string normalization/helpers
 src/main/resources/
 ├── META-INF/resources         # static resources (Renarde front-end)
 └── templates                  # Qute templates for Renarde views and tool responses
@@ -216,7 +269,10 @@ src/main/resources/
 **Key Directories:**
 - `ai/` - LangChain4j AI services and tools (assistants, tools, retrievers)
 - `api/` - REST API endpoints using Quarkus REST
-- `data/` - Domain models and Neo4j OGM entities
+- `play/` - Game engines, tools, and WebSocket transport
+- `play/model/` - Neo4j OGM entities and JSON patch/draft models
+- `health/` - Health checks for dependencies (Neo4j, etc.)
+- `ollama/` - Optional REST client for direct Ollama API calls
 - `web/` - Web UI controllers using Renarde MVC
 
 ## API Reference
@@ -225,7 +281,7 @@ The application provides both REST APIs and web UI (Renarde MVC) for interacting
 
 ### Chat
 
-**Purpose:** Generic LLM chat without RAG or story context
+**Purpose:** Generic LLM chat without RAG or game context
 
 - **REST API:** `GET/POST /api/chat`
   - Query param or body: `question` (string)
@@ -239,44 +295,53 @@ The application provides both REST APIs and web UI (Renarde MVC) for interacting
 
 - **REST API:**
   - `GET/POST /api/lore` - Query lore with question
+  - `GET /api/lore/doc?filename=...` - Retrieve raw markdown for a document
+  - `GET /api/lore/files` - List ingested files and counts
+  - `GET /api/lore/adventures` - List discovered adventure names
   - `POST /api/lore/ingest` - Upload campaign documents (multipart form)
   - `DELETE /api/lore/all` - Delete all documents
   - `DELETE /api/lore/files?sourceFile=...` - Delete specific file
 - **Web UI:**
   - `/lore` - Lore query interface
   - `/ingest` - Document upload and management
-- **Implementation:** Uses LoreAssistant (RAG), retrieves from Neo4j embeddings
+- **Implementation:** Uses LoreAssistant (RAG), retrieves from Neo4j embeddings; LoreTools resolves document cross-references
 
-### Story / Solo Play
+### Game / Solo Play
 
-**Purpose:** Story-aware gameplay with character/location/event management
+**Purpose:** Game-aware solo play with character creation, turn processing, and persistent world state
 
+- **WebSocket API:**
+  - `ws://localhost:8080/ws/play/{gameId}` - Streaming play interactions
+  - See `docs/ws-play.md` for message shapes and a smoke test
 - **REST API:**
-  - `GET /api/story/list` - List all story thread IDs
-  - `POST /api/story/{threadId}/chat` - Story-aware chat with tools
-  - Story data CRUD operations available
+  - `GET /api/game` - List games
+  - `GET /api/game/{gameId}` - Retrieve a game state snapshot
+  - `DELETE /api/game/{gameId}` - Delete a game
+  - `GET /api/game/{gameId}/actors` - List actors
+  - `GET /api/game/{gameId}/party` - List player-controlled actors
+  - `GET /api/game/{gameId}/locations` - List locations
+  - `GET /api/game/{gameId}/events` - List events
 - **Web UI:**
-  - `/story` - Story thread selection and creation
-  - `/story/{threadId}/play` - Main gameplay interface
-  - `/inspect` - View/manage story data (characters, locations, events)
-    - "Inspect" provides CRUD views over campaign data - SPOILERS!
+  - `/game` - List games and create new games
+  - `/game/create` - Create a new game (optionally choose an ingested adventure)
+  - `/play/{gameId}` - Main gameplay interface (WebSocket-based)
 - **Implementation:**
-  - Uses PlayAssistant (RAG + tools + thread context)
-  - AI can invoke StoryTools to manage characters, locations, events
-  - StoryRepository provides data access layer
-  - Web controllers can call StoryTools directly or via REST
+  - Uses GameEngine for phase routing and persistence
+  - Uses ActorCreationAssistant + ActorCreationEngine during character creation
+  - Uses GamePlayAssistant + GamePlayEngine during active play
+  - AI can invoke LoreTools and GameTools for context and continuity
+  - GameRepository provides Neo4j persistence for game state entities
 
 ### Architecture Notes
 
 **Web UI → Data Access Patterns:**
 - **Chat/Lore web pages** → Call REST APIs via JavaScript
-- **Story web pages** → Mix of direct StoryRepository/StoryTools calls and REST API
-- **Inspect pages** → Direct StoryRepository/StoryTools access
+- **Game pages** → Use server-side Renarde controllers + REST for listing/inspection
+- **Play page** → Uses WebSocket (`/ws/play/{gameId}`) for streaming interactions
 
 **AI Tool Access:**
-- LLM can autonomously invoke StoryTools methods as tools
-- Tools are available to PlayAssistant (story-aware chat)
-- Web UI can also call the same tool methods directly
+- LLM can autonomously invoke `@Tool` methods (LoreTools + GameTools)
+- Tools are available to ActorCreationAssistant and GamePlayAssistant
 
 ## Data Flows
 
