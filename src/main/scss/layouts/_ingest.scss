@@ -91,6 +91,12 @@
             text-align: right;
             font-weight: 500;
         }
+
+        .file-actions {
+            text-align: right;
+            white-space: nowrap;
+            width: 1%;
+        }
     }
 
     tfoot {
@@ -105,10 +111,19 @@
             &:first-child {
                 text-align: left;
             }
+        }
 
-            &:last-child {
-                text-align: right;
-            }
+        th:nth-child(2) {
+            text-align: right;
+        }
+
+        th.file-actions {
+            text-align: right;
         }
     }
+}
+
+.loaded-files-table thead th.file-actions,
+.loaded-files-table tfoot th.file-actions {
+    width: 1%;
 }
