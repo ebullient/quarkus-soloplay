@@ -74,7 +74,7 @@ public class IngestService {
             }
             Log.infof("Processed %d non-empty sections from %s", processedCount, filename);
         } else {
-            splitDocument(filename, content);
+            processStructuredMarkdown(filename, content.trim());
         }
 
         Log.infof("Completed processing file: %s", filename);
@@ -145,51 +145,6 @@ public class IngestService {
         }
 
         List<Embedding> embeddings = embeddingModel.embedAll(segments).content();
-        embeddingStore.addAll(embeddings, segments);
-        Log.infof("Stored %d embeddings for %s", embeddings.size(), filename);
-    }
-
-    // Split document into smaller segments, generate embeddings, and store them
-    void splitDocument(String filename, String content) {
-        var doc = Document.from(content);
-        var splitter = DocumentSplitters.recursive(
-                chunkSize, // max chunk size in characters
-                chunkOverlap // overlap between chunks
-        );
-
-        List<TextSegment> segments = splitter.split(doc);
-        Log.infof("Split %s into %d chunks", filename, segments.size());
-
-        for (int i = 0; i < segments.size(); i++) {
-            TextSegment segment = segments.get(i);
-            segment.metadata()
-                    .put("sourceFile", filename)
-                    .put("canonical", "true") // source material
-                    .put("chunkIndex", i);
-        }
-
-        // Validate segments before sending to embedding model
-        for (int i = 0; i < segments.size(); i++) {
-            TextSegment seg = segments.get(i);
-            if (seg.text() == null || seg.text().isBlank()) {
-                Log.warnf("Skipping empty segment %d in %s", i, filename);
-                segments.remove(i);
-                i--; // Adjust index after removal
-            } else if (seg.text().length() > 8000) {
-                Log.warnf("Segment %d in %s is very large (%d chars), may fail", i, filename, seg.text().length());
-            }
-        }
-
-        if (segments.isEmpty()) {
-            Log.warnf("No valid segments to embed for %s", filename);
-            return;
-        }
-
-        // Generate embeddings
-        Log.infof("Generating embeddings for %d chunks from %s", segments.size(), filename);
-        List<Embedding> embeddings = embeddingModel.embedAll(segments).content();
-
-        // Store in Neo4j
         embeddingStore.addAll(embeddings, segments);
         Log.infof("Stored %d embeddings for %s", embeddings.size(), filename);
     }
