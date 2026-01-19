@@ -20,7 +20,7 @@ import io.quarkus.qute.TemplateInstance;
 @NodeEntity
 public class Location extends BaseEntity {
 
-    @CheckedTemplate
+    @CheckedTemplate(basePath = "models")
     public static class Templates {
         public static native TemplateInstance locationDetail(Location location);
     }

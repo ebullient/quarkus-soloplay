@@ -1,6 +1,7 @@
 package dev.ebullient.soloplay.play;
 
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -49,14 +50,31 @@ public class ActorCreationEngine {
         if (GameEngine.isHelpCommand(trimmed)) {
             return help(game);
         }
-        if (trimmed.equalsIgnoreCase("/reset")) {
-            game.removeDraft(DRAFT_KEY);
-            return GameResponse.reply("Ok — cleared your character draft.", new GameEffect.DraftUpdate(DRAFT_KEY, null));
+        if ("/cancel".equalsIgnoreCase(trimmed) || "/reset".equalsIgnoreCase(trimmed)) {
+            cleanupDraft(game);
+            if ("/cancel".equalsIgnoreCase(trimmed)) {
+                String partyMembers = gameRepository.listPlayerActors(gameId).stream()
+                        .map(pa -> "%s, %s, level %s".formatted(pa.getName(), pa.getActorClass(), pa.getLevel()))
+                        .collect(Collectors.joining("; "));
+                if (!partyMembers.isBlank()) {
+                    game.setGamePhase(game.getGamePhase().next());
+
+                    return GameResponse.reply("""
+                            Exiting character creation.
+
+                            Current party: %s
+
+                            Use `/newcharacter` to create an additional character, or `/start` to start or resume your game.
+                            """.stripIndent().formatted(partyMembers));
+                }
+            }
+            return GameResponse.reply("Ok — cleared your character draft.",
+                    new GameEffect.DraftUpdate(DRAFT_KEY, null));
         }
-        if (trimmed.equalsIgnoreCase("/draft")) {
+        if ("/draft".equalsIgnoreCase(trimmed)) {
             return GameResponse.reply(renderDraft(currentDraft));
         }
-        if (trimmed.equalsIgnoreCase("/confirm")) {
+        if ("/confirm".equalsIgnoreCase(trimmed)) {
             emitter.assistantDelta("Confirming character…\n");
             var confirmed = new PlayerActorDraft(
                     currentDraft.name(),
@@ -72,9 +90,9 @@ public class ActorCreationEngine {
             PlayerActor actor = new PlayerActor(gameId, confirmed);
             emitter.assistantDelta("Saving character…\n");
             gameRepository.saveActor(actor);
+            cleanupDraft(game);
 
             game.setGamePhase(game.getGamePhase().next());
-            cleanupDraft(game);
             return GameResponse.reply("""
                     Created your character: **%s** (%s, level %s).
 
@@ -152,19 +170,11 @@ public class ActorCreationEngine {
                 Character creation commands:
 
                 - `/draft`: show your current draft
-                - `/reset`: clear the current draft
+                - `/cancel`: exit character creation (as long as at least one party member exists)
                 - `/confirm`: create the character (requires name, class, level)
+                - `/reset`: clear the current draft
                 - `/help` (or `help`, `?`): show commands
                 """);
-    }
-
-    String debugReturnValue(Object value) {
-        try {
-            return objectMapper.writeValueAsString(value);
-        } catch (Exception e) {
-            // no-op. Best effort
-        }
-        return value == null ? "null" : "unable to serialize";
     }
 
     PlayerActorDraft getCurrentDraft(GameState game) {
@@ -226,17 +236,6 @@ public class ActorCreationEngine {
         if (draft == null) {
             return "No current draft.";
         }
-        StringBuilder sb = new StringBuilder();
-        sb.append("Current character draft:\n\n");
-        sb.append("- **Name**: ").append(StringUtils.valueOrPlaceholder(draft.name())).append("\n");
-        sb.append("- **Class**: ").append(StringUtils.valueOrPlaceholder(draft.actorClass())).append("\n");
-        sb.append("- **Level**: ").append(StringUtils.valueOrPlaceholder(draft.level())).append("\n");
-        if (draft.details() != null) {
-            sb.append("- **Summary**: ").append(StringUtils.valueOrPlaceholder(draft.details().summary())).append("\n");
-            sb.append("- **Description**: ").append(StringUtils.valueOrPlaceholder(draft.details().description())).append("\n");
-            sb.append("- **Aliases**: ").append(StringUtils.valueOrPlaceholder(draft.details().aliases())).append("\n");
-            sb.append("- **Tags**: ").append(StringUtils.valueOrPlaceholder(draft.details().tags())).append("\n");
-        }
-        return sb.toString();
+        return "Current character draft:\n\n" + PlayerActor.Templates.playerActorDraft(draft).render();
     }
 }

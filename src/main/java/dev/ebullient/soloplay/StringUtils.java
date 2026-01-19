@@ -3,6 +3,9 @@ package dev.ebullient.soloplay;
 import java.util.Collection;
 import java.util.List;
 
+import io.quarkus.qute.TemplateExtension;
+
+@TemplateExtension(namespace = "util")
 public class StringUtils {
     /**
      * Convert a name into a URL-friendly slug.
@@ -34,7 +37,7 @@ public class StringUtils {
         return fallback;
     }
 
-    public static Object valueOrPlaceholder(Collection<String> list) {
+    public static String valueOrPlaceholder(Collection<String> list) {
         if (list == null || list.isEmpty()) {
             return "—";
         }

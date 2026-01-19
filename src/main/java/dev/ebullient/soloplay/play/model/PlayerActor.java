@@ -9,9 +9,11 @@ import io.quarkus.qute.TemplateInstance;
 @NodeEntity
 public class PlayerActor extends Actor {
 
-    @CheckedTemplate
+    @CheckedTemplate(basePath = "models")
     public static class Templates {
-        public static native TemplateInstance actorDetail(PlayerActor actor);
+        public static native TemplateInstance playerActorDetail(PlayerActor actor);
+
+        public static native TemplateInstance playerActorDraft(PlayerActorDraft draft);
     }
 
     private String actorClass; // e.g., "Fighter", "Wizard"

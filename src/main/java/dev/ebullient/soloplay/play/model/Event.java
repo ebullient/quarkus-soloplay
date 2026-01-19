@@ -13,7 +13,7 @@ import io.quarkus.qute.TemplateInstance;
 @NodeEntity
 public class Event extends BaseEntity {
 
-    @CheckedTemplate
+    @CheckedTemplate(basePath = "models")
     public static class Templates {
         public static native TemplateInstance eventDetail(Event event);
     }
