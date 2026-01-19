@@ -95,44 +95,50 @@ public class IngestService {
 
         if (cleanContent.length() > chunkSize) {
             String[] sections = SECTION_HEADER_PATTERN.split(cleanContent);
-            for (int i = 0; i < sections.length; i++) {
-                String section = sections[i];
+            int sectionIndex = 0;
+            for (String section : sections) {
+                if (section.isBlank()) {
+                    continue;
+                }
                 String sectionTitle = extractFirstLine(section);
 
                 // If section is still too large, chunk it again
                 if (section.length() > chunkSize * 2) {
-                    Log.infof("Section %d '%s' is large (%d chars), splitting into chunks", i, sectionTitle,
+                    Log.infof("Section %d '%s' is large (%d chars), splitting into chunks", sectionIndex, sectionTitle,
                             section.length());
                     var doc = Document.from(section);
                     var splitter = DocumentSplitters.recursive(chunkSize, chunkOverlap);
                     List<TextSegment> subSegments = splitter.split(doc);
 
+                    int chunkIndex = 0;
                     for (TextSegment subSegment : subSegments) {
-                        final var index = segments.size();
                         subSegment.metadata()
                                 .put("section", sectionTitle)
-                                .put("sectionIndex", index)
+                                .put("sectionIndex", sectionIndex)
+                                .put("chunkIndex", chunkIndex++)
                                 .put("sourceFile", filename)
                                 .put("canonical", "true");
                         subSegment.metadata().putAll(yamlMetadata);
                         segments.add(subSegment);
                     }
+                    sectionIndex++;
                 } else if (!section.isBlank()) {
-                    final var index = segments.size();
                     TextSegment segment = TextSegment.from(
                             section,
                             Metadata.from("section", sectionTitle)
-                                    .put("sectionIndex", index)
+                                    .put("sectionIndex", sectionIndex++)
+                                    .put("chunkIndex", 0)
                                     .merge(common));
                     segments.add(segment);
                 }
             }
         } else if (!cleanContent.isBlank()) {
-            final var index = segments.size();
             TextSegment segment = TextSegment.from(
                     cleanContent,
                     common);
-            segment.metadata().put("sectionIndex", index);
+            segment.metadata()
+                    .put("sectionIndex", 0)
+                    .put("chunkIndex", 0);
             segments.add(segment);
         }
 
