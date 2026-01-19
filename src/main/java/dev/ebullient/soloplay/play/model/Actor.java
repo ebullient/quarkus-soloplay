@@ -31,6 +31,7 @@ public class Actor extends BaseEntity {
     private String gameId;
 
     protected String name;
+    protected String nameNormalized; // normalized (trimmed + lowercase) for indexed lookups
     protected String summary; // Short, stable identifier (e.g., "Aged wizard", "Young warrior")
     protected String description; // Full narrative that can evolve over time
 
@@ -53,6 +54,7 @@ public class Actor extends BaseEntity {
         this.gameId = gameId;
 
         this.name = draft.name();
+        this.nameNormalized = this.name == null ? null : normalize(this.name);
         this.id = gameId + ":" + slugify(this.name);
 
         if (draft.details() != null) {
@@ -68,6 +70,7 @@ public class Actor extends BaseEntity {
         this.gameId = gameId;
 
         this.name = p.name();
+        this.nameNormalized = this.name == null ? null : normalize(this.name);
         this.id = gameId + ":" + slugify(this.name);
 
         if (p.details() != null) {
@@ -104,6 +107,7 @@ public class Actor extends BaseEntity {
 
     public void setName(String name) {
         this.name = name;
+        this.nameNormalized = name == null ? null : normalize(name);
         markDirty();
         // Note: id is NOT updated when name changes (id is immutable)
     }
