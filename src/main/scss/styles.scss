@@ -26,6 +26,7 @@ main {
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
+    min-height: 0; // allow children to shrink and scroll in flex layouts
     padding: 0;
 }
 
@@ -70,4 +71,3 @@ footer {
         stroke-linecap: round;
     }
 }
-

@@ -82,11 +82,15 @@
     border-radius: var(--border-radius-md);
     padding: var(--spacing-md);
     box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
 }
 
 #chat-messages {
-    min-height: 400px;
-    max-height: 600px;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
     margin-bottom: var(--spacing-md);
     padding: var(--spacing-md);
@@ -101,6 +105,8 @@
 .input-area {
     display: flex;
     gap: var(--spacing-sm);
+    align-items: flex-end;
+    flex: 0 0 auto;
 }
 
 #message-input {
