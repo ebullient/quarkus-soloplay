@@ -123,6 +123,8 @@ public class GamePlayEngine {
             throw new AssistantResponseException("Empty response from assistant", true);
         }
 
+        Log.debugf("Response received from LLM: %s", rawResponse);
+
         try {
             GamePlayResponse response = objectMapper.readValue(rawResponse, GamePlayResponse.class);
             if (response.narration() == null) {
