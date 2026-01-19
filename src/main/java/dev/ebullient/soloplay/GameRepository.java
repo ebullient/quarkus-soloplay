@@ -83,8 +83,25 @@ public class GameRepository {
                     DETACH DELETE n
                     """;
             session.query(cypher, Map.of("gameId", gameId));
+
+            // Also delete chat memory for this game.
+            // - Gameplay memoryId: gameId
+            // - Character creation memoryId: gameId + "-character"
+            String memoryCypher = """
+                    MATCH (m:ChatMemory)
+                    WHERE m.id IN [$gameId, $characterMemoryId]
+                    DELETE m
+                    """;
+            session.query(memoryCypher, Map.of(
+                    "gameId", gameId,
+                    "characterMemoryId", gameId + "-character"));
+
             tx.commit();
         }
+
+        // Clear caches for this gameId
+        partyCache.remove(gameId);
+        playerActorCache.remove(gameId);
     }
 
     // ========= ACTORS ===============
@@ -159,7 +176,7 @@ public class GameRepository {
         String normalized = normalize(nameOrAlias);
         String cypher = """
                 MATCH (a:Actor {gameId: $gameId})
-                WHERE toLower(a.name) = $name OR $name IN a.aliases
+                WHERE a.nameNormalized = $name OR $name IN a.aliases
                 RETURN a
                 LIMIT 1
                 """;
@@ -201,7 +218,7 @@ public class GameRepository {
         String normalized = normalize(nameOrAlias);
         String cypher = """
                 MATCH (l:Location {gameId: $gameId})
-                WHERE toLower(l.name) = $name OR $name IN l.aliases
+                WHERE l.nameNormalized = $name OR $name IN l.aliases
                 RETURN l
                 LIMIT 1
                 """;
