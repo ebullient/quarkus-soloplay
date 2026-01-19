@@ -230,11 +230,6 @@ public interface GamePlayAssistant {
 
             Current Location: {locationName}
 
-            {#if sceneContext}
-            Scene Context:
-            {sceneContext}
-            {/if}
-
             Player says:
             {playerInput}
 
