@@ -102,4 +102,121 @@ public class LoreRepository {
         List<String> adventures = listAdventures();
         return adventures.contains(adventureName);
     }
+
+    /**
+     * Search for adventure-specific content by keyword.
+     * Returns matching text segments from documents tagged with the adventure name.
+     *
+     * @param adventureName The adventure to search within
+     * @param keyword Search term to find in document text
+     * @param limit Maximum number of results to return
+     * @return List of matching text segments
+     */
+    public List<String> searchAdventureContent(String adventureName, String keyword, int limit) {
+        var session = sessionFactory.openSession();
+        List<String> results = new ArrayList<>();
+
+        try {
+            String cypher = """
+                    MATCH (n:Document)
+                    WHERE n.adventureName = $adventureName
+                      AND ('lore/adventure-part' IN n.tags OR 'lore/adventure-reference' IN n.tags)
+                      AND toLower(n.text) CONTAINS toLower($keyword)
+                    RETURN n.text as text, n.section as section
+                    ORDER BY n.sectionIndex, n.chunkIndex
+                    LIMIT $limit
+                    """;
+
+            Iterable<Map<String, Object>> rows = session.query(cypher, Map.of(
+                    "adventureName", adventureName,
+                    "keyword", keyword,
+                    "limit", limit));
+
+            for (Map<String, Object> row : rows) {
+                String text = (String) row.get("text");
+                if (text != null && !text.isBlank()) {
+                    results.add(text);
+                }
+            }
+        } catch (Exception e) {
+            Log.errorf(e, "Error searching adventure content: %s", e.getMessage());
+        }
+
+        return results;
+    }
+
+    /**
+     * List all distinct filenames for documents in an adventure.
+     *
+     * @param adventureName The adventure name
+     * @return List of filenames
+     */
+    public List<String> listAdventureFiles(String adventureName) {
+        var session = sessionFactory.openSession();
+        List<String> results = new ArrayList<>();
+
+        try {
+            String cypher = """
+                    MATCH (n:Document)
+                    WHERE n.adventureName = $adventureName
+                      AND n.filename IS NOT NULL
+                    RETURN DISTINCT n.filename as filename
+                    ORDER BY filename
+                    """;
+
+            Iterable<Map<String, Object>> rows = session.query(cypher, Map.of(
+                    "adventureName", adventureName));
+
+            for (Map<String, Object> row : rows) {
+                String filename = (String) row.get("filename");
+                if (filename != null && !filename.isBlank()) {
+                    results.add(filename);
+                }
+            }
+        } catch (Exception e) {
+            Log.errorf(e, "Error listing adventure files: %s", e.getMessage());
+        }
+
+        return results;
+    }
+
+    /**
+     * List all distinct chapters for documents in an adventure.
+     *
+     * @param adventureName The adventure name
+     * @return List of chapter names (formatted as "chapterNumber: chapterName")
+     */
+    public List<String> listAdventureChapters(String adventureName) {
+        var session = sessionFactory.openSession();
+        List<String> results = new ArrayList<>();
+
+        try {
+            String cypher = """
+                    MATCH (n:Document)
+                    WHERE n.adventureName = $adventureName
+                      AND n.chapterName IS NOT NULL
+                    RETURN DISTINCT n.chapterNumber as chapterNumber, n.chapterName as chapterName
+                    ORDER BY chapterNumber
+                    """;
+
+            Iterable<Map<String, Object>> rows = session.query(cypher, Map.of(
+                    "adventureName", adventureName));
+
+            for (Map<String, Object> row : rows) {
+                String chapterNumber = (String) row.get("chapterNumber");
+                String chapterName = (String) row.get("chapterName");
+                if (chapterName != null && !chapterName.isBlank()) {
+                    if (chapterNumber != null && !chapterNumber.isBlank()) {
+                        results.add(chapterNumber + ": " + chapterName);
+                    } else {
+                        results.add(chapterName);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.errorf(e, "Error listing adventure chapters: %s", e.getMessage());
+        }
+
+        return results;
+    }
 }

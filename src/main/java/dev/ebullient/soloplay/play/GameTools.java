@@ -6,6 +6,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import dev.ebullient.soloplay.GameRepository;
+import dev.ebullient.soloplay.LoreRepository;
 import dev.ebullient.soloplay.play.model.Actor;
 import dev.ebullient.soloplay.play.model.Event;
 import dev.ebullient.soloplay.play.model.Location;
@@ -13,13 +14,16 @@ import dev.langchain4j.agent.tool.Tool;
 
 /**
  * AI Tools for querying game state.
- * Provides access to actors, locations, events, and party information.
+ * Provides access to actors, locations, events, party information, and adventure content.
  */
 @ApplicationScoped
 public class GameTools {
 
     @Inject
     GameRepository gameRepository;
+
+    @Inject
+    LoreRepository loreRepository;
 
     @Inject
     GameContext gameContext;
@@ -155,5 +159,45 @@ public class GameTools {
             sb.append(event.render()).append("\n---\n");
         }
         return sb.toString();
+    }
+
+    // --- Adventure Content Tools ---
+
+    @Tool("""
+            Search for specific content within the current adventure's documents.
+            Use to find locations, NPCs, events, or other adventure-specific information.
+            Example: searchAdventure("astral elf")
+            Returns matching text segments from the adventure.
+            """)
+    public String searchAdventure(String keyword) {
+        String adventureName = gameContext.getAdventureName();
+        if (adventureName == null || adventureName.isBlank()) {
+            return "Error: No adventure is set for the current game.";
+        }
+        if (keyword == null || keyword.isBlank()) {
+            return "Error: keyword is required. Specify what to search for.";
+        }
+        var results = loreRepository.searchAdventureContent(adventureName, keyword, 5);
+        if (results.isEmpty()) {
+            return "No results found for '" + keyword + "' in adventure: " + adventureName;
+        }
+        return String.join("\n\n---\n\n", results);
+    }
+
+    @Tool("""
+            List all document filenames available for the current adventure.
+            Use this to discover what adventure content is available, then use getLoreDocument to retrieve specific files.
+            Returns a list of filenames.
+            """)
+    public String listAdventureFiles() {
+        String adventureName = gameContext.getAdventureName();
+        if (adventureName == null || adventureName.isBlank()) {
+            return "Error: No adventure is set for the current game.";
+        }
+        var files = loreRepository.listAdventureFiles(adventureName);
+        if (files.isEmpty()) {
+            return "No files found for adventure: " + adventureName;
+        }
+        return String.join("\n", files);
     }
 }

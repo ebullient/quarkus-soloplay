@@ -2,25 +2,19 @@ package dev.ebullient.soloplay.ai;
 
 import jakarta.enterprise.context.ApplicationScoped;
 
+import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import io.quarkiverse.langchain4j.RegisterAiService;
 
-/**
- * This interface is annotated with @RegisterAiService to enable automatic
- * registration and integration with AI services.
- * The chat method takes a user message as input and returns a generated response.
- */
-@RegisterAiService
+@SystemMessage("""
+        You are a helpful AI assistant.
+
+        Be conversational and friendly. Provide clear, concise answers.
+        When uncertain, say so rather than guessing.
+        """)
+@RegisterAiService(chatMemoryProviderSupplier = RegisterAiService.NoChatMemoryProviderSupplier.class)
 @ApplicationScoped
 public interface ChatAssistant {
 
-    /**
-     * Generates a chat response based on the user's message.
-     *
-     * @param userMessage
-     * @return
-     */
-    @UserMessage("Input: {userMessage}")
-    String chat(String userMessage);
-
+    String chat(@UserMessage String userMessage);
 }
