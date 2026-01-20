@@ -5,6 +5,7 @@ import java.util.List;
 import dev.ebullient.soloplay.ai.LoreRetriever;
 import dev.ebullient.soloplay.ai.LoreTools;
 import dev.ebullient.soloplay.play.model.Patch;
+import dev.ebullient.soloplay.play.model.Stash;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
@@ -13,14 +14,6 @@ import io.quarkiverse.langchain4j.RegisterAiService;
 @SystemMessage("""
         You are an expert D&D Game Master running a solo adventure. Your role is to create an engaging,
         responsive, and immersive gaming experience.
-
-        === STORY CONTEXT ===
-
-        - Game ID: {gameId}
-        {#if adventureName}
-        - Adventure: {adventureName}
-          Follow adventure beats and structure closely, track progress by referencing source material.
-        {/if}
 
         === TURN PROCESSING ===
 
@@ -116,7 +109,7 @@ import io.quarkiverse.langchain4j.RegisterAiService;
             }
           ] | null,
           "actorsPresent": ["NPC Name", "Another NPC"],
-          "locationsPresent": ["other location name"],
+          "locationsPresent": ["other location name"]
         }
 
         Rules:
@@ -124,11 +117,49 @@ import io.quarkiverse.langchain4j.RegisterAiService;
         - turnSummary: one sentence capturing what happened (for event log / recap)
         - currentSituation: brief summary of current state (location, immediate context, pending threats/choices)
         - pendingRoll = null means no roll needed, action resolved
-        - patches = null or [] means no world state changes
+        - patches = null or [] means no world state changes. ONLY use type "actor" (for NPCs/creatures) or "location". Never use "event", "player_actor", or any other type.
         - actorsPresent: names of all NPCs/creatures currently in the scene (not the player character)
         - locationsPresent: current location(s) relevant to the scene
-        - sources = [] if no lore documents were used
         - No code fences. Output must start with `{` and end with `}`
+
+        === EXAMPLE RESPONSE (no pending roll) ===
+
+        {
+          "narration": "The tavern door creaks open, revealing a dimly lit common room. A grizzled dwarf behind the bar eyes you suspiciously. 'We don't get many strangers here,' he growls. In the corner, a hooded figure nurses a drink, pointedly not looking your way.\\n\\nWhat do you do?",
+          "turnSummary": "Entered the Rusty Anchor tavern and encountered a suspicious barkeep.",
+          "currentSituation": "Standing in the tavern entrance. The barkeep is wary, and a mysterious hooded figure sits in the corner.",
+          "currentLocation": "Rusty Anchor Tavern",
+          "pendingRoll": null,
+          "patches": [
+            {
+              "type": "actor",
+              "name": "Dolgrim the Barkeep",
+              "details": {"summary": "Grizzled dwarf barkeep, suspicious of strangers", "tags": ["npc", "merchant"]}
+            }
+          ],
+          "actorsPresent": ["Dolgrim the Barkeep", "Hooded Figure"],
+          "locationsPresent": ["Rusty Anchor Tavern"]
+        }
+
+        === EXAMPLE RESPONSE (requesting a roll) ===
+
+        {
+          "narration": "You approach the hooded figure's table. As you get closer, you notice their hand drift toward a concealed weapon. They're tense, ready to bolt or fight.\\n\\nYou'll need to be persuasive to get them to talk.",
+          "turnSummary": "Approached the hooded figure who seems ready to flee or fight.",
+          "currentSituation": "Standing at the hooded figure's table. They are suspicious and on edge.",
+          "currentLocation": "Rusty Anchor Tavern",
+          "pendingRoll": {
+            "type": "skill_check",
+            "skill": "persuasion",
+            "ability": "charisma",
+            "dc": 15,
+            "target": "Hooded Figure",
+            "context": "Convince the hooded figure to talk"
+          },
+          "patches": null,
+          "actorsPresent": ["Dolgrim the Barkeep", "Hooded Figure"],
+          "locationsPresent": ["Rusty Anchor Tavern"]
+        }
 
         """)
 @RegisterAiService(tools = { LoreTools.class, GameTools.class }, retrievalAugmentor = LoreRetriever.class)
@@ -153,7 +184,7 @@ public interface GamePlayAssistant {
             String ability, // "strength", "dexterity", etc.
             Integer dc, // null if contested or attack roll
             String target, // who/what this is against
-            String context) { // brief explanation for player
+            String context) implements Stash { // brief explanation for player
     }
 
     record RollResult(
@@ -168,12 +199,16 @@ public interface GamePlayAssistant {
 
     @UserMessage("""
             === BEGIN ADVENTURE ===
+            - Game ID: {gameId}
 
             Player Character:
             {theParty}
 
             {#if adventureName}
             === ADVENTURE MODE ===
+
+            Adventure: {adventureName}
+
             Retrieve the adventure's opening scene from the lore documents.
             Use the adventure's designated starting location and hook.
 
@@ -191,6 +226,10 @@ public interface GamePlayAssistant {
             Based on their answer, you'll collaboratively build the opening scene.
             Keep it conversational - this is session zero for the story.
             {/if}
+
+            RESPOND WITH JSON ONLY matching the OUTPUT FORMAT above (narration, turnSummary, currentSituation, etc. at top level).
+            Do NOT wrap the response in a container object like "scene" or "response".
+            Start with { and end with }. No prose, no markdown fences.
             """)
     String sceneStart(
             @MemoryId String gameId,
@@ -201,18 +240,25 @@ public interface GamePlayAssistant {
 
     @UserMessage("""
             === SESSION RESUME ===
+                {#if adventureName}
+                Adventure: {adventureName}
+                {/if}
 
-            Player-controlled characters:
-            {theParty}
+                Player-controlled characters:
+                {theParty}
 
-            Current Location: {locationName}
+                Current Location: {locationName}
 
-            Recent Events:
-            {recentEvents}
+                Recent Events:
+                {recentEvents}
 
-            Welcome the player back. Briefly recap where they are and what's happening,
-            then prompt for their next action. Include a currentSituation summary in your response.
-            """)
+                Welcome the player back. Briefly recap where they are and what's happening,
+                then prompt for their next action. Include a currentSituation summary in your response.
+
+                RESPOND WITH JSON ONLY matching the OUTPUT FORMAT above (narration, turnSummary, currentSituation, etc. at top level).
+                Do NOT wrap the response in a container object like "scene" or "response".
+                Start with { and end with }. No prose, no markdown fences.
+                """)
     String recap(
             @MemoryId String gameId,
             String adventureName,
@@ -224,6 +270,9 @@ public interface GamePlayAssistant {
 
     @UserMessage("""
             === PLAYER ACTION ===
+            {#if adventureName}
+            Adventure: {adventureName}
+            {/if}
 
             Player-controlled characters:
             {theParty}
@@ -234,6 +283,10 @@ public interface GamePlayAssistant {
             {playerInput}
 
             Process this action following the turn processing rules.
+
+            RESPOND WITH JSON ONLY matching the OUTPUT FORMAT above (narration, turnSummary, currentSituation, etc. at top level).
+            Do NOT wrap the response in a container object like "scene" or "response".
+            Start with { and end with }. No prose, no markdown fences.
             """)
     String turn(
             @MemoryId String gameId,
@@ -246,6 +299,9 @@ public interface GamePlayAssistant {
 
     @UserMessage("""
             === ROLL RESULT ===
+            {#if adventureName}
+            Adventure: {adventureName}
+            {/if}
 
             Player-controlled characters:
             {theParty}
@@ -258,6 +314,10 @@ public interface GamePlayAssistant {
 
             Narrate the outcome of this {rollResult.type}. Describe what happens
             based on the success or failure, then present the next decision point.
+
+            RESPOND WITH JSON ONLY matching the OUTPUT FORMAT above (narration, turnSummary, currentSituation, etc. at top level).
+            Do NOT wrap the response in a container object like "scene" or "response".
+            Start with { and end with }. No prose, no markdown fences.
             """)
     String resolveRoll(
             @MemoryId String gameId,

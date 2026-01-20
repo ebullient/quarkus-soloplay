@@ -12,9 +12,6 @@ import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Relationship;
 
-import dev.ebullient.soloplay.play.model.Draft.ActorDraft;
-import dev.ebullient.soloplay.play.model.Patch.ActorPatch;
-import dev.ebullient.soloplay.play.model.Patch.PlayerActorCreationPatch;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 
@@ -36,6 +33,7 @@ public class Actor extends BaseEntity {
     protected String description; // Full narrative that can evolve over time
 
     protected Set<String> aliases; // Alternative names (e.g., "Krux" for "Commodore Krux")
+    protected List<String> sources;
 
     @Relationship(type = "PARTICIPATED_IN", direction = Relationship.Direction.OUTGOING)
     protected Set<Event> events;
@@ -46,26 +44,7 @@ public class Actor extends BaseEntity {
         this.events = new HashSet<>();
     }
 
-    /**
-     * Create a character from a draft.
-     */
-    public Actor(String gameId, ActorDraft draft) {
-        this();
-        this.gameId = gameId;
-
-        this.name = draft.name();
-        this.nameNormalized = this.name == null ? null : normalize(this.name);
-        this.id = gameId + ":" + slugify(this.name);
-
-        if (draft.details() != null) {
-            this.summary = draft.details().summary();
-            this.description = draft.details().description();
-            setAliases(draft.details().aliases());
-            setTags(draft.details().tags());
-        }
-    }
-
-    public Actor(String gameId, ActorPatch p) {
+    public Actor(String gameId, Patch p) {
         this();
         this.gameId = gameId;
 
@@ -73,12 +52,12 @@ public class Actor extends BaseEntity {
         this.nameNormalized = this.name == null ? null : normalize(this.name);
         this.id = gameId + ":" + slugify(this.name);
 
-        if (p.details() != null) {
-            this.summary = p.details().summary();
-            this.description = p.details().description();
-            setAliases(p.details().aliases());
-            setTags(p.details().tags());
-        }
+        this.summary = p.summary();
+        this.description = p.description();
+        setAliases(p.aliases());
+        setTags(p.tags());
+
+        markDirty();
     }
 
     public String getId() {
@@ -177,7 +156,8 @@ public class Actor extends BaseEntity {
     }
 
     /**
-     * Check if a name matches this character's name or any alias (case-insensitive).
+     * Check if a name matches this character's name or any alias
+     * (case-insensitive).
      */
     public boolean matchesNameOrAlias(String nameOrAlias) {
         if (nameOrAlias == null || nameOrAlias.isBlank()) {
@@ -201,47 +181,18 @@ public class Actor extends BaseEntity {
         return Templates.actorDetail(this).render();
     }
 
-    public Actor merge(ActorPatch p) {
-        if (!name.equals(p.name())) {
-            addAlias(p.name());
+    public Actor merge(Patch p) {
+        if (p.summary() != null) {
+            this.summary = p.summary();
         }
-        if (p.details() != null) {
-            var details = p.details();
-            if (details.summary() != null) {
-                this.summary = p.details().summary();
-            }
-            if (details.description() != null) {
-                this.description = p.details().description();
-            }
-            if (details.aliases() == null || details.aliases().isEmpty()) {
-                setAliases(details.aliases());
-            }
-            if (details.tags() == null || details.tags().isEmpty()) {
-                setTags(details.tags());
-            }
+        if (p.description() != null) {
+            this.description = p.description();
         }
-        markDirty();
-        return this;
-    }
-
-    public Actor merge(PlayerActorCreationPatch p) {
-        if (!name.equals(p.name())) {
-            addAlias(p.name());
+        if (p.aliases() == null || p.aliases().isEmpty()) {
+            setAliases(p.aliases());
         }
-        if (p.details() != null) {
-            var details = p.details();
-            if (details.summary() != null) {
-                this.summary = p.details().summary();
-            }
-            if (details.description() != null) {
-                this.description = p.details().description();
-            }
-            if (details.aliases() == null || details.aliases().isEmpty()) {
-                setAliases(details.aliases());
-            }
-            if (details.tags() == null || details.tags().isEmpty()) {
-                setTags(details.tags());
-            }
+        if (p.tags() == null || p.tags().isEmpty()) {
+            setTags(p.tags());
         }
         markDirty();
         return this;

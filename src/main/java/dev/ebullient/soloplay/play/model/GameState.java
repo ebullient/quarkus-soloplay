@@ -1,12 +1,8 @@
 package dev.ebullient.soloplay.play.model;
 
-import static dev.ebullient.soloplay.StringUtils.normalize;
-
 import java.time.Instant;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.NodeEntity;
@@ -38,12 +34,10 @@ public class GameState extends BaseEntity {
     // Gameplay state
     Integer turnNumber; // Increment each turn
     String currentLocation; // "location:docks"
-    Set<String> plotFlags = new HashSet<>(); // Story state
-
     Long lastPlayedAt;
 
     @Transient
-    Map<String, Draft> drafts = new HashMap<>();
+    Map<String, Stash> stash = new HashMap<>();
 
     /**
      * @return the gameId
@@ -108,42 +102,27 @@ public class GameState extends BaseEntity {
         this.currentLocation = currentLocation;
     }
 
-    public <T extends Draft> T getDraft(String key, Class<T> clazz) {
-        Draft draft = drafts.get(key);
+    public <T extends Stash> T getStash(String key, Class<T> clazz) {
+        Stash draft = stash.get(key);
         if (clazz.isInstance(draft)) {
             return clazz.cast(draft);
         }
         return null;
     }
 
-    public <T extends Draft> T getDraftOrDefault(String key, Class<T> clazz, T fallback) {
-        Draft draft = drafts.getOrDefault(key, fallback);
+    public <T extends Stash> T getStashOrDefault(String key, Class<T> clazz, T fallback) {
+        Stash draft = stash.getOrDefault(key, fallback);
         if (clazz.isInstance(draft)) {
             return clazz.cast(draft);
         }
         return fallback;
     }
 
-    public <T extends Draft> void putDraft(String key, T value) {
-        this.drafts.put(key, value);
+    public <T extends Stash> void putStash(String key, T value) {
+        this.stash.put(key, value);
     }
 
-    public <T extends Draft> void removeDraft(String key) {
-        this.drafts.remove(key);
-    }
-
-    public void addPlotFlag(String flag) {
-        var normalized = normalize(flag);
-        if (!normalized.isBlank()) {
-            plotFlags.add(normalized);
-        }
-    }
-
-    public boolean hasPlotFlag(String flag) {
-        return plotFlags.contains(normalize(flag));
-    }
-
-    public Set<String> getPlotFlags() {
-        return plotFlags == null ? Set.of() : plotFlags;
+    public <T extends Stash> void removeStash(String key) {
+        this.stash.remove(key);
     }
 }

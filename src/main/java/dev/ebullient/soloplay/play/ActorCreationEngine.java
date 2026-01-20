@@ -13,19 +13,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.ebullient.soloplay.GameRepository;
 import dev.ebullient.soloplay.StringUtils;
 import dev.ebullient.soloplay.play.ActorCreationAssistant.ActorCreationResponse;
-import dev.ebullient.soloplay.play.model.Draft;
-import dev.ebullient.soloplay.play.model.Draft.Details;
-import dev.ebullient.soloplay.play.model.Draft.PlayerActorDraft;
+import dev.ebullient.soloplay.play.ActorCreationAssistant.PlayerActorCreationPatch;
 import dev.ebullient.soloplay.play.model.GameState;
 import dev.ebullient.soloplay.play.model.GameState.GamePhase;
-import dev.ebullient.soloplay.play.model.Patch.PlayerActorCreationPatch;
 import dev.ebullient.soloplay.play.model.PlayerActor;
+import dev.ebullient.soloplay.play.model.PlayerActorDraft;
 import dev.langchain4j.exception.LangChain4jException;
 import io.quarkus.logging.Log;
 
 @ApplicationScoped
 public class ActorCreationEngine {
-    static final PlayerActorDraft EMPTY_DRAFT = new PlayerActorDraft(null, null, null, null, false);
+    static final PlayerActorDraft EMPTY_DRAFT = new PlayerActorDraft(null, null, null, null, null, null, null, false);
     static final String DRAFT_KEY = "actor_creation";
 
     @Inject
@@ -68,26 +66,20 @@ public class ActorCreationEngine {
                             """.stripIndent().formatted(partyMembers));
                 }
             }
-            return GameResponse.reply("Ok — cleared your character draft.",
-                    new GameEffect.DraftUpdate(DRAFT_KEY, null));
+            return GameResponse.reply("Ok — cleared your character draft.");
         }
         if ("/draft".equalsIgnoreCase(trimmed)) {
             return GameResponse.reply(renderDraft(currentDraft));
         }
         if ("/confirm".equalsIgnoreCase(trimmed)) {
             emitter.assistantDelta("Confirming character…\n");
-            var confirmed = new PlayerActorDraft(
-                    currentDraft.name(),
-                    currentDraft.details(),
-                    currentDraft.actorClass(), currentDraft.level(),
-                    true);
 
-            String missing = missingRequired(confirmed);
+            String missing = missingRequired(currentDraft);
             if (missing != null) {
                 return GameResponse.error("Can't confirm yet: " + missing);
             }
 
-            PlayerActor actor = new PlayerActor(gameId, confirmed);
+            PlayerActor actor = new PlayerActor(gameId, currentDraft);
             emitter.assistantDelta("Saving character…\n");
             gameRepository.saveActor(actor);
             cleanupDraft(game);
@@ -120,8 +112,7 @@ public class ActorCreationEngine {
 
         return GameResponse.reply(
                 (message == null ? "ok." : message) + "\n\n" + renderDraft(updatedDraft)
-                        + "\n\nUse `/confirm` if this looks good to you.",
-                new GameEffect.DraftUpdate(DRAFT_KEY, updatedDraft));
+                        + "\n\nUse `/confirm` if this looks good to you.");
     }
 
     private ActorCreationResponse handleAssistantResponse(GameState state, PlayerActorDraft currentDraft,
@@ -178,15 +169,15 @@ public class ActorCreationEngine {
     }
 
     PlayerActorDraft getCurrentDraft(GameState game) {
-        return game.getDraftOrDefault(DRAFT_KEY, PlayerActorDraft.class, EMPTY_DRAFT);
+        return game.getStashOrDefault(DRAFT_KEY, PlayerActorDraft.class, EMPTY_DRAFT);
     }
 
     void cleanupDraft(GameState game) {
-        game.removeDraft(DRAFT_KEY);
+        game.removeStash(DRAFT_KEY);
     }
 
     void updateDraft(GameState game, PlayerActorDraft updatedDraft) {
-        game.putDraft(DRAFT_KEY, updatedDraft);
+        game.putStash(DRAFT_KEY, updatedDraft);
     }
 
     static String missingRequired(PlayerActorDraft draft) {
@@ -209,27 +200,15 @@ public class ActorCreationEngine {
         if (patch == null) {
             return current;
         }
-        Details mergedDetails = mergeDetails(current.details(), patch.details());
         return new PlayerActorDraft(
                 StringUtils.firstNonBlank(patch.name(), current.name()),
-                mergedDetails,
                 StringUtils.firstNonBlank(patch.actorClass(), current.actorClass()),
                 patch.level() != null ? patch.level() : current.level(),
-                current.confirmed());
-    }
-
-    static Details mergeDetails(Details current, Details patch) {
-        if (current == null) {
-            return patch;
-        }
-        if (patch == null) {
-            return current;
-        }
-        return new Draft.Details(
                 StringUtils.firstNonBlank(patch.summary(), current.summary()),
                 StringUtils.firstNonBlank(patch.description(), current.description()),
                 patch.tags() != null ? patch.tags() : current.tags(),
-                patch.aliases() != null ? patch.aliases() : current.aliases());
+                patch.aliases() != null ? patch.aliases() : current.aliases(),
+                current.confirmed());
     }
 
     static String renderDraft(PlayerActorDraft draft) {

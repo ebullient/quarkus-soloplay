@@ -17,13 +17,9 @@ import dev.ebullient.soloplay.play.GamePlayAssistant.PendingRoll;
 import dev.ebullient.soloplay.play.GamePlayAssistant.RollResult;
 import dev.ebullient.soloplay.play.model.Actor;
 import dev.ebullient.soloplay.play.model.BaseEntity;
-import dev.ebullient.soloplay.play.model.Draft.PendingRollDraft;
 import dev.ebullient.soloplay.play.model.GameState;
 import dev.ebullient.soloplay.play.model.Location;
 import dev.ebullient.soloplay.play.model.Patch;
-import dev.ebullient.soloplay.play.model.Patch.ActorPatch;
-import dev.ebullient.soloplay.play.model.Patch.LocationPatch;
-import dev.ebullient.soloplay.play.model.Patch.PlayerActorCreationPatch;
 import dev.ebullient.soloplay.play.model.PlayerActor;
 import io.quarkus.logging.Log;
 
@@ -73,7 +69,7 @@ public class GamePlayEngine {
         String trimmed = playerInput == null ? "" : playerInput.trim();
 
         // Check for pending roll resolution
-        PendingRollDraft pendingRoll = rollHandler.getPendingRoll(game);
+        PendingRoll pendingRoll = rollHandler.getPendingRoll(game);
         if (pendingRoll != null && isRollInput(trimmed)) {
             return resolveRoll(game, pendingRoll, trimmed, emitter);
         }
@@ -96,7 +92,7 @@ public class GamePlayEngine {
         return processResponse(game, parseResponse(rawResponse), emitter);
     }
 
-    private GameResponse resolveRoll(GameState game, PendingRollDraft pending, String rollInput,
+    private GameResponse resolveRoll(GameState game, PendingRoll pending, String rollInput,
             GameEventEmitter emitter) {
         emitter.assistantDelta("Processing roll…\n");
 
@@ -162,7 +158,7 @@ public class GamePlayEngine {
     }
 
     private void storePendingRoll(GameState game, PendingRoll roll) {
-        PendingRollDraft draft = new PendingRollDraft(
+        PendingRoll draft = new PendingRoll(
                 roll.type(),
                 roll.skill(),
                 roll.ability(),
@@ -182,17 +178,13 @@ public class GamePlayEngine {
         List<BaseEntity> modified = new ArrayList<>();
 
         for (Patch patch : patches) {
-            switch (patch) {
-                case PlayerActorCreationPatch p -> {
-                    var merged = handlePlayerActor(game, p);
+            switch (patch.type()) {
+                case "actor" -> {
+                    var merged = handleActor(game, patch);
                     modified.add(merged);
                 }
-                case ActorPatch a -> {
-                    var merged = handleActor(game, a);
-                    modified.add(merged);
-                }
-                case LocationPatch l -> {
-                    var merged = handleLocation(game, l);
+                case "location" -> {
+                    var merged = handleLocation(game, patch);
                     modified.add(merged);
                 }
             }
@@ -201,11 +193,10 @@ public class GamePlayEngine {
         gameRepository.saveAll(modified); // single TX
     }
 
-    // Very unlikely on this path. Player creation should happen only on actor creation path
-    Actor handlePlayerActor(GameState game, PlayerActorCreationPatch p) {
+    Actor handleActor(GameState game, Patch p) {
         var actor = gameRepository.findActorByNameOrAlias(game.getGameId(), p.name());
         if (actor == null) {
-            return null;
+            return new Actor(game.getGameId(), p);
         }
         if (actor instanceof PlayerActor playerActor) {
             // preserve extra player actor attributes
@@ -214,15 +205,7 @@ public class GamePlayEngine {
         return actor.merge(p);
     }
 
-    Actor handleActor(GameState game, ActorPatch p) {
-        var actor = gameRepository.findActorByNameOrAlias(game.getGameId(), p.name());
-        if (actor == null) {
-            return new Actor(game.getGameId(), p);
-        }
-        return actor.merge(p);
-    }
-
-    Location handleLocation(GameState game, LocationPatch p) {
+    Location handleLocation(GameState game, Patch p) {
         var location = gameRepository.findLocationByNameOrAlias(game.getGameId(), p.name());
         if (location == null) {
             return new Location(game.getGameId(), p);

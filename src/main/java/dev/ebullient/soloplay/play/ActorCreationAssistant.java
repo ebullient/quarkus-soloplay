@@ -1,9 +1,11 @@
 package dev.ebullient.soloplay.play;
 
+import java.util.List;
+
 import dev.ebullient.soloplay.ai.LoreRetriever;
 import dev.ebullient.soloplay.ai.LoreTools;
-import dev.ebullient.soloplay.play.model.Draft;
-import dev.ebullient.soloplay.play.model.Patch;
+import dev.ebullient.soloplay.play.model.PlayerActorDraft;
+import dev.ebullient.soloplay.play.model.Stash;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
@@ -106,7 +108,17 @@ import io.quarkiverse.langchain4j.RegisterAiService;
 @RegisterAiService(tools = LoreTools.class, retrievalAugmentor = LoreRetriever.class)
 public interface ActorCreationAssistant {
 
-    public record ActorCreationResponse(String messageMarkdown, Patch.PlayerActorCreationPatch patch) {
+    public record PlayerActorCreationPatch(
+            String name, String actorClass, Integer level,
+            String summary,
+            String description,
+            List<String> tags,
+            List<String> aliases,
+            String rationale,
+            List<String> sources) implements Stash {
+    };
+
+    public record ActorCreationResponse(String messageMarkdown, PlayerActorCreationPatch patch) {
     };
 
     @UserMessage("""
@@ -131,7 +143,7 @@ public interface ActorCreationAssistant {
             @MemoryId String chatMemoryId,
             String gameId,
             String adventureName,
-            Draft.PlayerActorDraft currentDraft,
+            PlayerActorDraft currentDraft,
             String playerInput);
 
     @UserMessage("""

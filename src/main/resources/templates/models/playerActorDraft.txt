@@ -1,9 +1,7 @@
 - **Name:** {draft.name}
 - **Class:** {util:valueOrPlaceholder(draft.actorClass)}
 - **Level:** {util:valueOrPlaceholder(draft.level)}
-{#if draft.details}
-- **Summary:** {util:valueOrPlaceholder(draft.details.summary)}
-- **Description:** {util:valueOrPlaceholder(draft.details.description)}
-- **Aliases:** {util:valueOrPlaceholder(draft.details.aliases)}
-- **Tags:** {util:valueOrPlaceholder(draft.details.tags)}
-{/if}
+- **Summary:** {util:valueOrPlaceholder(draft.summary)}
+- **Description:** {util:valueOrPlaceholder(draft.description)}
+- **Aliases:** {util:valueOrPlaceholder(draft.aliases)}
+- **Tags:** {util:valueOrPlaceholder(draft.tags)}

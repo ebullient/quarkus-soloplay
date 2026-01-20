@@ -12,8 +12,6 @@ import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Relationship;
 
-import dev.ebullient.soloplay.play.model.Draft.LocationDraft;
-import dev.ebullient.soloplay.play.model.Patch.LocationPatch;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 
@@ -45,39 +43,18 @@ public class Location extends BaseEntity {
         this.events = new HashSet<>();
     }
 
-    /**
-     * Create a location from a draft.
-     */
-    public Location(String gameId, LocationDraft draft) {
-        this();
-        this.gameId = gameId;
-
-        this.name = draft.name();
-        this.nameNormalized = this.name == null ? null : normalize(this.name);
-        this.id = gameId + ":" + slugify(this.name);
-
-        if (draft.details() != null) {
-            this.summary = draft.details().summary();
-            this.description = draft.details().description();
-            setAliases(draft.details().aliases());
-            setTags(draft.details().tags());
-        }
-    }
-
-    public Location(String gameId, LocationPatch p) {
+    public Location(String gameId, Patch p) {
         this();
         this.gameId = gameId;
 
         this.name = p.name();
         this.nameNormalized = this.name == null ? null : normalize(this.name);
         this.id = gameId + ":" + slugify(this.name);
-
-        if (p.details() != null) {
-            this.summary = p.details().summary();
-            this.description = p.details().description();
-            setAliases(p.details().aliases());
-            setTags(p.details().tags());
-        }
+        this.summary = p.summary();
+        this.description = p.description();
+        setAliases(p.aliases());
+        setTags(p.tags());
+        markDirty();
     }
 
     public String getId() {
@@ -200,24 +177,21 @@ public class Location extends BaseEntity {
         return Templates.locationDetail(this).render();
     }
 
-    public Location merge(LocationPatch p) {
+    public Location merge(Patch p) {
         if (!name.equals(p.name())) {
             addAlias(p.name());
         }
-        if (p.details() != null) {
-            var details = p.details();
-            if (details.summary() != null) {
-                this.summary = p.details().summary();
-            }
-            if (details.description() != null) {
-                this.description = p.details().description();
-            }
-            if (details.aliases() == null || details.aliases().isEmpty()) {
-                setAliases(details.aliases());
-            }
-            if (details.tags() == null || details.tags().isEmpty()) {
-                setTags(details.tags());
-            }
+        if (p.summary() != null) {
+            this.summary = p.summary();
+        }
+        if (p.description() != null) {
+            this.description = p.description();
+        }
+        if (p.aliases() == null || p.aliases().isEmpty()) {
+            setAliases(p.aliases());
+        }
+        if (p.tags() == null || p.tags().isEmpty()) {
+            setTags(p.tags());
         }
         markDirty();
         return this;

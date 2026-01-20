@@ -7,8 +7,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
-import dev.ebullient.soloplay.play.model.Draft;
-
 /**
  * Messages sent from server to client over the Play WebSocket.
  *
@@ -30,7 +28,6 @@ import dev.ebullient.soloplay.play.model.Draft;
         @JsonSubTypes.Type(value = PlayWsServerMessage.AssistantStart.class, name = "assistant_start"),
         @JsonSubTypes.Type(value = PlayWsServerMessage.AssistantDelta.class, name = "assistant_delta"),
         @JsonSubTypes.Type(value = PlayWsServerMessage.AssistantDone.class, name = "assistant_done"),
-        @JsonSubTypes.Type(value = PlayWsServerMessage.DraftUpdate.class, name = "draft_update"),
         @JsonSubTypes.Type(value = PlayWsServerMessage.Error.class, name = "error")
 })
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -116,15 +113,6 @@ public sealed interface PlayWsServerMessage {
             String id,
             String markdown,
             String html) implements PlayWsServerMessage {
-    }
-
-    /**
-     * Draft/state update for client-side UI rendering.
-     *
-     * @param key Draft key (e.g. "actor_creation")
-     * @param draft Draft payload (may be null to indicate clearing)
-     */
-    record DraftUpdate(String key, Draft draft) implements PlayWsServerMessage {
     }
 
     /**

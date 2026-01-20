@@ -39,10 +39,6 @@ public class GameContext {
         return gameState.getCurrentLocation();
     }
 
-    public Collection<String> getPlotFlags() {
-        return gameState.getPlotFlags();
-    }
-
     public Collection<String> listPlayerCharacters() {
         return theParty;
     }

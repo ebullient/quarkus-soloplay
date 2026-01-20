@@ -1,11 +1,6 @@
 package dev.ebullient.soloplay.play;
 
-import dev.ebullient.soloplay.play.model.Draft;
-
 public sealed interface GameEffect {
-
-    record DraftUpdate(String key, Draft draft) implements GameEffect {
-    }
 
     /**
      * Pre-rendered HTML fragment intended for a specific UI slot.

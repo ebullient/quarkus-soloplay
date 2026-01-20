@@ -2,7 +2,6 @@ package dev.ebullient.soloplay.play.model;
 
 import org.neo4j.ogm.annotation.NodeEntity;
 
-import dev.ebullient.soloplay.play.model.Draft.PlayerActorDraft;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 
@@ -24,10 +23,11 @@ public class PlayerActor extends Actor {
     }
 
     public PlayerActor(String gameId, PlayerActorDraft draft) {
-        super(gameId, draft.toActorDraft());
+        super(gameId, draft.toPatch());
 
         this.level = draft.level();
         this.actorClass = draft.actorClass();
+        markDirty();
     }
 
     public String getActorClass() {

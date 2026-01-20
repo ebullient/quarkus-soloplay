@@ -11,7 +11,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import jakarta.inject.Inject;
 
 import dev.ebullient.soloplay.ai.MarkdownAugmenter;
-import dev.ebullient.soloplay.play.GameEffect.DraftUpdate;
 import dev.ebullient.soloplay.play.model.GameState;
 import io.quarkus.logging.Log;
 import io.quarkus.websockets.next.OnClose;
@@ -198,9 +197,6 @@ public class PlayWebSocket {
     }
 
     private static PlayWsServerMessage toServerMessage(GameEffect effect) {
-        if (effect instanceof DraftUpdate d) {
-            return new PlayWsServerMessage.DraftUpdate(d.key(), d.draft());
-        }
         return null;
     }
 
