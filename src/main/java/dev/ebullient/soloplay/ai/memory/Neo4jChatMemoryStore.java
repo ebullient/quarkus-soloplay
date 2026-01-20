@@ -9,7 +9,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 
-import org.jboss.logging.Logger;
 import org.neo4j.ogm.session.Session;
 import org.neo4j.ogm.session.SessionFactory;
 
@@ -17,6 +16,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageDeserializer;
 import dev.langchain4j.data.message.ChatMessageSerializer;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import io.quarkus.logging.Log;
 
 /**
  * Persists LangChain4j chat memory to Neo4j.
@@ -29,8 +29,6 @@ import dev.langchain4j.store.memory.chat.ChatMemoryStore;
  */
 @ApplicationScoped
 public class Neo4jChatMemoryStore implements ChatMemoryStore {
-    private static final Logger LOG = Logger.getLogger(Neo4jChatMemoryStore.class);
-
     @Inject
     SessionFactory sessionFactory;
 
@@ -40,7 +38,7 @@ public class Neo4jChatMemoryStore implements ChatMemoryStore {
     @Override
     public List<ChatMessage> getMessages(Object memoryId) {
         String id = memoryId.toString();
-        LOG.debugf("Getting messages for memoryId: %s", id);
+        Log.debugf("Getting messages for memoryId: %s", id);
 
         Session session = sessionFactory.openSession();
         Iterable<Map<String, Object>> results = session.query(
@@ -51,12 +49,12 @@ public class Neo4jChatMemoryStore implements ChatMemoryStore {
             String messagesJson = (String) row.get("messagesJson");
             if (messagesJson != null && !messagesJson.isBlank()) {
                 List<ChatMessage> messages = ChatMessageDeserializer.messagesFromJson(messagesJson);
-                LOG.debugf("Retrieved %d messages for memoryId: %s", messages.size(), id);
+                Log.debugf("Retrieved %d messages for memoryId: %s", messages.size(), id);
                 return messages;
             }
         }
 
-        LOG.debugf("No messages found for memoryId: %s", id);
+        Log.debugf("No messages found for memoryId: %s", id);
         return List.of();
     }
 
@@ -65,14 +63,14 @@ public class Neo4jChatMemoryStore implements ChatMemoryStore {
         String id = memoryId.toString();
         Instant now = Instant.now();
 
-        LOG.debugf("Updating %d messages for memoryId: %s", messages.size(), id);
+        Log.debugf("Updating %d messages for memoryId: %s", messages.size(), id);
 
         // Detect compaction by comparing with previously stored messages
         List<ChatMessage> previousMessages = getMessages(memoryId);
         List<ChatMessage> droppedMessages = detectDroppedMessages(previousMessages, messages);
 
         if (!droppedMessages.isEmpty()) {
-            LOG.infof("Memory compaction detected for %s: %d messages dropped",
+            Log.infof("Memory compaction detected for %s: %d messages dropped",
                     id, droppedMessages.size());
             compactedEvent.fire(new ChatMemoryCompactedEvent(id, droppedMessages));
         }
@@ -144,7 +142,7 @@ public class Neo4jChatMemoryStore implements ChatMemoryStore {
     @Override
     public void deleteMessages(Object memoryId) {
         String id = memoryId.toString();
-        LOG.debugf("Deleting messages for memoryId: %s", id);
+        Log.debugf("Deleting messages for memoryId: %s", id);
 
         Session session = sessionFactory.openSession();
         session.query(

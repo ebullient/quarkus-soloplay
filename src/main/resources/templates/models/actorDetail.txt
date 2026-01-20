@@ -1,0 +1,8 @@
+- **Name:** {actor.name}
+{#if actor.summary}- **Summary:** {actor.summary}
+{/if}{#if actor.description}- **Description:** {actor.description}
+{/if}{#if actor.aliases}- **Aliases:** {#each actor.aliases}{it}{#if it_hasNext}, {/if}{/each}
+{/if}{#if actor.tags}- **Tags:** {#each actor.tags}{it}{#if it_hasNext}, {/if}{/each}
+{/if}
+- created at {actor.createdAt}; updated at {actor.updatedAt}
+

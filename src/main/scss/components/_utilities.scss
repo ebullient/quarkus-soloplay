@@ -29,15 +29,23 @@
     border-color: rgba(102, 126, 234, 0.3);
 }
 
+.card--success {
+    background: var(--color-success-bg);
+    border-color: var(--color-success-border);
+    color: var(--color-success-text);
+}
+
+.card--error {
+    background: var(--color-error-bg);
+    border-color: var(--color-error-border);
+    color: var(--color-error-text);
+}
+
 // Stack - vertical layout with gap
 .stack {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
-}
-
-.stack-sm {
-    gap: var(--spacing-sm);
 }
 
 .stack-lg {
@@ -52,23 +60,11 @@
     flex-wrap: wrap;
 }
 
-.cluster-between {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: var(--spacing-md);
-}
-
 // Grid - responsive auto-fit grid (collapses empty tracks)
 .grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: var(--spacing-lg);
-}
-
-.grid-sm {
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: var(--spacing-sm);
 }
 
 // Width constraints
@@ -78,17 +74,9 @@
     padding-inline: var(--spacing-md);
 }
 
-.narrow {
-    max-width: 600px;
-    margin-inline: auto;
-    padding-inline: var(--spacing-md);
+// Loading state
+.loading {
+    color: var(--color-text-secondary);
+    font-style: italic;
 }
 
-// Centered container
-.center {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex: 1;
-    padding: var(--spacing-xl);
-}

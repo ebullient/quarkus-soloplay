@@ -1,8 +1,0 @@
-Relationships for {character.name}:
-{#if relationships.isEmpty()}
-No relationships found.
-{#else}
-{#for rel in relationships}
-- {rel.character1.name} → {rel.character2.name}{#if rel.tags && !rel.tags.isEmpty()} ({#each rel.tags}{it}{#if it_hasNext}, {/if}{/each}){/if}
-{/for}
-{/if}

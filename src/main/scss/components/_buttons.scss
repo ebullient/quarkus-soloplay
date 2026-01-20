@@ -77,21 +77,12 @@ a.btn-primary,
     }
 }
 
-.btn-ai {
-    background: linear-gradient(45deg, var(--color-text-ai) 0%, var(--color-text-ai-accent) 100%);
-    color: white;
-    border: none;
-    position: relative;
-    overflow: hidden;
-
-    &:before {
-        content: "🤖";
-        margin-right: var(--spacing-sm);
-    }
+.btn-danger {
+    background-color: var(--color-warning-bg);
+    color: var(--color-warning-text);
 
     &:hover {
-        background: linear-gradient(45deg, var(--color-text-ai-accent) 0%, var(--color-text-ai) 100%);
-        color: white;
+       text-decoration: none;
     }
 }
 

@@ -74,7 +74,7 @@ public class IngestService {
             }
             Log.infof("Processed %d non-empty sections from %s", processedCount, filename);
         } else {
-            splitDocument(filename, content);
+            processStructuredMarkdown(filename, content.trim());
         }
 
         Log.infof("Completed processing file: %s", filename);
@@ -95,44 +95,50 @@ public class IngestService {
 
         if (cleanContent.length() > chunkSize) {
             String[] sections = SECTION_HEADER_PATTERN.split(cleanContent);
-            for (int i = 0; i < sections.length; i++) {
-                String section = sections[i];
+            int sectionIndex = 0;
+            for (String section : sections) {
+                if (section.isBlank()) {
+                    continue;
+                }
                 String sectionTitle = extractFirstLine(section);
 
                 // If section is still too large, chunk it again
                 if (section.length() > chunkSize * 2) {
-                    Log.infof("Section %d '%s' is large (%d chars), splitting into chunks", i, sectionTitle,
+                    Log.infof("Section %d '%s' is large (%d chars), splitting into chunks", sectionIndex, sectionTitle,
                             section.length());
                     var doc = Document.from(section);
                     var splitter = DocumentSplitters.recursive(chunkSize, chunkOverlap);
                     List<TextSegment> subSegments = splitter.split(doc);
 
+                    int chunkIndex = 0;
                     for (TextSegment subSegment : subSegments) {
-                        final var index = segments.size();
                         subSegment.metadata()
                                 .put("section", sectionTitle)
-                                .put("sectionIndex", index)
+                                .put("sectionIndex", sectionIndex)
+                                .put("chunkIndex", chunkIndex++)
                                 .put("sourceFile", filename)
                                 .put("canonical", "true");
                         subSegment.metadata().putAll(yamlMetadata);
                         segments.add(subSegment);
                     }
+                    sectionIndex++;
                 } else if (!section.isBlank()) {
-                    final var index = segments.size();
                     TextSegment segment = TextSegment.from(
                             section,
                             Metadata.from("section", sectionTitle)
-                                    .put("sectionIndex", index)
+                                    .put("sectionIndex", sectionIndex++)
+                                    .put("chunkIndex", 0)
                                     .merge(common));
                     segments.add(segment);
                 }
             }
         } else if (!cleanContent.isBlank()) {
-            final var index = segments.size();
             TextSegment segment = TextSegment.from(
                     cleanContent,
                     common);
-            segment.metadata().put("sectionIndex", index);
+            segment.metadata()
+                    .put("sectionIndex", 0)
+                    .put("chunkIndex", 0);
             segments.add(segment);
         }
 
@@ -145,51 +151,6 @@ public class IngestService {
         }
 
         List<Embedding> embeddings = embeddingModel.embedAll(segments).content();
-        embeddingStore.addAll(embeddings, segments);
-        Log.infof("Stored %d embeddings for %s", embeddings.size(), filename);
-    }
-
-    // Split document into smaller segments, generate embeddings, and store them
-    void splitDocument(String filename, String content) {
-        var doc = Document.from(content);
-        var splitter = DocumentSplitters.recursive(
-                chunkSize, // max chunk size in characters
-                chunkOverlap // overlap between chunks
-        );
-
-        List<TextSegment> segments = splitter.split(doc);
-        Log.infof("Split %s into %d chunks", filename, segments.size());
-
-        for (int i = 0; i < segments.size(); i++) {
-            TextSegment segment = segments.get(i);
-            segment.metadata()
-                    .put("sourceFile", filename)
-                    .put("canonical", "true") // source material
-                    .put("chunkIndex", i);
-        }
-
-        // Validate segments before sending to embedding model
-        for (int i = 0; i < segments.size(); i++) {
-            TextSegment seg = segments.get(i);
-            if (seg.text() == null || seg.text().isBlank()) {
-                Log.warnf("Skipping empty segment %d in %s", i, filename);
-                segments.remove(i);
-                i--; // Adjust index after removal
-            } else if (seg.text().length() > 8000) {
-                Log.warnf("Segment %d in %s is very large (%d chars), may fail", i, filename, seg.text().length());
-            }
-        }
-
-        if (segments.isEmpty()) {
-            Log.warnf("No valid segments to embed for %s", filename);
-            return;
-        }
-
-        // Generate embeddings
-        Log.infof("Generating embeddings for %d chunks from %s", segments.size(), filename);
-        List<Embedding> embeddings = embeddingModel.embedAll(segments).content();
-
-        // Store in Neo4j
         embeddingStore.addAll(embeddings, segments);
         Log.infof("Stored %d embeddings for %s", embeddings.size(), filename);
     }

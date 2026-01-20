@@ -1,6 +1,6 @@
 /**
- * Play Interface - Story-aware WebSocket chat for solo play
- * Handles streaming communication with /ws/story/{storyThreadId} endpoint
+ * Play Interface - WebSocket chat for solo play
+ * Handles streaming communication with `/ws/play/{gameId}`
  */
 
 class PlayInterface {
@@ -9,15 +9,10 @@ class PlayInterface {
         this.messageInput = document.getElementById('message-input');
         this.sendButton = document.getElementById('send-button');
 
-        // Story thread info: server-rendered template preferred, localStorage as fallback
-        this.storyThreadId = window.storyThread?.id
-            || localStorage.getItem('currentStoryThread');
-
-        if (!this.storyThreadId) {
-            console.error('No story thread ID found');
-            this.addSystemMessage('Error: No story thread selected. Please choose a story from the Story Threads page.');
-            return;
-        }
+        // Server-assigned session id (populated from the initial "session" message)
+        this.sessionId = null;
+        // Game id from the page (set via data attribute from server)
+        this.gameId = this.getGameIdFromPage();
 
         // WebSocket state
         this.ws = null;
@@ -29,13 +24,11 @@ class PlayInterface {
         this.currentAssistantMessage = null;
         this.currentMessageId = null;
 
-        // Track pending user message to avoid duplicate display from broadcast
-        this.pendingUserMessage = null;
-
-        // Cache storyThreadId for other pages (Inspect, etc.)
-        this.cacheStoryThread();
+        // Latest drafts/state pushed from server
+        this.drafts = {};
 
         this.setupEventListeners();
+        this.setInputEnabled(false);
         this.connect();
     }
 
@@ -57,8 +50,15 @@ class PlayInterface {
     // ===== WebSocket Connection =====
 
     connect() {
+        if (!this.gameId) {
+            console.error('Cannot connect: no game ID');
+            this.updateConnectionStatus('error');
+            this.addSystemMessage('Error: No game ID found. Please return to the games list.');
+            return;
+        }
+
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws/story/${this.storyThreadId}`;
+        const wsUrl = `${protocol}//${window.location.host}/ws/play/${encodeURIComponent(this.gameId)}`;
 
         console.log('Connecting to WebSocket:', wsUrl);
         this.updateConnectionStatus('connecting');
@@ -87,6 +87,7 @@ class PlayInterface {
         this.ws.onclose = (event) => {
             console.log('WebSocket closed:', event.code, event.reason);
             this.updateConnectionStatus('disconnected');
+            this.setInputEnabled(false);
 
             // Attempt reconnect unless intentionally closed
             if (event.code !== 1000) {
@@ -125,22 +126,6 @@ class PlayInterface {
         }
     }
 
-    /**
-     * Cache storyThreadId in localStorage for cross-page continuity.
-     * Uses the same key as StorySelector so Inspect pages auto-select this story.
-     */
-    cacheStoryThread() {
-        try {
-            localStorage.setItem('currentStoryThread', this.storyThreadId);
-            // Dispatch event for any listening components (e.g., StorySelector)
-            window.dispatchEvent(new CustomEvent('storyThreadChanged', {
-                detail: { storyThreadId: this.storyThreadId }
-            }));
-        } catch (e) {
-            console.warn('Could not cache storyThreadId:', e);
-        }
-    }
-
     // ===== Message Handling =====
 
     handleServerMessage(message) {
@@ -148,7 +133,14 @@ class PlayInterface {
 
         switch (type) {
             case 'session':
-                console.log('Session established:', message.storyThreadId, message.storyName);
+                console.log('Session established:', message.gameId);
+                this.sessionId = message.sessionId;
+                if (message.gameId && message.gameId !== this.gameId) {
+                    this.gameId = message.gameId;
+                    localStorage.setItem('soloplay.gameId', this.gameId);
+                }
+                this.setInputEnabled(true);
+                this.messageInput.focus();
                 break;
 
             case 'history':
@@ -156,7 +148,7 @@ class PlayInterface {
                 break;
 
             case 'user_echo':
-                this.handleUserEcho(message.text);
+                this.handleUserEcho(message.senderSessionId, message.text);
                 break;
 
             case 'assistant_start':
@@ -171,6 +163,10 @@ class PlayInterface {
                 this.handleAssistantDone(message.id, message.markdown, message.html);
                 break;
 
+            case 'draft_update':
+                this.handleDraftUpdate(message.key, message.draft);
+                break;
+
             case 'error':
                 this.handleError(message.id, message.message);
                 break;
@@ -178,6 +174,23 @@ class PlayInterface {
             default:
                 console.warn('Unknown message type:', type);
         }
+    }
+
+    getGameIdFromPage() {
+        const chatArea = document.querySelector('.chat-area[data-game-id]');
+        if (chatArea && chatArea.dataset.gameId) {
+            console.log('Game ID from data attribute:', chatArea.dataset.gameId);
+            return chatArea.dataset.gameId;
+        }
+        // Fallback: extract from URL path /play/{gameId}
+        const match = window.location.pathname.match(/\/play\/([^/]+)/);
+        if (match) {
+            const gameId = decodeURIComponent(match[1]);
+            console.log('Game ID from URL:', gameId);
+            return gameId;
+        }
+        console.error('No game ID found in page or URL');
+        return null;
     }
 
     requestHistory() {
@@ -197,7 +210,7 @@ class PlayInterface {
 
         if (!messages || messages.length === 0) {
             // Fresh start - show appropriate message
-            this.showFreshStartMessage();
+            this.sendMessage('/start');
             return;
         }
 
@@ -215,45 +228,17 @@ class PlayInterface {
     }
 
     /**
-     * Show fresh start message when no history exists.
-     * Includes adventure info if configured.
-     */
-    showFreshStartMessage() {
-        let message = 'This seems to be a fresh start.';
-
-        if (window.storyThread?.adventureName) {
-            const followingMode = window.storyThread.followingMode || 'LOOSE';
-            const modeDescription = {
-                'LOOSE': 'using it as inspiration',
-                'STRICT': 'following it closely',
-                'INSPIRATION': 'referencing it when you ask'
-            }[followingMode] || followingMode.toLowerCase();
-
-            message += ` You'll be playing <strong>${window.storyThread.adventureName}</strong>, ${modeDescription}.`;
-        }
-
-        message += ' Ready to play?';
-
-        const msgDiv = document.createElement('div');
-        msgDiv.className = 'message system';
-        msgDiv.innerHTML = `<p>${message}</p>`;
-        this.messagesContainer.appendChild(msgDiv);
-    }
-
-    /**
      * Handle user_echo - broadcast of user message from server.
      * This is how all tabs (including the sender) receive user messages.
-     * Avoids duplicate display by checking pendingUserMessage.
+     * Avoids duplicate display by checking senderSessionId.
      */
-    handleUserEcho(text) {
-        // If this is our own message we just sent, we already displayed it
-        if (this.pendingUserMessage === text) {
-            this.pendingUserMessage = null;
+    handleUserEcho(senderSessionId, text) {
+        if (this.sessionId && senderSessionId === this.sessionId) {
             return;
         }
 
         // Message from another tab/user - display it
-        console.log('User echo from another connection:', text);
+        console.debug('User echo from another connection:', text);
         this.addUserMessage(text);
 
         // Disable input since generation is starting from another tab
@@ -261,7 +246,7 @@ class PlayInterface {
     }
 
     handleAssistantStart(messageId) {
-        console.log('Assistant starting:', messageId);
+        console.debug('Assistant starting:', messageId);
         this.currentMessageId = messageId;
 
         // Create placeholder for streaming content
@@ -294,7 +279,7 @@ class PlayInterface {
     }
 
     handleAssistantDone(messageId, markdown, html) {
-        console.log('Assistant done:', messageId);
+        console.debug('Assistant done:', messageId);
 
         if (messageId !== this.currentMessageId || !this.currentAssistantMessage) {
             console.warn('Done for unknown message:', messageId);
@@ -313,6 +298,18 @@ class PlayInterface {
         this.setInputEnabled(true);
         this.messageInput.focus();
         this.scrollToBottom();
+    }
+
+    handleDraftUpdate(key, draft) {
+        if (!key) {
+            return;
+        }
+        if (draft == null) {
+            delete this.drafts[key];
+        } else {
+            this.drafts[key] = draft;
+        }
+        console.log('Draft update:', key, draft);
     }
 
     handleError(messageId, errorMessage) {
@@ -337,9 +334,14 @@ class PlayInterface {
         this.messageInput.style.height = this.messageInput.scrollHeight + 'px';
     }
 
-    sendMessage() {
-        const message = this.messageInput.value.trim();
+    sendMessage(message = '') {
+        message = message || this.messageInput.value.trim();
         if (!message) return;
+
+        if (!this.sessionId) {
+            this.addSystemMessage('Connecting...');
+            return;
+        }
 
         if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
             this.addSystemMessage('Not connected. Attempting to reconnect...');
@@ -349,9 +351,6 @@ class PlayInterface {
 
         // Disable input while processing
         this.setInputEnabled(false);
-
-        // Track this message so we don't duplicate when broadcast comes back
-        this.pendingUserMessage = message;
 
         // Add user message to chat immediately (optimistic UI)
         this.addUserMessage(message);
@@ -401,17 +400,6 @@ class PlayInterface {
     setInputEnabled(enabled) {
         this.messageInput.disabled = !enabled;
         this.sendButton.disabled = !enabled;
-    }
-
-    // Clear chat history (now server-side, just clears UI)
-    clearHistory() {
-        if (confirm('Clear chat display? (Server history will remain)')) {
-            const welcomeMsg = document.getElementById('initial-welcome');
-            this.messagesContainer.innerHTML = '';
-            if (welcomeMsg) {
-                this.messagesContainer.appendChild(welcomeMsg);
-            }
-        }
     }
 }
 

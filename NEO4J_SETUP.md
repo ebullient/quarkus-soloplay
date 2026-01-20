@@ -46,10 +46,9 @@ docker compose up -d    # Recreates database with indexes auto-applied
 
 The indexes optimize these common operations:
 
-- **Character/Location searches by campaign** - `MATCH (c:Character {storyThreadId: $id})`
-- **Name-based searches** - `WHERE c.name CONTAINS $name`
-- **Event temporal queries** - `ORDER BY e.timestamp DESC`
-- **Relationship filtering** - `WHERE r.type = 'ALLY'`
+- **File listing** - `MATCH (d:Document) WHERE d.sourceFile IS NOT NULL RETURN d.sourceFile, count(*)`
+- **Cross-reference lookups** - `MATCH (d:Document) WHERE d.filename = $filename RETURN d.text ORDER BY d.sectionIndex, d.chunkIndex`
+- **Adventure lists** - `MATCH (d:Document) WHERE d.adventureName IS NOT NULL RETURN DISTINCT d.adventureName`
 
 ## Verifying Indexes
 
@@ -62,7 +61,7 @@ SHOW INDEXES
 To check if an index is being used in a query:
 
 ```cypher
-PROFILE MATCH (c:Character {storyThreadId: 'test'}) RETURN c
+PROFILE MATCH (d:Document) WHERE d.filename = 'test.md' RETURN d.text ORDER BY d.sectionIndex, d.chunkIndex
 ```
 
 Look for `NodeIndexSeek` in the query plan.
@@ -92,10 +91,11 @@ ORDER BY elapsedTimeMillis DESC
 If you need to rebuild indexes:
 
 ```cypher
-// Drop all indexes (constraints will remain)
-DROP INDEX character_campaign_id IF EXISTS;
-DROP INDEX character_name IF EXISTS;
-// ... etc
+// Drop indexes (constraints will remain)
+DROP INDEX document_source_file IF EXISTS;
+DROP INDEX document_filename IF EXISTS;
+DROP INDEX document_adventure_name IF EXISTS;
+DROP INDEX document_filename_section_chunk IF EXISTS;
 
 // Then re-run the index creation script
 ```

@@ -2,14 +2,10 @@
 @use '../variables' as *;
 @use '../mixins' as *;
 
-// Chat needs full height
-body {
-    height: 100vh;
-}
-
 // Message container
 #chat-container {
-    flex: 1;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
     padding: var(--spacing-md);
     display: flex;
@@ -20,11 +16,13 @@ body {
 
 // Input area
 #input-container {
+    flex: 0 0 auto;
     padding: var(--spacing-md);
     background: var(--color-bg-elevated);
     border-top: 2px solid var(--color-text-accent);
     display: flex;
     gap: var(--spacing-sm);
+    align-items: flex-end;
 }
 
 #question-input {

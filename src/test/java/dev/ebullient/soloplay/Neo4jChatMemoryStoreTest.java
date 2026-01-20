@@ -4,10 +4,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.util.List;
 
 import jakarta.inject.Inject;
 
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import dev.ebullient.soloplay.ai.memory.Neo4jChatMemoryStore;
@@ -21,6 +26,12 @@ class Neo4jChatMemoryStoreTest {
 
     @Inject
     Neo4jChatMemoryStore memoryStore;
+
+    @BeforeAll
+    static void requireNeo4j() {
+        Assumptions.assumeTrue(isNeo4jAvailable(),
+                "Neo4j must be running on localhost:7687 to run " + Neo4jChatMemoryStoreTest.class.getSimpleName());
+    }
 
     @Test
     void testStoreIsInjected() {
@@ -113,5 +124,14 @@ class Neo4jChatMemoryStoreTest {
         // Cleanup
         memoryStore.deleteMessages(memoryId1);
         memoryStore.deleteMessages(memoryId2);
+    }
+
+    private static boolean isNeo4jAvailable() {
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress("localhost", 7687), 300);
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
     }
 }

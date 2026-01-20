@@ -14,11 +14,11 @@
 @use 'components/utilities';
 @use 'components/buttons';
 @use 'components/forms';
-@use 'components/badges';
 @use 'components/messages';
 @use 'components/flash';
 @use 'components/header';
 @use 'components/nav';
+@use 'components/modals';
 
 // Additional shared styles
 main {
@@ -26,6 +26,7 @@ main {
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
+    min-height: 0; // allow children to shrink and scroll in flex layouts
     padding: 0;
 }
 
@@ -69,21 +70,4 @@ footer {
         block-size: 100%;
         stroke-linecap: round;
     }
-}
-
-// Semantic aliases for card variants
-.data-section {
-    @extend .card;
-    @extend .card--interactive;
-}
-
-.ai-inspection {
-    @extend .card;
-    @extend .card--ai;
-}
-
-.empty-state {
-    text-align: center;
-    padding: 3rem var(--spacing-md);
-    color: var(--color-text-secondary);
 }

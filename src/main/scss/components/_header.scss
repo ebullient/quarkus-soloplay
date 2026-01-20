@@ -35,36 +35,9 @@ header {
     gap: var(--spacing-md);
 }
 
-.header-title {
-    flex: 1;
-    min-width: 200px;
-
-    p {
-        margin-top: var(--spacing-sm);
-        color: var(--color-text-secondary);
-    }
-}
-
-.header-controls {
-    flex: 0 0 auto;
-}
-
-#current-campaign-display {
-    margin-top: var(--spacing-sm);
-    color: var(--color-text-secondary);
-}
-
 @media (max-width: 768px) {
     .header-content {
         flex-direction: column;
         align-items: stretch;
-    }
-
-    .header-title {
-        text-align: center;
-    }
-
-    .campaign-selector {
-        justify-content: center;
     }
 }

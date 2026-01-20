@@ -1,0 +1,34 @@
+{#include base}
+    {#title}Play{/title}
+
+    {#stylesheets}
+    <link rel="stylesheet" href="/play.css">
+    {/stylesheets}
+
+    {#scripts}
+    <script src="/play-interface.js" defer></script>
+    {/scripts}
+
+    {#header-title}Play{/header-title}
+
+    {#header-subtitle}
+    <span class="connection-status disconnected" id="connection-status" title="Disconnected"></span>
+    <span>Streaming via WebSocket</span>
+    {/header-subtitle}
+
+    {#content}
+    <div class="chat-area" data-game-id="{gameId}">
+        <div id="chat-messages"></div>
+
+        <div class="input-area">
+            <textarea
+                id="message-input"
+                placeholder="Say something..."
+                autocomplete="off"
+                rows="1"></textarea>
+            <button id="send-button">Send</button>
+        </div>
+    </div>
+    {/content}
+{/include}
+

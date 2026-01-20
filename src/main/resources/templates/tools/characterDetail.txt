@@ -1,9 +1,0 @@
-Character: {character.name}
-ID: {character.id}
-{#if character.aliases}Aliases: {#each character.aliases}{it}{#if it_hasNext}, {/if}{/each}
-{/if}{#if character.tags}Tags: {#each character.tags}{it}{#if it_hasNext}, {/if}{/each}
-{/if}{#if character.summary}Summary: {character.summary}
-{/if}{#if character.description}Description: {character.description}
-{/if}{#if character.characterClass}Class: {character.characterClass}
-{/if}{#if character.level}Level: {character.level}
-{/if}

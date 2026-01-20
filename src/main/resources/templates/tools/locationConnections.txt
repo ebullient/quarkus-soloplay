@@ -1,8 +1,0 @@
-{#if characters.isEmpty()}
-No character connections found for {location.name}
-{#else}
-Characters connected to {location.name}:
-{#for c in characters}
-- {c.name}
-{/for}
-{/if}
