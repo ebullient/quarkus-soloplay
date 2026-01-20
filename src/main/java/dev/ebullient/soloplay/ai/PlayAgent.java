@@ -153,25 +153,6 @@ import io.smallrye.mutiny.Multi;
 public interface PlayAgent {
 
     /**
-     * Chat with the GM for a specific story thread (blocking).
-     * Used by REST endpoint POST /api/story/play.
-     *
-     * @param storyThreadId The story thread slug (used to load context and as memory ID)
-     * @param userMessage The player's message
-     * @return GM response as markdown
-     */
-    @Agent
-    @ToolBox({ StoryTools.class, LoreTools.class })
-    String chat(
-            @MemoryId String storyThreadId,
-            String storyName,
-            Long currentDay,
-            String adventureName,
-            String followingMode,
-            String currentSituation,
-            @UserMessage String userMessage);
-
-    /**
      * Chat with the GM for a specific story thread (streaming).
      * Used by WebSocket endpoint /ws/story/{storyThreadId}.
      *

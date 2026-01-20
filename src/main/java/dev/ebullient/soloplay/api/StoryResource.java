@@ -19,7 +19,6 @@ import org.jboss.resteasy.reactive.RestPath;
 import dev.ebullient.soloplay.LoreRepository;
 import dev.ebullient.soloplay.StoryRepository;
 import dev.ebullient.soloplay.ai.CharacterCreatorService;
-import dev.ebullient.soloplay.ai.GameMasterService;
 import dev.ebullient.soloplay.data.Character;
 import dev.ebullient.soloplay.data.StoryThread;
 
@@ -35,9 +34,6 @@ public class StoryResource {
     StoryRepository storyRepository;
 
     @Inject
-    GameMasterService gameMaster;
-
-    @Inject
     CharacterCreatorService characterCreator;
 
     @Inject
@@ -51,26 +47,6 @@ public class StoryResource {
     @Produces(MediaType.APPLICATION_JSON)
     public List<String> getStoryThreadIds() {
         return storyRepository.getStoryThreadIds();
-    }
-
-    /**
-     * Story-aware chat endpoint for solo play.
-     * Integrates RAG (lore), story tools (campaign state), and story thread context.
-     *
-     * Context loading and timestamp updates are handled by GameMasterService.
-     */
-    @POST
-    @Path("/play")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.TEXT_HTML)
-    public String play(PlayRequest request) {
-        return gameMaster.chat(request.storyThreadId, request.message);
-    }
-
-    /**
-     * Request model for play endpoint.
-     */
-    public record PlayRequest(String storyThreadId, String message) {
     }
 
     /**
@@ -568,6 +544,12 @@ public class StoryResource {
     }
 
     // ========== Request/Response Models ==========
+
+    /**
+     * Request model for chat endpoints.
+     */
+    public record PlayRequest(String storyThreadId, String message) {
+    }
 
     public record CreateStoryThreadRequest(
             String name,

@@ -15,7 +15,6 @@ import org.jboss.resteasy.reactive.RestPath;
 import dev.ebullient.soloplay.LoreRepository;
 import dev.ebullient.soloplay.StoryRepository;
 import dev.ebullient.soloplay.ai.CharacterCreatorService;
-import dev.ebullient.soloplay.ai.GameMasterService;
 import dev.ebullient.soloplay.data.Character;
 import dev.ebullient.soloplay.data.StoryThread;
 import io.quarkiverse.renarde.Controller;
@@ -51,9 +50,6 @@ public class Story extends Controller {
 
     @Inject
     LoreRepository loreRepository;
-
-    @Inject
-    GameMasterService gameMaster;
 
     @Inject
     CharacterCreatorService characterCreator;

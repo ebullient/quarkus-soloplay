@@ -1,5 +1,6 @@
 package dev.ebullient.soloplay.api.ws;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -10,7 +11,8 @@ import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
 
 import dev.ebullient.soloplay.StoryRepository;
-import dev.ebullient.soloplay.ai.GameMasterService;
+import dev.ebullient.soloplay.ai.MarkdownAugmenter;
+import dev.ebullient.soloplay.ai.PlayAgent;
 import dev.ebullient.soloplay.api.ws.PlayWsServerMessage.AssistantDelta;
 import dev.ebullient.soloplay.api.ws.PlayWsServerMessage.AssistantDone;
 import dev.ebullient.soloplay.api.ws.PlayWsServerMessage.AssistantStart;
@@ -55,7 +57,10 @@ public class StoryPlayWebSocket {
     StoryRepository storyRepository;
 
     @Inject
-    GameMasterService gameMaster;
+    PlayAgent playAgent;
+
+    @Inject
+    MarkdownAugmenter markdownAugmenter;
 
     @Inject
     WebSocketConnection connection;
@@ -178,13 +183,7 @@ public class StoryPlayWebSocket {
         broadcastToStoryThread(threadId, new UserEcho(message.text()));
 
         // Start streaming chat
-        GameMasterService.StreamingChatResult result = gameMaster.chatStream(threadId, message.text());
-
-        if (result == null) {
-            generationLock.set(false);
-            return Multi.createFrom().item(
-                    new PlayWsServerMessage.Error(messageId, "Story thread not found"));
-        }
+        Multi<String> tokenStream = chatStream(storyThread, message.text());
 
         // Collect tokens for final markdown
         StringBuilder markdownBuilder = new StringBuilder();
@@ -197,13 +196,14 @@ public class StoryPlayWebSocket {
 
         // Transform token stream into WebSocket messages
         // Each token is broadcast to all connections
-        Multi<PlayWsServerMessage> tokenMessages = result.tokenStream()
-                .onItem().invoke(token -> {
-                    markdownBuilder.append(token);
+        Multi<PlayWsServerMessage> tokenMessages = tokenStream
+                .onItem().transform(token -> new AssistantDelta(messageId, token))
+                .onItem().invoke(msg -> {
+                    markdownBuilder.append(msg.text());
                     // Broadcast delta to all connections watching this story
-                    broadcastToStoryThread(threadId, new AssistantDelta(messageId, token));
+                    broadcastToStoryThread(threadId, msg);
                 })
-                .onItem().transform(token -> (PlayWsServerMessage) new AssistantDelta(messageId, token))
+                .onItem().transform(msg -> (PlayWsServerMessage) msg)
                 .onFailure().invoke(error -> {
                     LOG.errorf(error, "Error during streaming (id: %s)", messageId);
                     streamSucceeded.set(false);
@@ -222,12 +222,12 @@ public class StoryPlayWebSocket {
             }
 
             String markdown = markdownBuilder.toString();
-            String html = gameMaster.markdownToHtml(markdown);
+            String html = markdownAugmenter.markdownToHtml(markdown);
 
             // Persist assistant message to transcript
             storyRepository.addConversationMessage(threadId, "assistant", markdown, html);
 
-            gameMaster.updateLastPlayed(threadId);
+            updateLastPlayed(threadId);
             generationLock.set(false);
             LOG.debugf("Streaming complete (id: %s), markdown length: %d", messageId, markdown.length());
 
@@ -265,5 +265,36 @@ public class StoryPlayWebSocket {
             return text;
         }
         return text.substring(0, maxLength) + "...";
+    }
+
+    // ========== Inlined from GameMasterService ==========
+
+    /**
+     * Start a streaming chat session for a story thread.
+     *
+     * @param thread The story thread
+     * @param message The player's message
+     * @return Stream of response tokens
+     */
+    private Multi<String> chatStream(StoryThread thread, String message) {
+        return playAgent.chatStream(
+                thread.getId(),
+                thread.getName(),
+                thread.getCurrentDay(),
+                thread.getAdventureName(),
+                thread.getFollowingMode() != null ? thread.getFollowingMode().toString() : null,
+                thread.getCurrentSituation(),
+                message);
+    }
+
+    /**
+     * Update lastPlayedAt timestamp after a message exchange.
+     */
+    private void updateLastPlayed(String storyThreadId) {
+        StoryThread thread = storyRepository.findStoryThreadById(storyThreadId);
+        if (thread != null) {
+            thread.setLastPlayedAt(Instant.now());
+            storyRepository.saveStoryThread(thread);
+        }
     }
 }
