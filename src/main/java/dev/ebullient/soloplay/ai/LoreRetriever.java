@@ -31,8 +31,8 @@ public class LoreRetriever implements Supplier<RetrievalAugmentor> {
             {{userMessage}}
 
             === REFERENCE MATERIAL (use as context, do NOT echo or summarize) ===
-            The following is background information to inform your response.
-            DO NOT repeat or summarize this content verbatim. Use it to ground your response.
+            Draw on this content to provide accurate, detailed answers.
+            Synthesize and explain rather than copying verbatim.
 
             {{contents}}
 

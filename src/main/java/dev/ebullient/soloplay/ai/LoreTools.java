@@ -19,6 +19,7 @@ public class LoreTools {
     @Tool("""
             Retrieve lore document content by exact filename.
             Use to resolve cross-references in campaign documents.
+
             Example: getLoreDocument("feats/magic-initiate-xphb.md")
             Returns the full document text, or an error message if not found.
             """)
