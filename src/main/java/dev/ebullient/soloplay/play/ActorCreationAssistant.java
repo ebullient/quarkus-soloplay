@@ -2,6 +2,8 @@ package dev.ebullient.soloplay.play;
 
 import java.util.List;
 
+import jakarta.enterprise.context.SessionScoped;
+
 import dev.ebullient.soloplay.ai.LoreRetriever;
 import dev.ebullient.soloplay.ai.LoreTools;
 import dev.ebullient.soloplay.play.model.PlayerActorDraft;
@@ -106,6 +108,7 @@ import io.quarkiverse.langchain4j.RegisterAiService;
 
         """)
 @RegisterAiService(tools = LoreTools.class, retrievalAugmentor = LoreRetriever.class)
+@SessionScoped
 public interface ActorCreationAssistant {
 
     public record PlayerActorCreationPatch(
