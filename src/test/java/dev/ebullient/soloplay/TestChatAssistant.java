@@ -5,6 +5,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;
 
 import dev.ebullient.soloplay.ai.ChatAssistant;
+import dev.ebullient.soloplay.ai.JsonChatResponseGuardrail.JsonChatResponse;
 
 @Alternative
 @Priority(1)
@@ -12,7 +13,7 @@ import dev.ebullient.soloplay.ai.ChatAssistant;
 public class TestChatAssistant implements ChatAssistant {
 
     @Override
-    public String chat(String userMessage) {
-        return "Test response";
+    public JsonChatResponse chat(String userMessage) {
+        return new JsonChatResponse("Test response");
     }
 }

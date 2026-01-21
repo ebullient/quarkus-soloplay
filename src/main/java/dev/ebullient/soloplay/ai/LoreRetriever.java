@@ -42,12 +42,13 @@ public class LoreRetriever implements Supplier<RetrievalAugmentor> {
     public LoreRetriever(
             EmbeddingStore<TextSegment> store,
             EmbeddingModel model,
+            @ConfigProperty(name = "campaign.setting.minScore", defaultValue = "0.3") Double minScore,
             @ConfigProperty(name = "campaign.setting.maxResults", defaultValue = "5") int maxResults) {
         EmbeddingStoreContentRetriever baseRetriever = EmbeddingStoreContentRetriever.builder()
                 .embeddingModel(model)
                 .embeddingStore(store)
                 .maxResults(maxResults)
-                .minScore(0.3) // Filter out low-quality matches
+                .minScore(minScore) // Filter out low-quality matches
                 .build();
 
         // Wrap with logging

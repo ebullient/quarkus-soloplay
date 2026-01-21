@@ -4,6 +4,7 @@ import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;
 
+import dev.ebullient.soloplay.ai.JsonChatResponseGuardrail.JsonChatResponse;
 import dev.ebullient.soloplay.ai.LoreAssistant;
 
 @Alternative
@@ -12,7 +13,7 @@ import dev.ebullient.soloplay.ai.LoreAssistant;
 public class TestLoreAssistant implements LoreAssistant {
 
     @Override
-    public String lore(String question) {
-        return "Test lore response";
+    public JsonChatResponse lore(String question) {
+        return new JsonChatResponse("Test lore response");
     }
 }

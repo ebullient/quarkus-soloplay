@@ -1,9 +1,9 @@
 package dev.ebullient.soloplay.ai;
 
-import jakarta.enterprise.context.ApplicationScoped;
-
+import dev.ebullient.soloplay.ai.JsonChatResponseGuardrail.JsonChatResponse;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.guardrail.OutputGuardrails;
 import io.quarkiverse.langchain4j.RegisterAiService;
 
 @SystemMessage("""
@@ -33,10 +33,16 @@ import io.quarkiverse.langchain4j.RegisterAiService;
         - Don't roleplay or narrate scenes
         - Focus on providing accurate, useful information
         - If a question requires GM judgment, present options rather than deciding
+
+        RESPONSE FORMAT: Return a JSON object with this structure:
+        {
+            "response": "Your complete answer here"
+        }
         """)
-@ApplicationScoped
 @RegisterAiService(retrievalAugmentor = LoreRetriever.class, chatMemoryProviderSupplier = RegisterAiService.NoChatMemoryProviderSupplier.class)
+@OutputGuardrails(JsonChatResponseGuardrail.class)
 public interface LoreAssistant {
 
-    String lore(@UserMessage String question);
+    JsonChatResponse lore(@UserMessage String question);
+
 }

@@ -12,6 +12,7 @@ import jakarta.ws.rs.core.MediaType;
 import org.jboss.resteasy.reactive.RestQuery;
 
 import dev.ebullient.soloplay.ai.ChatAssistant;
+import dev.ebullient.soloplay.ai.JsonChatResponseGuardrail.JsonChatResponse;
 import dev.ebullient.soloplay.ai.MarkdownAugmenter;
 
 /**
@@ -31,15 +32,15 @@ public class ChatResource {
     @GET
     @Produces(MediaType.TEXT_HTML)
     public String chat(@RestQuery String question) {
-        String response = chatService.chat(question);
-        return prettify.markdownToHtml(response);
+        JsonChatResponse chatResponse = chatService.chat(question);
+        return prettify.markdownToHtml(chatResponse.response());
     }
 
     @POST
     @Consumes(MediaType.TEXT_PLAIN)
     @Produces(MediaType.TEXT_HTML)
     public String postChat(String question) {
-        String response = chatService.chat(question);
-        return prettify.markdownToHtml(response);
+        JsonChatResponse chatResponse = chatService.chat(question);
+        return prettify.markdownToHtml(chatResponse.response());
     }
 }

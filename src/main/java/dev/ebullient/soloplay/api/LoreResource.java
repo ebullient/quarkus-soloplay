@@ -20,6 +20,7 @@ import org.jboss.resteasy.reactive.multipart.FileUpload;
 
 import dev.ebullient.soloplay.IngestService;
 import dev.ebullient.soloplay.LoreRepository;
+import dev.ebullient.soloplay.ai.JsonChatResponseGuardrail.JsonChatResponse;
 import dev.ebullient.soloplay.ai.LoreAssistant;
 import dev.ebullient.soloplay.ai.MarkdownAugmenter;
 import dev.ebullient.soloplay.health.Neo4jHealth;
@@ -52,8 +53,8 @@ public class LoreResource {
     @GET
     @Produces(MediaType.TEXT_HTML)
     public String lore(@RestQuery String question) {
-        String response = settingAssistant.lore(question);
-        return prettify.markdownToHtml(response);
+        JsonChatResponse chatResponse = settingAssistant.lore(question);
+        return prettify.markdownToHtml(chatResponse.response());
     }
 
     /**
@@ -86,8 +87,8 @@ public class LoreResource {
     @Consumes(MediaType.TEXT_PLAIN)
     @Produces(MediaType.TEXT_HTML)
     public String postLore(String question) {
-        String response = settingAssistant.lore(question);
-        return prettify.markdownToHtml(response);
+        JsonChatResponse chatResponse = settingAssistant.lore(question);
+        return prettify.markdownToHtml(chatResponse.response());
     }
 
     /**
