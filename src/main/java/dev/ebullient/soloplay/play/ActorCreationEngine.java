@@ -10,7 +10,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import dev.ebullient.soloplay.GameRepository;
 import dev.ebullient.soloplay.StringUtils;
-import dev.ebullient.soloplay.play.ActorCreationResponseGuardrail.ActorCreationResponse;
 import dev.ebullient.soloplay.play.model.GameState;
 import dev.ebullient.soloplay.play.model.GameState.GamePhase;
 import dev.ebullient.soloplay.play.model.PlayerActor;
@@ -35,91 +34,102 @@ public class ActorCreationEngine {
         Objects.requireNonNull(game, "game");
         Objects.requireNonNull(emitter, "emitter");
 
-        String gameId = game.getGameId();
         game.setGamePhase(GamePhase.CHARACTER_CREATION);
-
-        var currentDraft = getCurrentDraft(game);
 
         String trimmed = playerInput == null ? "" : playerInput.trim();
         if (GameEngine.isHelpCommand(trimmed)) {
             return help(game);
         }
+
+        var currentDraft = getCurrentDraft(game);
         if ("/cancel".equalsIgnoreCase(trimmed) || "/reset".equalsIgnoreCase(trimmed)) {
-            cleanupDraft(game);
-            if ("/cancel".equalsIgnoreCase(trimmed)) {
-                String partyMembers = gameRepository.listPlayerActors(gameId).stream()
-                        .map(pa -> "%s, %s, level %s".formatted(pa.getName(), pa.getActorClass(), pa.getLevel()))
-                        .collect(Collectors.joining("; "));
-                if (!partyMembers.isBlank()) {
-                    game.setGamePhase(game.getGamePhase().next());
-
-                    return GameResponse.reply("""
-                            Exiting character creation.
-
-                            Current party: %s
-
-                            Use `/newcharacter` to create an additional character, or `/start` to start or resume your game.
-                            """.stripIndent().formatted(partyMembers));
-                }
-            }
-            return GameResponse.reply("Ok — cleared your character draft.");
+            return resetDraft(game, trimmed);
         }
         if ("/draft".equalsIgnoreCase(trimmed)) {
             return GameResponse.reply(renderDraft(currentDraft));
         }
         if ("/confirm".equalsIgnoreCase(trimmed)) {
-            emitter.assistantDelta("Confirming character…\n");
-
-            String missing = missingRequired(currentDraft);
-            if (missing != null) {
-                return GameResponse.error("Can't confirm yet: " + missing);
-            }
-
-            PlayerActor actor = new PlayerActor(gameId, currentDraft);
-            emitter.assistantDelta("Saving character…\n");
-            gameRepository.saveActor(actor);
-            cleanupDraft(game);
-
-            game.setGamePhase(game.getGamePhase().next());
-            return GameResponse.reply("""
-                    Created your character: **%s** (%s, level %s).
-
-                    Use `/newcharacter` to create an additional character, or `/start` to start or resume your game.
-                    """.stripIndent().formatted(actor.getName(), actor.getActorClass(), actor.getLevel()));
+            return saveDraft(game, trimmed, currentDraft, emitter);
         }
-
         emitter.assistantDelta("The GM is thinking…\n");
 
-        ActorCreationResponseGuardrail.ActorCreationResponse response = null;
         try {
-            response = handleAssistantResponse(game, currentDraft, trimmed); // may throw
-        } catch (AssistantResponseException actorEx) {
-            emitter.assistantDelta("Hmmm. That didn't go as planned. Retrying…\n");
-            response = handleAssistantResponse(game, currentDraft, trimmed); // may throw
+            ActorCreationResponse response = handleAssistantResponse(game, currentDraft, trimmed);
+
+            // All is well with parsed response
+            var message = response.messageMarkdown();
+            var patch = response.patch();
+
+            emitter.assistantDelta("Updating your character…\n");
+            PlayerActorDraft updatedDraft = applyPatch(currentDraft, patch);
+            updateDraft(game, updatedDraft);
+
+            return GameResponse.reply(
+                    (message == null ? "ok." : message) + "\n\n"
+                            + "\n\nUse `/draft` to review your character so far, or `/confirm` if this looks good to you.");
+        } catch (Exception e) {
+            String message = e.getMessage();
+            if (message == null) {
+                message = e.toString();
+            }
+            return GameResponse.error("Unable to get a response from the GM: " + message);
         }
-
-        // All is well with parsed response
-        var message = response.messageMarkdown();
-        var patch = response.patch();
-
-        emitter.assistantDelta("Updating your character…\n");
-        PlayerActorDraft updatedDraft = applyPatch(currentDraft, patch);
-        updateDraft(game, updatedDraft);
-
-        return GameResponse.reply(
-                (message == null ? "ok." : message) + "\n\n"
-                        + "\n\nUse `/draft` to review your character so far, or `/confirm` if this looks good to you.");
     }
 
-    private ActorCreationResponse handleAssistantResponse(GameState state,
+    private GameResponse saveDraft(GameState game,
+            String trimmedInput,
+            PlayerActorDraft draft,
+            GameEventEmitter emitter) {
+        emitter.assistantDelta("Confirming character…\n");
+
+        String missing = missingRequired(draft);
+        if (missing != null) {
+            return GameResponse.error("Can't confirm yet: " + missing);
+        }
+
+        PlayerActor actor = new PlayerActor(game.getGameId(), draft);
+        emitter.assistantDelta("Saving character…\n");
+        gameRepository.saveActor(actor);
+        cleanupDraft(game);
+
+        game.setGamePhase(game.getGamePhase().next());
+        return GameResponse.reply("""
+                Created your character: **%s** (%s, level %s).
+
+                Use `/newcharacter` to create an additional character, or `/start` to start or resume your game.
+                """.stripIndent().formatted(actor.getName(), actor.getActorClass(), actor.getLevel()));
+    }
+
+    private GameResponse resetDraft(GameState game, String trimmedInput) {
+        cleanupDraft(game);
+        if ("/cancel".equalsIgnoreCase(trimmedInput)) {
+            String partyMembers = gameRepository.listPlayerActors(game.getGameId()).stream()
+                    .map(pa -> "%s, %s, level %s".formatted(pa.getName(), pa.getActorClass(), pa.getLevel()))
+                    .collect(Collectors.joining("; "));
+            if (!partyMembers.isBlank()) {
+                game.setGamePhase(game.getGamePhase().next());
+
+                return GameResponse.reply("""
+                        Exiting character creation.
+
+                        Current party: %s
+
+                        Use `/newcharacter` to create an additional character, or `/start` to start or resume your game.
+                        """.stripIndent().formatted(partyMembers));
+            }
+        }
+        return GameResponse.reply("Ok — cleared your character draft.");
+    }
+
+    private ActorCreationResponse handleAssistantResponse(GameState game,
             PlayerActorDraft currentDraft,
             String playerInput) {
-        String chatMemoryId = state.getGameId() + "-character";
+        String chatMemoryId = game.getGameId() + "-character";
 
         if ((playerInput.isBlank() || playerInput.equals("/start")) && currentDraft == EMPTY_DRAFT) {
-            return assistant.start(chatMemoryId, state.getGameId(), state.getAdventureName());
+            return assistant.start(chatMemoryId, game.getGameId(), game.getAdventureName());
         } else {
-            return assistant.turn(chatMemoryId, state.getGameId(), state.getAdventureName(), currentDraft,
+            return assistant.step(chatMemoryId, game.getGameId(), game.getAdventureName(), currentDraft,
                     playerInput);
         }
     }

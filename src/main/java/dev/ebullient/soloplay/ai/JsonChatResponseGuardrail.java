@@ -13,9 +13,6 @@ import dev.langchain4j.guardrail.OutputGuardrailResult;
 @ApplicationScoped
 public class JsonChatResponseGuardrail implements OutputGuardrail {
 
-    public static record JsonChatResponse(String response) {
-    }
-
     /**
      * The default message to use when reprompting (JsonExtractorOutputGuardrail)
      */

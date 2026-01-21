@@ -5,7 +5,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;
 
 import dev.ebullient.soloplay.ai.ChatAssistant;
-import dev.ebullient.soloplay.ai.JsonChatResponseGuardrail.JsonChatResponse;
+import dev.ebullient.soloplay.ai.JsonChatResponse;
 
 @Alternative
 @Priority(1)

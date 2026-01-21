@@ -4,7 +4,7 @@ import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;
 
-import dev.ebullient.soloplay.ai.JsonChatResponseGuardrail.JsonChatResponse;
+import dev.ebullient.soloplay.ai.JsonChatResponse;
 import dev.ebullient.soloplay.ai.LoreAssistant;
 
 @Alternative

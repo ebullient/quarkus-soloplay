@@ -4,7 +4,6 @@ import jakarta.enterprise.context.SessionScoped;
 
 import dev.ebullient.soloplay.ai.LoreRetriever;
 import dev.ebullient.soloplay.ai.LoreTools;
-import dev.ebullient.soloplay.play.ActorCreationResponseGuardrail.ActorCreationResponse;
 import dev.ebullient.soloplay.play.model.PlayerActorDraft;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
@@ -126,7 +125,7 @@ public interface ActorCreationAssistant {
             {playerInput}
             """)
     @OutputGuardrails(ActorCreationResponseGuardrail.class)
-    ActorCreationResponse turn(
+    ActorCreationResponse step(
             @MemoryId String chatMemoryId,
             String gameId,
             String adventureName,

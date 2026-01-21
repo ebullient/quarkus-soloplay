@@ -1,6 +1,5 @@
 package dev.ebullient.soloplay.ai;
 
-import dev.ebullient.soloplay.ai.JsonChatResponseGuardrail.JsonChatResponse;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.guardrail.OutputGuardrails;

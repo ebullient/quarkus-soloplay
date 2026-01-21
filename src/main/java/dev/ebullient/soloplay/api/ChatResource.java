@@ -12,7 +12,7 @@ import jakarta.ws.rs.core.MediaType;
 import org.jboss.resteasy.reactive.RestQuery;
 
 import dev.ebullient.soloplay.ai.ChatAssistant;
-import dev.ebullient.soloplay.ai.JsonChatResponseGuardrail.JsonChatResponse;
+import dev.ebullient.soloplay.ai.JsonChatResponse;
 import dev.ebullient.soloplay.ai.MarkdownAugmenter;
 
 /**

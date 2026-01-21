@@ -6,16 +6,12 @@ import jakarta.inject.Inject;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import dev.ebullient.soloplay.play.model.PlayerActorCreationPatch;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 
 @ApplicationScoped
 public class ActorCreationResponseGuardrail implements OutputGuardrail {
-
-    public static record ActorCreationResponse(String messageMarkdown, PlayerActorCreationPatch patch) {
-    }
 
     /**
      * The default message to use when reprompting (JsonExtractorOutputGuardrail)
