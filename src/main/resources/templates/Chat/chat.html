@@ -17,7 +17,7 @@
     <div id="input-container">
         <textarea
             id="question-input"
-            placeholder="Ask your campaign question..."
+            placeholder="Ask your question..."
             autocomplete="off"
             rows="1"></textarea>
         <button id="send-btn">Send</button>
@@ -29,7 +29,7 @@
         new ChatInterface({
             apiEndpoint: '/api/chat',
             loadingMessage: 'Thinking...',
-            errorMessage: 'Error: Could not get response from the DM.',
+            errorMessage: 'Error: Could not get response from the LLM.',
             method: 'POST'
         });
     </script>
