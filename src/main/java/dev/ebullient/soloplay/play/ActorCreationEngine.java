@@ -6,20 +6,16 @@ import java.util.stream.Collectors;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import dev.ebullient.soloplay.GameRepository;
 import dev.ebullient.soloplay.StringUtils;
-import dev.ebullient.soloplay.play.ActorCreationAssistant.ActorCreationResponse;
-import dev.ebullient.soloplay.play.ActorCreationAssistant.PlayerActorCreationPatch;
+import dev.ebullient.soloplay.play.ActorCreationResponseGuardrail.ActorCreationResponse;
 import dev.ebullient.soloplay.play.model.GameState;
 import dev.ebullient.soloplay.play.model.GameState.GamePhase;
 import dev.ebullient.soloplay.play.model.PlayerActor;
+import dev.ebullient.soloplay.play.model.PlayerActorCreationPatch;
 import dev.ebullient.soloplay.play.model.PlayerActorDraft;
-import dev.langchain4j.exception.LangChain4jException;
-import io.quarkus.logging.Log;
 
 @ApplicationScoped
 public class ActorCreationEngine {
@@ -94,7 +90,7 @@ public class ActorCreationEngine {
 
         emitter.assistantDelta("The GM is thinking…\n");
 
-        ActorCreationResponse response = null;
+        ActorCreationResponseGuardrail.ActorCreationResponse response = null;
         try {
             response = handleAssistantResponse(game, currentDraft, trimmed); // may throw
         } catch (AssistantResponseException actorEx) {
@@ -111,48 +107,20 @@ public class ActorCreationEngine {
         updateDraft(game, updatedDraft);
 
         return GameResponse.reply(
-                (message == null ? "ok." : message) + "\n\n" + renderDraft(updatedDraft)
-                        + "\n\nUse `/confirm` if this looks good to you.");
+                (message == null ? "ok." : message) + "\n\n"
+                        + "\n\nUse `/draft` to review your character so far, or `/confirm` if this looks good to you.");
     }
 
-    private ActorCreationResponse handleAssistantResponse(GameState state, PlayerActorDraft currentDraft,
+    private ActorCreationResponse handleAssistantResponse(GameState state,
+            PlayerActorDraft currentDraft,
             String playerInput) {
         String chatMemoryId = state.getGameId() + "-character";
-        String rawResponse;
 
-        try {
-            if ((playerInput.isBlank() || playerInput.equals("/start")) && currentDraft == EMPTY_DRAFT) {
-                rawResponse = assistant.start(chatMemoryId, state.getGameId(), state.getAdventureName());
-            } else {
-                rawResponse = assistant.turn(chatMemoryId, state.getGameId(), state.getAdventureName(), currentDraft,
-                        playerInput);
-            }
-        } catch (LangChain4jException ex) {
-            throw ex;
-        }
-
-        return parseResponse(rawResponse);
-    }
-
-    ActorCreationResponse parseResponse(String rawResponse) {
-        if (rawResponse == null || rawResponse.isBlank()) {
-            Log.error("Empty response from assistant");
-            throw new AssistantResponseException("Empty response from assistant", true);
-        }
-
-        try {
-            ActorCreationResponse response = objectMapper.readValue(rawResponse, ActorCreationResponse.class);
-            if (response.messageMarkdown() == null) {
-                Log.errorf("Markdown text response was missing. Raw: %s", rawResponse);
-                throw new AssistantResponseException("Markdown response was missing", true);
-            }
-            return response;
-        } catch (JsonParseException | JsonMappingException e) {
-            Log.errorf(e, "Malformed JSON from assistant. Raw: %s", rawResponse);
-            throw new AssistantResponseException("Malformed JSON: " + e.getOriginalMessage(), e, true);
-        } catch (Exception e) {
-            Log.errorf(e, "Failed to parse response. Raw: %s", rawResponse);
-            throw new AssistantResponseException("Unable to parse response: " + e.getMessage(), e, false);
+        if ((playerInput.isBlank() || playerInput.equals("/start")) && currentDraft == EMPTY_DRAFT) {
+            return assistant.start(chatMemoryId, state.getGameId(), state.getAdventureName());
+        } else {
+            return assistant.turn(chatMemoryId, state.getGameId(), state.getAdventureName(), currentDraft,
+                    playerInput);
         }
     }
 

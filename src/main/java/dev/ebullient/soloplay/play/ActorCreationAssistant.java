@@ -1,16 +1,15 @@
 package dev.ebullient.soloplay.play;
 
-import java.util.List;
-
 import jakarta.enterprise.context.SessionScoped;
 
 import dev.ebullient.soloplay.ai.LoreRetriever;
 import dev.ebullient.soloplay.ai.LoreTools;
+import dev.ebullient.soloplay.play.ActorCreationResponseGuardrail.ActorCreationResponse;
 import dev.ebullient.soloplay.play.model.PlayerActorDraft;
-import dev.ebullient.soloplay.play.model.Stash;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.guardrail.OutputGuardrails;
 import io.quarkiverse.langchain4j.RegisterAiService;
 
 @SystemMessage("""
@@ -21,10 +20,9 @@ import io.quarkiverse.langchain4j.RegisterAiService;
 
         Return a single JSON object matching:
 
-        { messageMarkdown: string, patch: { type: "player_actor", name: string|null, actorClass: string|null, level: number|null, details: { summary: string|null, description: string|null, tags: string[]|null, aliases: string[]|null }|null, rationale: string|null, sources: string[] } | null }
+        { messageMarkdown: string, patch: { type: "player_actor", name: string|null, actorClass: string|null, level: number|null, summary: string|null, description: string|null, tags: string[]|null, aliases: string[]|null, rationale: string|null, sources: string[] } | null }
 
         - null means no change; patch = null means no updates
-        - details should be null if there are no updates to details
 
         === STORY CONTEXT ===
 
@@ -95,12 +93,11 @@ import io.quarkiverse.langchain4j.RegisterAiService;
 
         Return a single JSON object matching:
 
-        { messageMarkdown: string, patch: { type: "player_actor", name: string|null, actorClass: string|null, level: number|null, details: { summary: string|null, description: string|null, tags: string[]|null, aliases: string[]|null }|null, rationale: string|null, sources: string[] } | null }
+        { messageMarkdown: string, patch: { type: "player_actor", name: string|null, actorClass: string|null, level: number|null, summary: string|null, description: string|null, tags: string[]|null, aliases: string[]|null, rationale: string|null, sources: string[] } | null }
 
         - messageMarkdown: text response to the user in markdown format.
         - patch: Updated character attributes
             - null means no change; patch = null means no updates
-            - details should be null if there are no updates to details
             - sources must be an array. If you did not use lore docs or tools, sources = []. Don't invent filenames.
             - rationale should be a short explanation of the change. rationale may be null if patch is null.
 
@@ -111,19 +108,6 @@ import io.quarkiverse.langchain4j.RegisterAiService;
 @SessionScoped
 public interface ActorCreationAssistant {
 
-    public record PlayerActorCreationPatch(
-            String name, String actorClass, Integer level,
-            String summary,
-            String description,
-            List<String> tags,
-            List<String> aliases,
-            String rationale,
-            List<String> sources) implements Stash {
-    };
-
-    public record ActorCreationResponse(String messageMarkdown, PlayerActorCreationPatch patch) {
-    };
-
     @UserMessage("""
             {#if currentDraft}
             === CURRENT DRAFT VALUES ===
@@ -131,18 +115,18 @@ public interface ActorCreationAssistant {
             - name: {#if currentDraft.name}{currentDraft.name}{/if}
             - actorClass: {#if currentDraft.actorClass}{currentDraft.actorClass}{/if}
             - level (default to adventure recommendation or 1): {#if currentDraft.level}{currentDraft.level}{/if}
-            - details:
-                - summary (brief 5-10 word description): {#if currentDraft.details && currentDraft.details.summary}{currentDraft.details.summary}{/if}
-                - description (can be brief initially, will evolve during play): {#if currentDraft.details && currentDraft.details.description}{currentDraft.details.description}{/if}
-                - aliases: {#if currentDraft.details && currentDraft.details.aliases}{currentDraft.details.aliases}{/if}
-                - tags: {#if currentDraft.details && currentDraft.details.tags}{currentDraft.details.tags}{/if}
+            - summary (brief 5-10 word description): {#if currentDraft.summary}{currentDraft.summary}{/if}
+            - description (can be brief initially, will evolve during play): {#if currentDraft.description}{currentDraft.description}{/if}
+            - aliases: {#if currentDraft.aliases}{currentDraft.aliases}{/if}
+            - tags: {#if currentDraft.tags}{currentDraft.tags}{/if}
             {/if}
 
             The user has sent the following message:
 
             {playerInput}
             """)
-    String turn(
+    @OutputGuardrails(ActorCreationResponseGuardrail.class)
+    ActorCreationResponse turn(
             @MemoryId String chatMemoryId,
             String gameId,
             String adventureName,
@@ -155,7 +139,8 @@ public interface ActorCreationAssistant {
             Introduce yourself and ask them about their character concept.
             What kind of character do they want to play?
             """)
-    String start(
+    @OutputGuardrails(ActorCreationResponseGuardrail.class)
+    ActorCreationResponse start(
             @MemoryId String chatMemoryId,
             String gameId,
             String adventureName);
