@@ -85,6 +85,10 @@ public class IngestService {
         Map<String, Object> yamlMetadata = parseYamlFrontmatter(content);
         String cleanContent = removeYamlFrontmatter(content)
                 .replaceAll("\\^[a-z0-9]+$", ""); // replace block references
+
+        if (yamlMetadata.containsKey("adventureName")) {
+            cleanContent = "Adventure: " + yamlMetadata.get("adventureName") + "\n\n" + cleanContent;
+        }
         // Note: structured frontmatter includes the real filename
         // Keep ingest sourceFile for traceability + allow re-processing
         Metadata common = Metadata.from(yamlMetadata)
