@@ -82,22 +82,28 @@ public class IngestService {
 
     private void processStructuredMarkdown(String filename, String content) {
         // Parse YAML frontmatter
+        // Note: structured frontmatter includes the real filename
+        // Keep ingest sourceFile for traceability + allow re-processing
         Map<String, Object> yamlMetadata = parseYamlFrontmatter(content);
+        yamlMetadata.put("sourceFile", filename);
+        yamlMetadata.put("canonical", "true");
+
+        Metadata common = Metadata.from(yamlMetadata);
+
         String cleanContent = removeYamlFrontmatter(content)
                 .replaceAll("\\^[a-z0-9]+$", ""); // replace block references
 
+        String prefix = "";
         if (yamlMetadata.containsKey("adventureName")) {
-            cleanContent = "Adventure: " + yamlMetadata.get("adventureName") + "\n\n" + cleanContent;
+            prefix += "Adventure: %s\n\n".formatted(yamlMetadata.get("adventureName"));
         }
-        // Note: structured frontmatter includes the real filename
-        // Keep ingest sourceFile for traceability + allow re-processing
-        Metadata common = Metadata.from(yamlMetadata)
-                .put("sourceFile", filename)
-                .put("canonical", "true"); // source material
+        if (yamlMetadata.containsKey("chapterName")) {
+            prefix += "Chapter %s: %s\n\n".formatted(yamlMetadata.get("chapterNumber"), yamlMetadata.get("chapterName"));
+        }
 
         List<TextSegment> segments = new ArrayList<>();
 
-        if (cleanContent.length() > chunkSize) {
+        if (prefix.length() + cleanContent.length() > chunkSize) {
             String[] sections = SECTION_HEADER_PATTERN.split(cleanContent);
             int sectionIndex = 0;
             for (String section : sections) {
@@ -105,12 +111,13 @@ public class IngestService {
                     continue;
                 }
                 String sectionTitle = extractFirstLine(section);
+                String enrichedSection = prefix + section;
 
                 // If section is still too large, chunk it again
-                if (section.length() > chunkSize * 2) {
+                if (enrichedSection.length() > chunkSize * 2) {
                     Log.infof("Section %d '%s' is large (%d chars), splitting into chunks", sectionIndex, sectionTitle,
                             section.length());
-                    var doc = Document.from(section);
+                    var doc = Document.from(enrichedSection);
                     var splitter = DocumentSplitters.recursive(chunkSize, chunkOverlap);
                     List<TextSegment> subSegments = splitter.split(doc);
 
@@ -125,20 +132,21 @@ public class IngestService {
                         subSegment.metadata().putAll(yamlMetadata);
                         segments.add(subSegment);
                     }
-                    sectionIndex++;
-                } else if (!section.isBlank()) {
+                } else {
                     TextSegment segment = TextSegment.from(
-                            section,
-                            Metadata.from("section", sectionTitle)
-                                    .put("sectionIndex", sectionIndex++)
-                                    .put("chunkIndex", 0)
-                                    .merge(common));
+                            enrichedSection,
+                            common);
+                    segment.metadata()
+                            .put("section", sectionTitle)
+                            .put("sectionIndex", sectionIndex)
+                            .put("chunkIndex", 0);
                     segments.add(segment);
                 }
+                sectionIndex++;
             }
         } else if (!cleanContent.isBlank()) {
             TextSegment segment = TextSegment.from(
-                    cleanContent,
+                    prefix + cleanContent,
                     common);
             segment.metadata()
                     .put("sectionIndex", 0)
