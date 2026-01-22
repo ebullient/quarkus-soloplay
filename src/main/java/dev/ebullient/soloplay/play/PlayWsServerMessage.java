@@ -24,6 +24,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 @JsonSubTypes({
         @JsonSubTypes.Type(value = PlayWsServerMessage.Session.class, name = "session"),
         @JsonSubTypes.Type(value = PlayWsServerMessage.History.class, name = "history"),
+        @JsonSubTypes.Type(value = PlayWsServerMessage.AssistantExtraHtml.class, name = "html_fragment"),
         @JsonSubTypes.Type(value = PlayWsServerMessage.UserEcho.class, name = "user_echo"),
         @JsonSubTypes.Type(value = PlayWsServerMessage.AssistantStart.class, name = "assistant_start"),
         @JsonSubTypes.Type(value = PlayWsServerMessage.AssistantDelta.class, name = "assistant_delta"),
@@ -122,5 +123,14 @@ public sealed interface PlayWsServerMessage {
      * @param message Human-readable error description
      */
     record Error(String id, String message) implements PlayWsServerMessage {
+    }
+
+    /**
+     * An error occurred during processing.
+     *
+     * @param id Message ID if error is related to a specific request (may be null)
+     * @param message Human-readable error description
+     */
+    record AssistantExtraHtml(String id, String message) implements PlayWsServerMessage {
     }
 }

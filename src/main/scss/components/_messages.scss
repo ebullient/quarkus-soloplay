@@ -74,3 +74,16 @@
   }
 }
 
+// "Extra effect" messages (e.g., /me-style fragments) - no bubble background
+.message-effect {
+  align-self: center;
+  max-width: 100%;
+  padding: 0 var(--spacing-md);
+  color: var(--color-text-secondary);
+  font-style: italic;
+  text-align: center;
+
+  p {
+    margin: 0;
+  }
+}

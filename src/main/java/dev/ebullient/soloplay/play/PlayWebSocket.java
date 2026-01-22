@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import jakarta.inject.Inject;
 
 import dev.ebullient.soloplay.ai.MarkdownAugmenter;
+import dev.ebullient.soloplay.play.GameEffect.HtmlFragment;
 import dev.ebullient.soloplay.play.model.GameState;
 import io.quarkus.logging.Log;
 import io.quarkus.websockets.next.OnClose;
@@ -197,7 +198,10 @@ public class PlayWebSocket {
     }
 
     private static PlayWsServerMessage toServerMessage(GameEffect effect) {
-        return null;
+        return switch (effect) {
+            case HtmlFragment fragment -> new PlayWsServerMessage.AssistantExtraHtml(fragment.slot(), fragment.html());
+            default -> null;
+        };
     }
 
     private void appendToHistory(String role, String markdown) {

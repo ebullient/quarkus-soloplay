@@ -1,0 +1,42 @@
+package dev.ebullient.soloplay.play;
+
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.guardrail.OutputGuardrail;
+import dev.langchain4j.guardrail.OutputGuardrailResult;
+import io.quarkus.logging.Log;
+
+@ApplicationScoped
+public class GamePlayResponseGuardrail implements OutputGuardrail {
+    /**
+     * The default message to use when reprompting (JsonExtractorOutputGuardrail)
+     */
+    public static final String REPROMPT_MESSAGE = "Invalid JSON";
+
+    /**
+     * The default prompt to append to the LLM during a reprompt (JsonExtractorOutputGuardrail)
+     */
+    public static final String REPROMPT_PROMPT = "Make sure you return a valid JSON object following the specified format";
+
+    @Inject
+    ObjectMapper objectMapper;
+
+    @Override
+    public OutputGuardrailResult validate(AiMessage responseFromLLM) {
+        try {
+            Log.debugf("AiMessage: %s", objectMapper.writeValueAsString(responseFromLLM));
+            GamePlayResponse response = objectMapper.readValue(responseFromLLM.text(), GamePlayResponse.class);
+            if (response.narration() == null) {
+                return reprompt("Missing narration", REPROMPT_PROMPT);
+            }
+            return OutputGuardrailResult.successWith(responseFromLLM.text(), response);
+        } catch (JsonProcessingException e) {
+            return reprompt(REPROMPT_MESSAGE, e, REPROMPT_PROMPT);
+        }
+    }
+}

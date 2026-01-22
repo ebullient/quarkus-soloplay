@@ -125,4 +125,8 @@ public class GameState extends BaseEntity {
     public <T extends Stash> void removeStash(String key) {
         this.stash.remove(key);
     }
+
+    public Object dumpStash() {
+        return this.stash;
+    }
 }

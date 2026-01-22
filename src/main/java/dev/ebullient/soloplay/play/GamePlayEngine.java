@@ -7,21 +7,18 @@ import java.util.Objects;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import dev.ebullient.soloplay.GameRepository;
-import dev.ebullient.soloplay.play.GamePlayAssistant.GamePlayResponse;
-import dev.ebullient.soloplay.play.GamePlayAssistant.PendingRoll;
-import dev.ebullient.soloplay.play.GamePlayAssistant.RollResult;
+import dev.ebullient.soloplay.play.GameEffect.HtmlFragment;
 import dev.ebullient.soloplay.play.model.Actor;
 import dev.ebullient.soloplay.play.model.BaseEntity;
 import dev.ebullient.soloplay.play.model.GameState;
 import dev.ebullient.soloplay.play.model.Location;
 import dev.ebullient.soloplay.play.model.Patch;
+import dev.ebullient.soloplay.play.model.PendingRoll;
 import dev.ebullient.soloplay.play.model.PlayerActor;
-import io.quarkus.logging.Log;
+import dev.ebullient.soloplay.play.model.RollResult;
 
 @ApplicationScoped
 public class GamePlayEngine {
@@ -41,25 +38,25 @@ public class GamePlayEngine {
     public GameResponse sceneStart(GameState game, GameEventEmitter emitter) {
         emitter.assistantDelta("Setting the scene…\n");
 
-        String rawResponse = assistant.sceneStart(
+        var response = assistant.sceneStart(
                 game.getGameId(),
                 game.getAdventureName(),
                 listTheParty(game));
 
-        return processResponse(game, parseResponse(rawResponse), emitter);
+        return processResponse(game, response, emitter);
     }
 
     public GameResponse recap(GameState game, String recentEvents, GameEventEmitter emitter) {
         emitter.assistantDelta("Recapping the story…\n");
 
-        String rawResponse = assistant.recap(
+        var response = assistant.recap(
                 game.getGameId(),
                 game.getAdventureName(),
                 listTheParty(game),
                 game.getCurrentLocation(),
                 recentEvents);
 
-        return processResponse(game, parseResponse(rawResponse), emitter);
+        return processResponse(game, response, emitter);
     }
 
     public GameResponse processRequest(GameState game, String playerInput, GameEventEmitter emitter) {
@@ -82,14 +79,14 @@ public class GamePlayEngine {
         emitter.assistantDelta("The GM is thinking…\n");
 
         // TODO: gather context for the turn
-        String rawResponse = assistant.turn(
+        var response = assistant.turn(
                 game.getGameId(),
                 game.getAdventureName(),
                 listTheParty(game),
                 game.getCurrentLocation(),
                 playerInput);
 
-        return processResponse(game, parseResponse(rawResponse), emitter);
+        return processResponse(game, response, emitter);
     }
 
     private GameResponse resolveRoll(GameState game, PendingRoll pending, String rollInput,
@@ -103,38 +100,14 @@ public class GamePlayEngine {
 
         rollHandler.clearPendingRoll(game);
 
-        String rawResponse = assistant.resolveRoll(
+        var response = assistant.resolveRoll(
                 game.getGameId(),
                 game.getAdventureName(),
                 listTheParty(game),
                 game.getCurrentLocation(),
                 rollResult);
 
-        return processResponse(game, parseResponse(rawResponse), emitter);
-    }
-
-    GamePlayResponse parseResponse(String rawResponse) {
-        if (rawResponse == null || rawResponse.isBlank()) {
-            Log.error("Empty response from assistant");
-            throw new AssistantResponseException("Empty response from assistant", true);
-        }
-
-        Log.debugf("Response received from LLM: %s", rawResponse);
-
-        try {
-            GamePlayResponse response = objectMapper.readValue(rawResponse, GamePlayResponse.class);
-            if (response.narration() == null) {
-                Log.errorf("Narration was missing. Raw: %s", rawResponse);
-                throw new AssistantResponseException("Narration was missing", true);
-            }
-            return response;
-        } catch (JsonParseException | JsonMappingException e) {
-            Log.errorf(e, "Malformed JSON from assistant. Raw: %s", rawResponse);
-            throw new AssistantResponseException("Malformed JSON: " + e.getOriginalMessage(), e, true);
-        } catch (Exception e) {
-            Log.errorf(e, "Failed to parse response. Raw: %s", rawResponse);
-            throw new AssistantResponseException("Parse error: " + e.getMessage(), e, false);
-        }
+        return processResponse(game, response, emitter);
     }
 
     private GameResponse processResponse(GameState game, GamePlayResponse response, GameEventEmitter emitter) {
@@ -142,30 +115,26 @@ public class GamePlayEngine {
             return GameResponse.error("No response from GM");
         }
 
+        game.setCurrentLocation(response.currentLocation());
+
         // Apply patches (actors, locations, plot flags)
+        emitter.assistantDelta("Updating world state…\n");
         if (response.patches() != null && !response.patches().isEmpty()) {
-            emitter.assistantDelta("Updating world state…\n");
             applyPatches(game, response.patches());
         }
 
         // Store pending roll if present
-        if (response.pendingRoll() != null) {
-            emitter.assistantDelta("Tracking pending roll…\n");
-            storePendingRoll(game, response.pendingRoll());
-        }
+        emitter.assistantDelta("Checking for pending roll…\n");
+        var htmlFragment = storePendingRoll(game, response.pendingRoll());
 
-        return GameResponse.reply(response.narration());
+        return htmlFragment == null
+                ? GameResponse.reply(response.narration())
+                : GameResponse.reply(response.narration(), new GameEffect[] { htmlFragment });
     }
 
-    private void storePendingRoll(GameState game, PendingRoll roll) {
-        PendingRoll draft = new PendingRoll(
-                roll.type(),
-                roll.skill(),
-                roll.ability(),
-                roll.dc(),
-                roll.target(),
-                roll.context());
-        rollHandler.setPendingRoll(game, draft);
+    private HtmlFragment storePendingRoll(GameState game, PendingRoll roll) {
+        return rollHandler.setPendingRoll(game, roll)
+                .orElse(null);
     }
 
     private boolean isRollInput(String input) {
@@ -215,6 +184,29 @@ public class GamePlayEngine {
 
     List<String> listTheParty(GameState game) {
         return gameRepository.findTheParty(game.getGameId())
-                .stream().map(a -> a.getName()).toList();
+                .stream()
+                .map(this::formatPartyMember)
+                .toList();
+    }
+
+    private String formatPartyMember(Actor actor) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(actor.getName());
+
+        if (actor instanceof PlayerActor pa) {
+            if (pa.getActorClass() != null) {
+                sb.append(" (");
+                if (pa.getLevel() != null) {
+                    sb.append("Level ").append(pa.getLevel()).append(" ");
+                }
+                sb.append(pa.getActorClass()).append(")");
+            }
+        }
+
+        if (actor.getSummary() != null && !actor.getSummary().isBlank()) {
+            sb.append(": ").append(actor.getSummary());
+        }
+
+        return sb.toString();
     }
 }

@@ -147,7 +147,7 @@ public class GameRepository {
 
     public boolean hasProtagonists(String gameId) {
         var actors = listPlayerActors(gameId);
-        return actors == null ? false : actors.isEmpty();
+        return actors != null && !actors.isEmpty();
     }
 
     public List<Actor> listActors(String gameId) {

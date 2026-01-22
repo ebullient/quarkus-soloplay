@@ -23,6 +23,8 @@ class PlayInterface {
         // Message tracking
         this.currentAssistantMessage = null;
         this.currentMessageId = null;
+        this.streamingBuffers = new Map();
+        this.historyLoaded = false;
 
         // Latest drafts/state pushed from server
         this.drafts = {};
@@ -163,8 +165,8 @@ class PlayInterface {
                 this.handleAssistantDone(message.id, message.markdown, message.html);
                 break;
 
-            case 'draft_update':
-                this.handleDraftUpdate(message.key, message.draft);
+            case 'html_fragment':
+                this.handleHtmlFragment(message.id, message.message);
                 break;
 
             case 'error':
@@ -205,6 +207,14 @@ class PlayInterface {
     handleHistory(messages) {
         console.log('Received history:', messages?.length, 'messages');
 
+        // Only apply history once, and never wipe already-rendered real-time messages.
+        // History can arrive after other broadcast messages (e.g., when another tab is generating).
+        if (this.historyLoaded || this.messagesContainer.childElementCount > 0) {
+            this.historyLoaded = true;
+            return;
+        }
+        this.historyLoaded = true;
+
         // Clear existing messages
         this.messagesContainer.innerHTML = '';
 
@@ -220,7 +230,7 @@ class PlayInterface {
                 this.addUserMessage(msg.markdown);
             } else {
                 // Use HTML if available, otherwise markdown
-                this.addAssistantMessage(msg.html || msg.markdown);
+                this.addAssistantMessage({ html: msg.html, markdown: msg.markdown });
             }
         });
 
@@ -249,50 +259,46 @@ class PlayInterface {
         console.debug('Assistant starting:', messageId);
         this.currentMessageId = messageId;
 
-        // Create placeholder for streaming content
-        const msgDiv = document.createElement('div');
-        msgDiv.className = 'message assistant streaming';
-        msgDiv.id = `msg-${messageId}`;
-
-        // Use a pre element for streaming text to preserve formatting
-        const streamingContent = document.createElement('div');
-        streamingContent.className = 'streaming-content';
-        msgDiv.appendChild(streamingContent);
-
-        this.messagesContainer.appendChild(msgDiv);
-        this.currentAssistantMessage = msgDiv;
+        if (!this.streamingBuffers.has(messageId)) {
+            this.streamingBuffers.set(messageId, '');
+        }
+        this.currentAssistantMessage = this.ensureStreamingMessage(messageId);
         this.scrollToBottom();
     }
 
     handleAssistantDelta(messageId, text) {
-        if (messageId !== this.currentMessageId || !this.currentAssistantMessage) {
-            console.warn('Delta for unknown message:', messageId);
+        const msgDiv = this.ensureStreamingMessage(messageId);
+        const streamingContent = msgDiv.querySelector('.streaming-content');
+        if (!streamingContent) {
             return;
         }
 
-        // Append text to streaming content
-        const streamingContent = this.currentAssistantMessage.querySelector('.streaming-content');
-        if (streamingContent) {
-            streamingContent.textContent += text;
-            this.scrollToBottom();
-        }
+        const delta = text ?? '';
+        const current = this.streamingBuffers.get(messageId) ?? '';
+        const updated = current + delta;
+        this.streamingBuffers.set(messageId, updated);
+        streamingContent.textContent = updated;
+        this.scrollToBottom();
     }
 
     handleAssistantDone(messageId, markdown, html) {
         console.debug('Assistant done:', messageId);
 
-        if (messageId !== this.currentMessageId || !this.currentAssistantMessage) {
-            console.warn('Done for unknown message:', messageId);
-            return;
-        }
-
-        // Replace streaming content with final HTML
-        this.currentAssistantMessage.innerHTML = html;
-        this.currentAssistantMessage.classList.remove('streaming');
+        const msgDiv = document.getElementById(`msg-${messageId}`) || this.ensureStreamingMessage(messageId);
+        const bufferedMarkdown = this.streamingBuffers.get(messageId);
+        const resolvedMarkdown =
+            typeof markdown === 'string' && markdown.length > 0
+                ? markdown
+                : (typeof bufferedMarkdown === 'string' ? bufferedMarkdown : markdown);
+        this.setAssistantMessageContent(msgDiv, { html, markdown: resolvedMarkdown });
+        msgDiv.classList.remove('streaming');
+        this.streamingBuffers.delete(messageId);
 
         // Reset state
-        this.currentAssistantMessage = null;
-        this.currentMessageId = null;
+        if (messageId === this.currentMessageId) {
+            this.currentAssistantMessage = null;
+            this.currentMessageId = null;
+        }
 
         // Re-enable input
         this.setInputEnabled(true);
@@ -300,16 +306,68 @@ class PlayInterface {
         this.scrollToBottom();
     }
 
-    handleDraftUpdate(key, draft) {
-        if (!key) {
+    setAssistantMessageContent(msgDiv, content) {
+        msgDiv.replaceChildren();
+
+        const { html, markdown } =
+            content && typeof content === 'object'
+                ? content
+                : { html: content, markdown: undefined };
+
+        const htmlContent = typeof html === 'string' ? html.trim() : '';
+        if (htmlContent) {
+            msgDiv.innerHTML = htmlContent;
             return;
         }
-        if (draft == null) {
-            delete this.drafts[key];
-        } else {
-            this.drafts[key] = draft;
+
+        const markdownContent = typeof markdown === 'string' ? markdown : '';
+        if (markdownContent) {
+            const pre = document.createElement('pre');
+            const code = document.createElement('code');
+            code.textContent = markdownContent;
+            pre.appendChild(code);
+            msgDiv.appendChild(pre);
+            return;
         }
-        console.log('Draft update:', key, draft);
+    }
+
+    ensureStreamingMessage(messageId) {
+        const existing = document.getElementById(`msg-${messageId}`);
+        if (existing) {
+            existing.classList.add('streaming');
+            if (!existing.querySelector('.streaming-content')) {
+                const streamingContent = document.createElement('div');
+                streamingContent.className = 'streaming-content';
+                existing.appendChild(streamingContent);
+            }
+            this.currentAssistantMessage = existing;
+            this.currentMessageId = messageId;
+            return existing;
+        }
+
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'message assistant streaming';
+        msgDiv.id = `msg-${messageId}`;
+
+        const streamingContent = document.createElement('div');
+        streamingContent.className = 'streaming-content';
+        msgDiv.appendChild(streamingContent);
+
+        this.messagesContainer.appendChild(msgDiv);
+        this.currentAssistantMessage = msgDiv;
+        this.currentMessageId = messageId;
+        return msgDiv;
+    }
+
+    handleHtmlFragment(id, html) {
+        console.debug('Fragment message', id, html);
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'message-effect';
+        msgDiv.dataset['id'] = id;
+        msgDiv.innerHTML = html;
+        this.messagesContainer.appendChild(msgDiv);
+        this.scrollToBottom();
+        return msgDiv;
     }
 
     handleError(messageId, errorMessage) {
@@ -375,10 +433,10 @@ class PlayInterface {
         return msgDiv;
     }
 
-    addAssistantMessage(html) {
+    addAssistantMessage(content) {
         const msgDiv = document.createElement('div');
         msgDiv.className = 'message assistant';
-        msgDiv.innerHTML = html;
+        this.setAssistantMessageContent(msgDiv, content);
         this.messagesContainer.appendChild(msgDiv);
         this.scrollToBottom();
         return msgDiv;
