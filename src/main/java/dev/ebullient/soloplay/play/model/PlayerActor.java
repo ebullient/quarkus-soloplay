@@ -49,4 +49,10 @@ public class PlayerActor extends Actor {
         this.level = level;
         markDirty();
     }
+
+    @Override
+    public PlayerActor merge(Patch p) {
+        super.merge(p);
+        return this;
+    }
 }

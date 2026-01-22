@@ -162,16 +162,20 @@ public class GamePlayEngine {
             }
         }
 
-        for (var actorName : response.actorsPresent()) {
-            var actor = gameRepository.findActorByNameOrAlias(game.getGameId(), actorName);
-            if (actor != null) {
-                actors.add(actor);
+        if (response.actorsPresent() != null) {
+            for (var actorName : response.actorsPresent()) {
+                var actor = gameRepository.findActorByNameOrAlias(game.getGameId(), actorName);
+                if (actor != null) {
+                    actors.add(actor);
+                }
             }
         }
-        for (var locationName : response.locationsPresent()) {
-            var location = gameRepository.findLocationByNameOrAlias(game.getGameId(), locationName);
-            if (location != null) {
-                locations.add(location);
+        if (response.locationsPresent() != null) {
+            for (var locationName : response.locationsPresent()) {
+                var location = gameRepository.findLocationByNameOrAlias(game.getGameId(), locationName);
+                if (location != null) {
+                    locations.add(location);
+                }
             }
         }
 
