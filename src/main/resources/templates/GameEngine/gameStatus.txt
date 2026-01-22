@@ -1,0 +1,14 @@
+**Game Status**
+
+- **Phase**: {game.gamePhase}
+- **Turn**: {util:valueOrPlaceholder(game.turnNumber)}
+- **Adventure**: {util:valueOrPlaceholder(game.adventureName)}
+- **Location**: {util:valueOrPlaceholder(game.currentLocation)}
+- **Last Played**: {util:formatEpoch(game.lastPlayedAt)}
+{#if !partyMembers.isEmpty}
+
+**Party Members**
+
+{#for member in partyMembers}
+- {member}
+{/for}{/if}

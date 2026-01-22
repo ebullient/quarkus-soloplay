@@ -21,6 +21,8 @@ public class Actor extends BaseEntity {
     @CheckedTemplate(basePath = "models")
     public static class Templates {
         public static native TemplateInstance actorDetail(Actor actor);
+
+        public static native TemplateInstance actorSummary(Actor actor);
     }
 
     @Id
@@ -171,9 +173,17 @@ public class Actor extends BaseEntity {
         return events;
     }
 
+    /** Note: does not update event */
     public void addEvent(Event event) {
         if (events.add(event)) {
-            event.getParticipants().add(this);
+            markDirty();
+        }
+    }
+
+    /** Note: does not update event */
+    public void removeEvent(Event event) {
+        if (events.remove(event)) {
+            markDirty();
         }
     }
 

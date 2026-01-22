@@ -1,0 +1,1 @@
+**{actor.name}**, {actor.actorClass}, Level {actor.level}{#if actor.summary}: {actor.summary}{/if}

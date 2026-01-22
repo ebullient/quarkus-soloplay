@@ -1,5 +1,6 @@
 package dev.ebullient.soloplay.play.model;
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -71,14 +72,18 @@ public class Event extends BaseEntity {
 
     public void addParticipant(Actor actor) {
         if (participants.add(actor)) {
-            actor.getEvents().add(this);
+            actor.addEvent(this);
             markDirty();
         }
     }
 
+    public void addParticipants(Collection<Actor> eventParticipants) {
+        eventParticipants.forEach(a -> addParticipant(a));
+    }
+
     public void removeParticipant(Actor actor) {
         if (participants.remove(actor)) {
-            actor.getEvents().remove(this);
+            actor.removeEvent(this);
             markDirty();
         }
     }
@@ -92,6 +97,10 @@ public class Event extends BaseEntity {
             location.getEvents().add(this);
             markDirty();
         }
+    }
+
+    public void addLocations(Collection<Location> eventLocations) {
+        eventLocations.forEach(l -> addLocation(l));
     }
 
     public void removeLocation(Location location) {

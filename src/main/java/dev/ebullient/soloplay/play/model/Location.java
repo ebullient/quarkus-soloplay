@@ -167,9 +167,17 @@ public class Location extends BaseEntity {
         return events;
     }
 
+    /** Note: does not update event */
     public void addEvent(Event event) {
         if (events.add(event)) {
-            event.getLocations().add(this);
+            markDirty();
+        }
+    }
+
+    /** Note: does not update event */
+    public void removeEvent(Event event) {
+        if (events.remove(event)) {
+            markDirty();
         }
     }
 

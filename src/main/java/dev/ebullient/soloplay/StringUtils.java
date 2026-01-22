@@ -1,5 +1,8 @@
 package dev.ebullient.soloplay;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.List;
 
@@ -56,5 +59,14 @@ public class StringUtils {
                 .map(s -> normalize(s))
                 .filter(s -> !s.isBlank())
                 .toList();
+    }
+
+    public static String formatEpoch(Long epochMillis) {
+        if (epochMillis == null) {
+            return "—";
+        }
+        return Instant.ofEpochMilli(epochMillis)
+                .atZone(ZoneId.systemDefault())
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
     }
 }

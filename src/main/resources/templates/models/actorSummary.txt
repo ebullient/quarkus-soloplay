@@ -1,0 +1,1 @@
+**{actor.name}**{#if actor.summary}: {actor.summary}{/if}

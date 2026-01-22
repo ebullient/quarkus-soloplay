@@ -1,10 +1,6 @@
 package dev.ebullient.soloplay.play;
 
-import static dev.ebullient.soloplay.StringUtils.valueOrPlaceholder;
-
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -12,14 +8,22 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import dev.ebullient.soloplay.GameRepository;
+import dev.ebullient.soloplay.play.model.Actor;
+import dev.ebullient.soloplay.play.model.Event;
 import dev.ebullient.soloplay.play.model.GameState;
 import dev.ebullient.soloplay.play.model.GameState.GamePhase;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import dev.ebullient.soloplay.play.model.PlayerActor;
 import io.quarkus.logging.Log;
+import io.quarkus.qute.CheckedTemplate;
+import io.quarkus.qute.TemplateInstance;
 
 @ApplicationScoped
 public class GameEngine {
+
+    @CheckedTemplate
+    public static class Templates {
+        public static native TemplateInstance gameStatus(GameState game, Long lastPlayed, List<String> partyMembers);
+    }
 
     @Inject
     GameRepository gameRepository;
@@ -32,9 +36,6 @@ public class GameEngine {
 
     @Inject
     GamePlayEngine gamePlayEngine;
-
-    @Inject
-    ChatMemoryStore chatMemoryStore;
 
     @Inject
     GameContext gameContext;
@@ -78,15 +79,15 @@ public class GameEngine {
             response = actorCreationEngine.processRequest(game, playerInput, emitter);
             gameRepository.refreshTheParty(game.getGameId());
         } else if (game.getGamePhase() == GamePhase.SCENE_INITIALIZATION || resuming) {
-            // Check for existing chat history to decide: recap or fresh start
-            List<ChatMessage> chatHistory = chatMemoryStore.getMessages(game.getGameId());
-            if (chatHistory.isEmpty()) {
+            // Check for existing events to decide: recap or fresh start
+            List<Event> events = gameRepository.listEvents(game.getGameId());
+            if (events.isEmpty()) {
                 // New game - start the opening scene
                 response = gamePlayEngine.sceneStart(game, emitter);
                 game.incrementTurn();
             } else {
-                // Resuming - build recap from chat history
-                String recentEvents = formatRecentEvents(chatHistory);
+                // Resuming - build recap from event summaries
+                String recentEvents = formatRecentEvents(events);
                 response = gamePlayEngine.recap(game, recentEvents, emitter);
             }
             game.setGamePhase(game.getGamePhase().next());
@@ -132,81 +133,41 @@ public class GameEngine {
     }
 
     GameResponse handleStatusCommand(GameState game) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("**Game Status**\n\n");
-        sb.append("- **Phase**: ").append(game.getGamePhase().name()).append("\n");
-        sb.append("- **Turn**: ").append(valueOrPlaceholder(game.getTurnNumber())).append("\n");
-        sb.append("- **Adventure**: ").append(valueOrPlaceholder(game.getAdventureName())).append("\n");
-        sb.append("- **Location**: ").append(valueOrPlaceholder(game.getCurrentLocation())).append("\n");
-        sb.append("- **Last Played**: ").append(formatLastPlayed(game.getLastPlayedAt())).append("\n");
-
         var party = gameRepository.findTheParty(game.getGameId());
-        if (!party.isEmpty()) {
-            sb.append("\n**Party Members**\n\n");
-            for (var member : party) {
-                sb.append("- **").append(member.getName()).append("**");
-                if (member instanceof dev.ebullient.soloplay.play.model.PlayerActor pa) {
-                    if (pa.getActorClass() != null) {
-                        sb.append(" (").append(pa.getActorClass());
-                        if (pa.getLevel() != null) {
-                            sb.append(" ").append(pa.getLevel());
-                        }
-                        sb.append(")");
-                    }
-                }
-                if (member.getSummary() != null) {
-                    sb.append(": ").append(member.getSummary());
-                }
-                sb.append("\n");
-            }
+        List<String> partyMembers = new ArrayList<>();
+        for (Actor member : party) {
+            partyMembers.add(formatPartyMember(member));
         }
 
-        return GameResponse.reply(sb.toString());
+        String rendered = Templates.gameStatus(game, game.getLastPlayedAt(), partyMembers).render();
+        return GameResponse.reply(rendered);
     }
 
-    private String formatLastPlayed(Long epochMillis) {
-        if (epochMillis == null) {
-            return "—";
+    private String formatPartyMember(Actor member) {
+        if (member instanceof PlayerActor pa) {
+            return PlayerActor.Templates.playerActorSummary(pa).render();
         }
-        return Instant.ofEpochMilli(epochMillis)
-                .atZone(ZoneId.systemDefault())
-                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+        return Actor.Templates.actorSummary(member).render();
     }
 
     /**
-     * Format recent chat history into a summary for the recap prompt.
-     * Takes the last few exchanges and formats them as a narrative summary.
+     * Format recent events into a summary for the recap prompt.
+     * Takes the last few turn summaries for context.
      */
-    String formatRecentEvents(List<ChatMessage> chatHistory) {
-        if (chatHistory.isEmpty()) {
+    String formatRecentEvents(List<Event> events) {
+        if (events.isEmpty()) {
             return "No previous events.";
         }
 
-        // Take last 10 messages (5 exchanges) for context
-        int start = Math.max(0, chatHistory.size() - 10);
-        List<ChatMessage> recent = chatHistory.subList(start, chatHistory.size());
+        // Take last 10 events for context
+        int start = Math.max(0, events.size() - 10);
+        List<Event> recent = events.subList(start, events.size());
 
         StringBuilder sb = new StringBuilder();
-        for (ChatMessage msg : recent) {
-            switch (msg.type()) {
-                case USER -> sb.append("=== Player ===\n").append(extractText(msg)).append("\n\n");
-                case AI -> sb.append("=== GM ===\n").append(extractText(msg)).append("\n\n");
-                default -> {
-                    /* skip system messages */ }
-            }
+        for (Event event : recent) {
+            sb.append("- Turn ").append(event.getTurnNumber()).append(": ")
+                    .append(event.getSummary()).append("\n");
         }
         return sb.toString().trim();
-    }
-
-    /**
-     * Extract text content from a ChatMessage.
-     */
-    private String extractText(ChatMessage msg) {
-        if (msg instanceof dev.langchain4j.data.message.AiMessage ai) {
-            return ai.text() != null ? ai.text() : "";
-        } else if (msg instanceof dev.langchain4j.data.message.UserMessage user) {
-            return user.singleText();
-        }
-        return "";
     }
 }

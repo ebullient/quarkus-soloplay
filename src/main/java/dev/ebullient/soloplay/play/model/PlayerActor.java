@@ -13,6 +13,8 @@ public class PlayerActor extends Actor {
         public static native TemplateInstance playerActorDetail(PlayerActor actor);
 
         public static native TemplateInstance playerActorDraft(PlayerActorDraft draft);
+
+        public static native TemplateInstance playerActorSummary(PlayerActor actor);
     }
 
     private String actorClass; // e.g., "Fighter", "Wizard"

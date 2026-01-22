@@ -3,6 +3,7 @@ package dev.ebullient.soloplay;
 import static dev.ebullient.soloplay.StringUtils.normalize;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -269,7 +270,7 @@ public class GameRepository {
         return events;
     }
 
-    public void saveAll(List<? extends BaseEntity> entities) {
+    public void saveAll(Collection<? extends BaseEntity> entities) {
         if (entities.isEmpty()) {
             return;
         }

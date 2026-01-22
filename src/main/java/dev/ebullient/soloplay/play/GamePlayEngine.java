@@ -1,8 +1,9 @@
 package dev.ebullient.soloplay.play;
 
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -13,6 +14,7 @@ import dev.ebullient.soloplay.GameRepository;
 import dev.ebullient.soloplay.play.GameEffect.HtmlFragment;
 import dev.ebullient.soloplay.play.model.Actor;
 import dev.ebullient.soloplay.play.model.BaseEntity;
+import dev.ebullient.soloplay.play.model.Event;
 import dev.ebullient.soloplay.play.model.GameState;
 import dev.ebullient.soloplay.play.model.Location;
 import dev.ebullient.soloplay.play.model.Patch;
@@ -119,9 +121,7 @@ public class GamePlayEngine {
 
         // Apply patches (actors, locations, plot flags)
         emitter.assistantDelta("Updating world state…\n");
-        if (response.patches() != null && !response.patches().isEmpty()) {
-            applyPatches(game, response.patches());
-        }
+        patchesAndEvents(game, response);
 
         // Store pending roll if present
         emitter.assistantDelta("Checking for pending roll…\n");
@@ -138,26 +138,53 @@ public class GamePlayEngine {
     }
 
     private boolean isRollInput(String input) {
-        // TODO: detect roll commands or dice notation
         // e.g., "/roll", "1d20+5", "15", etc.
         return input.startsWith("/roll") || input.matches("\\d+");
     }
 
-    private void applyPatches(GameState game, List<Patch> patches) {
-        List<BaseEntity> modified = new ArrayList<>();
+    private void patchesAndEvents(GameState game, GamePlayResponse response) {
+        Set<BaseEntity> modified = new HashSet<>();
+        Set<Actor> actors = new HashSet<>();
+        Set<Location> locations = new HashSet<>();
 
-        for (Patch patch : patches) {
-            switch (patch.type()) {
-                case "actor" -> {
-                    var merged = handleActor(game, patch);
-                    modified.add(merged);
-                }
-                case "location" -> {
-                    var merged = handleLocation(game, patch);
-                    modified.add(merged);
+        if (response.patches() != null) {
+            for (Patch patch : response.patches()) {
+                switch (patch.type()) {
+                    case "actor" -> {
+                        var merged = handleActor(game, patch);
+                        actors.add(merged);
+                    }
+                    case "location" -> {
+                        var merged = handleLocation(game, patch);
+                        locations.add(merged);
+                    }
                 }
             }
         }
+
+        for (var actorName : response.actorsPresent()) {
+            var actor = gameRepository.findActorByNameOrAlias(game.getGameId(), actorName);
+            if (actor != null) {
+                actors.add(actor);
+            }
+        }
+        for (var locationName : response.locationsPresent()) {
+            var location = gameRepository.findLocationByNameOrAlias(game.getGameId(), locationName);
+            if (location != null) {
+                locations.add(location);
+            }
+        }
+
+        // Save turn summary as event for recaps
+        if (response.turnSummary() != null && !response.turnSummary().isBlank()) {
+            Event event = new Event(game.getGameId(), game.getTurnNumber(), response.turnSummary());
+            event.addParticipants(actors);
+            event.addLocations(locations);
+            modified.add(event);
+        }
+
+        modified.addAll(actors);
+        modified.addAll(locations);
 
         gameRepository.saveAll(modified); // single TX
     }
