@@ -16,6 +16,7 @@ import dev.ebullient.soloplay.play.model.GameState;
 import dev.ebullient.soloplay.play.model.GameState.GamePhase;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import io.quarkus.logging.Log;
 
 @ApplicationScoped
 public class GameEngine {
@@ -47,11 +48,24 @@ public class GameEngine {
         gameContext.setGameState(game, gamePlayEngine.listTheParty(game));
 
         GamePhase phase = game.getGamePhase();
-        boolean createActors = phase == GamePhase.CHARACTER_CREATION
-                || (phase == GamePhase.UNKNOWN && !gameRepository.hasProtagonists(game.getGameId()))
-                || "/newcharacter".equals(playerInput.trim());
+        Log.debugf("Resuming game phase: %s", phase);
 
         String trimmed = playerInput == null ? "" : playerInput.trim();
+
+        // RECOVERY: normalize UNKNOWN into a concrete phase
+        if (phase == GamePhase.UNKNOWN) {
+            if (gameRepository.hasProtagonists(game.getGameId())) {
+                Log.infof("Recovering game %s from UNKNOWN to ACTIVE_PLAY (protagonists exist)", game.getGameId());
+                game.setGamePhase(GamePhase.ACTIVE_PLAY);
+                phase = GamePhase.ACTIVE_PLAY;
+            } else {
+                Log.infof("Recovering game %s from UNKNOWN to CHARACTER_CREATION (no protagonists)", game.getGameId());
+                game.setGamePhase(GamePhase.CHARACTER_CREATION);
+                phase = GamePhase.CHARACTER_CREATION;
+            }
+        }
+
+        boolean createActors = phase == GamePhase.CHARACTER_CREATION || "/newcharacter".equals(trimmed);
         if (isStatusCommand(trimmed)) {
             return handleStatusCommand(game);
         }
