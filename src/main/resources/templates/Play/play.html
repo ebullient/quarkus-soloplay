@@ -16,19 +16,19 @@
     <span>Streaming via WebSocket</span>
     {/header-subtitle}
 
+    {#mainClass}class="chat-area"{/mainClass}
+    {#mainData}data-game-id="{gameId}"{/mainData}
     {#content}
-    <div class="chat-area" data-game-id="{gameId}">
         <div id="chat-messages"></div>
 
-        <div class="input-area">
+        <div id="input-container">
             <textarea
                 id="message-input"
                 placeholder="Say something..."
                 autocomplete="off"
                 rows="1"></textarea>
-            <button id="send-button">Send</button>
+            <button id="send-btn">Send</button>
         </div>
-    </div>
     {/content}
 {/include}
 

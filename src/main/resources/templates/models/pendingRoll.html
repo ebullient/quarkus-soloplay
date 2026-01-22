@@ -1,0 +1,12 @@
+<div class="pending-roll">
+  <div class="roll-header">
+    <strong>Roll Required:</strong>
+  </div>
+  <div class="roll-details">
+    <span class="roll-type">{roll.type.replace("_", " ")}</span>
+    {#if roll.skill}<span class="roll-skill">({roll.skill})</span>{/if}
+    {#if roll.ability}<span class="roll-ability">{roll.ability}</span>{/if}
+    {#if roll.target}<span class="roll-target">vs. {roll.target}</span>{/if}
+    {#if roll.dc}<span class="roll-dc">DC {roll.dc}</span>{/if}
+  </div>
+</div>

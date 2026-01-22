@@ -9,8 +9,8 @@ class ChatInterface {
         this.errorMessage = config.errorMessage || 'Error: Could not get response.';
         this.method = config.method || 'POST';
 
-        this.chatContainer = document.getElementById('chat-container');
-        this.questionInput = document.getElementById('question-input');
+        this.chatContainer = document.getElementById('chat-messages');
+        this.messageInput = document.getElementById('message-input');
         this.sendBtn = document.getElementById('send-btn');
 
         this.init();
@@ -20,10 +20,10 @@ class ChatInterface {
         this.sendBtn.addEventListener('click', () => this.sendQuestion());
 
         // Auto-resize textarea
-        this.questionInput.addEventListener('input', () => this.autoResize());
+        this.messageInput.addEventListener('input', () => this.autoResize());
 
         // Handle Enter key (Shift+Enter for new line)
-        this.questionInput.addEventListener('keydown', (e) => {
+        this.messageInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 this.sendQuestion();
@@ -31,17 +31,17 @@ class ChatInterface {
         });
 
         // Focus input on load
-        this.questionInput.focus();
+        this.messageInput.focus();
     }
 
     autoResize() {
-        this.questionInput.style.height = 'auto';
-        this.questionInput.style.height = this.questionInput.scrollHeight + 'px';
+        this.messageInput.style.height = 'auto';
+        this.messageInput.style.height = this.messageInput.scrollHeight + 'px';
     }
 
     addMessage(text, isUser) {
         const messageDiv = document.createElement('div');
-        messageDiv.className = 'message ' + (isUser ? 'user-message' : 'assistant-message');
+        messageDiv.className = 'message ' + (isUser ? 'user' : 'assistant');
 
         if (isUser) {
             messageDiv.textContent = text;
@@ -70,11 +70,11 @@ class ChatInterface {
     }
 
     async sendQuestion() {
-        const question = this.questionInput.value.trim();
+        const question = this.messageInput.value.trim();
         if (!question) return;
 
         this.addMessage(question, true);
-        this.questionInput.value = '';
+        this.messageInput.value = '';
         this.autoResize(); // Reset height after clearing
         this.sendBtn.disabled = true;
         this.addLoadingIndicator();
@@ -106,7 +106,7 @@ class ChatInterface {
             this.addMessage('Error: ' + error.message, false);
         } finally {
             this.sendBtn.disabled = false;
-            this.questionInput.focus();
+            this.messageInput.focus();
         }
     }
 }

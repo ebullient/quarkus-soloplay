@@ -7,7 +7,7 @@ class PlayInterface {
     constructor() {
         this.messagesContainer = document.getElementById('chat-messages');
         this.messageInput = document.getElementById('message-input');
-        this.sendButton = document.getElementById('send-button');
+        this.sendButton = document.getElementById('send-btn');
 
         // Server-assigned session id (populated from the initial "session" message)
         this.sessionId = null;

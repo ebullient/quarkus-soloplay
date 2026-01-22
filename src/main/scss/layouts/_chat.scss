@@ -2,37 +2,49 @@
 @use '../variables' as *;
 @use '../mixins' as *;
 
+// Chat pages need fixed viewport height for proper scroll containment
+body:has(main.chat-area) {
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+// Chat area container - ensures proper flex layout for scrolling
+main.chat-area {
+  overflow: hidden;
+}
+
 // Message container
-#chat-container {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-    padding: var(--spacing-md);
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-md);
-    @include custom-scrollbar();
+#chat-messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  @include custom-scrollbar();
 }
 
 // Input area
 #input-container {
-    flex: 0 0 auto;
-    padding: var(--spacing-md);
-    background: var(--color-bg-elevated);
-    border-top: 2px solid var(--color-text-accent);
-    display: flex;
-    gap: var(--spacing-sm);
-    align-items: flex-end;
+  flex: 0 0 auto;
+  padding: var(--spacing-md);
+  background: var(--color-bg-elevated);
+  border-top: 2px solid var(--color-text-accent);
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: flex-end;
 }
 
-#question-input {
-    flex: 1;
-    background: var(--color-bg-base);
-    color: var(--color-text-primary);
-    resize: vertical;
-    min-height: 2.5rem;
-    max-height: 200px;
-    overflow-y: auto;
-    font-family: inherit;
-    line-height: 1.5;
+#message-input {
+  flex: 1;
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  resize: vertical;
+  min-height: 2.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+  font-family: inherit;
+  line-height: 1.5;
 }
