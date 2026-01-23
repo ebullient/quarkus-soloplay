@@ -50,11 +50,28 @@ public class LoreResource {
     @Inject
     Neo4jHealth neo4jHealth;
 
+    /**
+     * Query lore with optional contentType filter.
+     *
+     * @param question The search question
+     * @param contentType Optional filter (e.g., "monster", "item", "spell", "vehicle")
+     */
     @GET
     @Produces(MediaType.TEXT_HTML)
-    public String lore(@RestQuery String question) {
-        JsonChatResponse chatResponse = settingAssistant.lore(question);
+    public String lore(@RestQuery String question, @RestQuery String contentType) {
+        String queryWithFilter = buildFilteredQuery(question, contentType);
+        JsonChatResponse chatResponse = settingAssistant.lore(queryWithFilter);
         return prettify.markdownToHtml(chatResponse.response());
+    }
+
+    /**
+     * Build query with optional filter prefix.
+     */
+    private String buildFilteredQuery(String question, String contentType) {
+        if (contentType != null && !contentType.isBlank()) {
+            return "[filter:" + contentType.trim() + "] " + question;
+        }
+        return question;
     }
 
     /**
@@ -83,11 +100,18 @@ public class LoreResource {
         return Response.ok(content).build();
     }
 
+    /**
+     * Query lore via POST with optional contentType filter.
+     *
+     * @param question The search question (body)
+     * @param contentType Optional filter (e.g., "monster", "item", "spell", "vehicle")
+     */
     @POST
     @Consumes(MediaType.TEXT_PLAIN)
     @Produces(MediaType.TEXT_HTML)
-    public String postLore(String question) {
-        JsonChatResponse chatResponse = settingAssistant.lore(question);
+    public String postLore(String question, @RestQuery String contentType) {
+        String queryWithFilter = buildFilteredQuery(question, contentType);
+        JsonChatResponse chatResponse = settingAssistant.lore(queryWithFilter);
         return prettify.markdownToHtml(chatResponse.response());
     }
 
