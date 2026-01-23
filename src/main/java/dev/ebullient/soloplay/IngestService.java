@@ -60,6 +60,9 @@ public class IngestService {
     public void ingestFile(String filename, String content) {
         Log.infof("Processing file: %s (size: %d bytes)", filename, content.length());
 
+        boolean isAdventureFile = "adventures.txt".equals(filename);
+        List<String> allChunkIds = isAdventureFile ? new ArrayList<>() : null;
+
         if (content.contains(TOOLS_DOC_SEPARATOR)) {
             String[] parts = content.split(TOOLS_DOC_SEPARATOR);
             Log.infof("Found %d structured sections in %s", parts.length, filename);
@@ -68,19 +71,30 @@ public class IngestService {
                 String trimmed = part.trim();
                 // Skip empty parts and parts that are just the separator
                 if (!trimmed.isBlank() && !trimmed.equals("============")) {
-                    processStructuredMarkdown(filename, trimmed);
+                    List<String> chunkIds = processStructuredMarkdown(filename, trimmed);
+                    if (allChunkIds != null) {
+                        allChunkIds.addAll(chunkIds);
+                    }
                     processedCount++;
                 }
             }
             Log.infof("Processed %d non-empty sections from %s", processedCount, filename);
         } else {
-            processStructuredMarkdown(filename, content.trim());
+            List<String> chunkIds = processStructuredMarkdown(filename, content.trim());
+            if (allChunkIds != null) {
+                allChunkIds.addAll(chunkIds);
+            }
+        }
+
+        // For adventures.txt, create NEXT relationships between chunks
+        if (isAdventureFile && allChunkIds != null && !allChunkIds.isEmpty()) {
+            createChunkRelationships(allChunkIds);
         }
 
         Log.infof("Completed processing file: %s", filename);
     }
 
-    private void processStructuredMarkdown(String filename, String content) {
+    private List<String> processStructuredMarkdown(String filename, String content) {
         // Parse YAML frontmatter
         // Note: structured frontmatter includes the real filename
         // Keep ingest sourceFile for traceability + allow re-processing
@@ -102,6 +116,8 @@ public class IngestService {
         }
 
         List<TextSegment> segments = new ArrayList<>();
+        // Track start index of multi-chunk sections for NEXT relationships
+        List<int[]> chunkedSectionRanges = new ArrayList<>();
 
         if (prefix.length() + cleanContent.length() > chunkSize) {
             String[] sections = SECTION_HEADER_PATTERN.split(cleanContent);
@@ -121,6 +137,9 @@ public class IngestService {
                     var splitter = DocumentSplitters.recursive(chunkSize, chunkOverlap);
                     List<TextSegment> subSegments = splitter.split(doc);
 
+                    // Track range for NEXT relationships
+                    int startIdx = segments.size();
+
                     int chunkIndex = 0;
                     for (TextSegment subSegment : subSegments) {
                         subSegment.metadata()
@@ -131,6 +150,11 @@ public class IngestService {
                                 .put("canonical", "true");
                         subSegment.metadata().putAll(yamlMetadata);
                         segments.add(subSegment);
+                    }
+
+                    // Record range if more than one chunk
+                    if (subSegments.size() > 1) {
+                        chunkedSectionRanges.add(new int[] { startIdx, segments.size() - 1 });
                     }
                 } else {
                     TextSegment segment = TextSegment.from(
@@ -159,12 +183,187 @@ public class IngestService {
 
         if (segments.isEmpty()) {
             Log.warnf("No valid segments to embed for %s", filename);
-            return;
+            return List.of();
         }
 
         List<Embedding> embeddings = embeddingModel.embedAll(segments).content();
-        embeddingStore.addAll(embeddings, segments);
+        List<String> chunkIds = embeddingStore.addAll(embeddings, segments);
         Log.infof("Stored %d embeddings for %s", embeddings.size(), filename);
+
+        // Add source-specific label to nodes (e.g., items.txt → :Item)
+        String label = deriveLabelFromFilename(filename);
+        if (label != null) {
+            addLabelToNodes(chunkIds, label);
+        }
+
+        // Create NEXT relationships for chunked sections (non-adventure files only)
+        // Adventure files handle this separately with relationships across all chunks
+        boolean isAdventureFile = "adventures.txt".equals(filename);
+        if (!isAdventureFile && !chunkedSectionRanges.isEmpty()) {
+            createSectionChunkRelationships(chunkIds, chunkedSectionRanges);
+        }
+
+        return chunkIds;
+    }
+
+    /**
+     * Derive a PascalCase singular label from a filename.
+     * Example: "items.txt" → "Item", "magic-items.txt" → "MagicItem"
+     */
+    private String deriveLabelFromFilename(String filename) {
+        if (filename == null || filename.isBlank()) {
+            return null;
+        }
+
+        // Remove extension
+        String baseName = filename.contains(".")
+                ? filename.substring(0, filename.lastIndexOf('.'))
+                : filename;
+
+        if (baseName.isBlank()) {
+            return null;
+        }
+
+        // Singularization rules for common English plural forms
+        if (baseName.endsWith("ies")) {
+            // abilities → ability
+            baseName = baseName.substring(0, baseName.length() - 3) + "y";
+        } else if (baseName.endsWith("sses")) {
+            // classes → class
+            baseName = baseName.substring(0, baseName.length() - 2);
+        } else if (baseName.endsWith("xes")) {
+            // boxes → box
+            baseName = baseName.substring(0, baseName.length() - 2);
+        } else if (baseName.endsWith("ches")) {
+            // watches → watch
+            baseName = baseName.substring(0, baseName.length() - 2);
+        } else if (baseName.endsWith("shes")) {
+            // dishes → dish
+            baseName = baseName.substring(0, baseName.length() - 2);
+        } else if (baseName.endsWith("s") && !baseName.endsWith("ss")) {
+            // items → item, adventures → adventure, monsters → monster
+            baseName = baseName.substring(0, baseName.length() - 1);
+        }
+
+        // Convert to PascalCase, handling hyphens and underscores
+        // "magic-item" → "MagicItem", "magic_item" → "MagicItem"
+        StringBuilder result = new StringBuilder();
+        boolean capitalizeNext = true;
+        for (char c : baseName.toCharArray()) {
+            if (c == '-' || c == '_') {
+                capitalizeNext = true;
+            } else if (capitalizeNext) {
+                result.append(Character.toUpperCase(c));
+                capitalizeNext = false;
+            } else {
+                result.append(Character.toLowerCase(c));
+            }
+        }
+        return result.toString();
+    }
+
+    /**
+     * Add an additional label to Document nodes.
+     */
+    private void addLabelToNodes(List<String> nodeIds, String label) {
+        if (nodeIds.isEmpty() || label == null) {
+            return;
+        }
+
+        var session = sessionFactory.openSession();
+        var tx = session.beginTransaction();
+
+        try {
+            String cypher = """
+                    MATCH (d:Document) WHERE d.id IN $nodeIds
+                    SET d:%s
+                    """.formatted(label);
+            session.query(cypher, Map.of("nodeIds", nodeIds));
+
+            tx.commit();
+            Log.infof("Added label :%s to %d nodes", label, nodeIds.size());
+        } catch (Exception e) {
+            tx.rollback();
+            Log.errorf(e, "Error adding label to nodes: %s", e.getMessage());
+        } finally {
+            tx.close();
+        }
+    }
+
+    /**
+     * Create NEXT relationships between sequential chunks for adventure files.
+     */
+    private void createChunkRelationships(List<String> chunkIds) {
+        if (chunkIds.size() < 2) {
+            return;
+        }
+
+        var session = sessionFactory.openSession();
+        var tx = session.beginTransaction();
+
+        try {
+            for (int i = 0; i < chunkIds.size() - 1; i++) {
+                String createNext = """
+                        MATCH (d1:Document) WHERE d1.id = $fromId
+                        MATCH (d2:Document) WHERE d2.id = $toId
+                        CREATE (d1)-[:NEXT]->(d2)
+                        """;
+                session.query(createNext, Map.of(
+                        "fromId", chunkIds.get(i),
+                        "toId", chunkIds.get(i + 1)));
+            }
+
+            tx.commit();
+            Log.infof("Created %d NEXT relationships between chunks", chunkIds.size() - 1);
+        } catch (Exception e) {
+            tx.rollback();
+            Log.errorf(e, "Error creating chunk relationships: %s", e.getMessage());
+            throw new RuntimeException("Failed to create chunk relationships: " + e.getMessage(), e);
+        } finally {
+            tx.close();
+        }
+    }
+
+    /**
+     * Create NEXT relationships between chunks within the same section.
+     * Used for non-adventure files where sections are independently chunked.
+     */
+    private void createSectionChunkRelationships(List<String> chunkIds, List<int[]> sectionRanges) {
+        if (sectionRanges.isEmpty()) {
+            return;
+        }
+
+        var session = sessionFactory.openSession();
+        var tx = session.beginTransaction();
+
+        try {
+            int relationshipCount = 0;
+            for (int[] range : sectionRanges) {
+                int startIdx = range[0];
+                int endIdx = range[1];
+
+                for (int i = startIdx; i < endIdx; i++) {
+                    String createNext = """
+                            MATCH (d1:Document) WHERE d1.id = $fromId
+                            MATCH (d2:Document) WHERE d2.id = $toId
+                            CREATE (d1)-[:NEXT]->(d2)
+                            """;
+                    session.query(createNext, Map.of(
+                            "fromId", chunkIds.get(i),
+                            "toId", chunkIds.get(i + 1)));
+                    relationshipCount++;
+                }
+            }
+
+            tx.commit();
+            Log.infof("Created %d NEXT relationships within %d sections", relationshipCount, sectionRanges.size());
+        } catch (Exception e) {
+            tx.rollback();
+            Log.errorf(e, "Error creating section chunk relationships: %s", e.getMessage());
+            throw new RuntimeException("Failed to create section chunk relationships: " + e.getMessage(), e);
+        } finally {
+            tx.close();
+        }
     }
 
     private String extractFirstLine(String content) {
