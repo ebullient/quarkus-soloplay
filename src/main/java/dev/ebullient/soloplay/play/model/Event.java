@@ -44,6 +44,7 @@ public class Event extends BaseEntity {
         this.turnNumber = turnNumber;
         this.summary = summary;
         this.id = gameId + ":event-" + createdAt + "-" + turnNumber;
+        markDirty();
     }
 
     public String getId() {
@@ -95,7 +96,7 @@ public class Event extends BaseEntity {
 
     public void addLocation(Location location) {
         if (locations.add(location)) {
-            location.getEvents().add(this);
+            location.addEvent(this);
             markDirty();
         }
     }
@@ -106,7 +107,7 @@ public class Event extends BaseEntity {
 
     public void removeLocation(Location location) {
         if (locations.remove(location)) {
-            location.getEvents().remove(this);
+            location.removeEvent(this);
             markDirty();
         }
     }

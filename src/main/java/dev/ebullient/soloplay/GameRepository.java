@@ -176,8 +176,9 @@ public class GameRepository {
         var session = sessionFactory.openSession();
         String normalized = normalize(nameOrAlias);
         String cypher = """
-                MATCH (a:Actor {gameId: $gameId})
-                WHERE a.nameNormalized = $name OR $name IN a.aliases
+                MATCH (a {gameId: $gameId})
+                WHERE (a:Actor OR a:PlayerActor)
+                  AND (a.normalizedName = $name OR $name IN a.aliases)
                 RETURN a
                 LIMIT 1
                 """;
@@ -219,7 +220,7 @@ public class GameRepository {
         String normalized = normalize(nameOrAlias);
         String cypher = """
                 MATCH (l:Location {gameId: $gameId})
-                WHERE l.nameNormalized = $name OR $name IN l.aliases
+                WHERE l.normalizedName = $name OR $name IN l.aliases
                 RETURN l
                 LIMIT 1
                 """;
@@ -251,7 +252,7 @@ public class GameRepository {
                 """;
         Iterable<Event> result = session.query(Event.class, cypher, Map.of("gameId", gameId));
         List<Event> events = new ArrayList<>();
-        result.forEach(events::add);
+        result.forEach(e -> events.add(session.load(Event.class, e.getId(), 1)));
         return events;
     }
 
@@ -279,7 +280,7 @@ public class GameRepository {
         try (Transaction tx = session.beginTransaction()) {
             for (var entity : entities) {
                 if (entity.isDirty()) {
-                    session.save(entity);
+                    session.save(entity, 1);
                     entity.markClean();
                 }
             }

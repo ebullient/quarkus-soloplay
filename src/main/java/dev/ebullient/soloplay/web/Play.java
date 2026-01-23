@@ -18,7 +18,7 @@ public class Play extends Controller {
 
     @GET
     @Path("/play")
-    public TemplateInstance play() {
+    public TemplateInstance index() {
         // redirect to game
         return redirect(Game.class).index();
     }

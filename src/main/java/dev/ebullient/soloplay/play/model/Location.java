@@ -1,10 +1,13 @@
 package dev.ebullient.soloplay.play.model;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Relationship;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
@@ -34,8 +37,9 @@ public class Location extends NamedBaseEntity {
         return this;
     }
 
+    @JsonIgnore
     public Set<Event> getEvents() {
-        return events;
+        return Collections.unmodifiableSet(events);
     }
 
     /** Note: does not update event */
