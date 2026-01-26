@@ -7,7 +7,7 @@ class InspectPage {
     constructor() {
         this.storageKey = 'soloplay.gameId';
 
-        this.root = document.querySelector('.inspect');
+        this.root = document.querySelector('.inspect-controls');
         this.gameSelect = document.getElementById('inspect-game-select');
         this.useLocalBtn = document.getElementById('inspect-use-local');
         this.clearLocalBtn = document.getElementById('inspect-clear-local');

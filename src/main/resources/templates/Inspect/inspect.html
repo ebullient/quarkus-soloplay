@@ -1,71 +1,62 @@
 {#include base}
-    {#title}Inspect{/title}
+{#title}Inspect{/title}
 
-    {#stylesheets}
-    <link rel="stylesheet" href="/inspect.css">
-    {/stylesheets}
+{#stylesheets}
+<link rel="stylesheet" href="/inspect.css">
+{/stylesheets}
 
-    {#scripts}
-    <script src="/inspect.js" defer></script>
-    {/scripts}
+{#scripts}
+<script src="/inspect.js" defer></script>
+{/scripts}
 
-    {#header-title}Inspect{/header-title}
+{#header-title}Inspect{/header-title}
 
-    {#content}
-    <div class="wide stack stack-lg inspect" data-game-id="{gameId}">
-        <div class="card card--ai">
-            <h2>Inspect game state</h2>
-            <p>Pick a game and fetch its current state via the REST API. This is a user-friendly curl for debugging.</p>
-        </div>
-
-        <div class="card inspect-controls">
-            <div class="inspect-controls__row">
-                <label class="stack stack-xs">
-                    <span class="label">Current game</span>
-                    <select id="inspect-game-select">
-                        <option value="">Loading games…</option>
-                    </select>
-                </label>
-
-                <div class="cluster inspect-controls__actions">
-                    <button class="btn btn-outline" id="inspect-use-local">Use saved game</button>
-                    <button class="btn btn-outline" id="inspect-clear-local">Clear saved game</button>
-                    <a class="btn btn-outline" href="/game">Manage games</a>
-                </div>
-            </div>
-
-            <div class="inspect-controls__row inspect-controls__row--endpoints">
-                <div class="cluster">
-                    <button class="btn btn-sm btn-outline" data-endpoint="game">Game</button>
-                    <button class="btn btn-sm btn-outline" data-endpoint="party">Party</button>
-                    <button class="btn btn-sm btn-outline" data-endpoint="actors">Actors</button>
-                    <button class="btn btn-sm btn-outline" data-endpoint="locations">Locations</button>
-                    <button class="btn btn-sm btn-outline" data-endpoint="events">Events</button>
-                    <button class="btn btn-sm btn-primary" data-endpoint="all">All</button>
-                </div>
-
-                <div class="cluster">
-                    <button class="btn btn-sm btn-outline" id="inspect-refresh">Refresh</button>
-                    <button class="btn btn-sm btn-outline" id="inspect-copy" title="Copy response JSON">Copy</button>
-                </div>
-            </div>
-
-            <div class="inspect-meta">
-                <div class="inspect-meta__item">
-                    <span class="inspect-meta__label">Request</span>
-                    <code id="inspect-request">—</code>
-                </div>
-                <div class="inspect-meta__item">
-                    <span class="inspect-meta__label">Status</span>
-                    <span id="inspect-status">—</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="card inspect-result">
-            <pre class="inspect-result__pre" id="inspect-output">{}</pre>
-        </div>
+{#mainClass}class="inspect"{/mainClass}
+{#content}
+<div class="inspect-controls" data-game-id="{gameId}">
+  <div class="inspect-controls__row">
+    <div class="cluster">
+      <label for="inspect-game-select">Current game</label>
+      <select id="inspect-game-select">
+        <option value="">Loading games…</option>
+      </select>
     </div>
-    {/content}
-{/include}
+    <div class="cluster">
+      <button class="btn btn-sm btn-outline" id="inspect-use-local">Use saved game</button>
+      <button class="btn btn-sm btn-outline" id="inspect-clear-local">Clear saved game</button>
+      <a class="btn btn-sm btn-outline" href="/game">Manage games</a>
+    </div>
+  </div>
 
+  <div class="inspect-controls__row inspect-controls__row--endpoints">
+    <div class="cluster">
+      <button class="btn btn-sm btn-outline" data-endpoint="game">Game</button>
+      <button class="btn btn-sm btn-outline" data-endpoint="party">Party</button>
+      <button class="btn btn-sm btn-outline" data-endpoint="actors">Actors</button>
+      <button class="btn btn-sm btn-outline" data-endpoint="locations">Locations</button>
+      <button class="btn btn-sm btn-outline" data-endpoint="events">Events</button>
+      <button class="btn btn-sm btn-primary" data-endpoint="all">All</button>
+    </div>
+
+    <div class="cluster">
+      <button class="btn btn-sm btn-outline" id="inspect-refresh">Refresh</button>
+      <button class="btn btn-sm btn-outline" id="inspect-copy" title="Copy response JSON">Copy</button>
+    </div>
+  </div>
+</div>
+
+<div class="inspect-result">
+  <div class="inspect-meta">
+    <div class="inspect-meta__item">
+      <span class="inspect-meta__label">Request</span>
+      <code id="inspect-request">—</code>
+    </div>
+    <div class="inspect-meta__item">
+      <span class="inspect-meta__label">Status</span>
+      <span id="inspect-status">—</span>
+    </div>
+  </div>
+  <pre class="inspect-result__pre" id="inspect-output">{}</pre>
+</div>
+{/content}
+{/include}

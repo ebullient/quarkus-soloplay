@@ -1,31 +1,78 @@
-.inspect.wide {
-  max-width: 100%;
-  min-width: 100%
+@use '../variables' as *;
+@use '../mixins' as *;
+
+// Inspect pages need fixed viewport height for proper scroll containment
+body:has(main.inspect) {
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+// Main container - ensures proper flex layout for scrolling
+main.inspect {
+  overflow: hidden;
+  padding: var(--spacing-md);
+  gap: var(--spacing-md);
+}
+
+// Controls section - fixed at top
+.inspect-controls {
+  flex: 0 0 auto;
+  padding: var(--spacing-md);
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.1));
 }
 
 .inspect-controls__row {
+  --row-height: 1.8em;
+
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-sm);
-  align-items: flex-end;
-  justify-content: space-between;
-}
-
-.inspect-controls__row--endpoints {
   align-items: center;
+  justify-content: space-between;
+
+  & + & {
+    margin-top: var(--spacing-sm);
+  }
+
+  select,
+  label,
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  a.btn,
+  select {
+    padding-block: 0.25em;
+  }
 }
 
 .inspect-controls select {
-  min-width: min(520px, 100%);
+  width: auto;
+  min-width: 200px;
+  max-width: 400px;
+}
+
+// Result section - fills remaining space
+.inspect-result {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .inspect-meta {
+  flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-md);
-  margin-top: var(--spacing-sm);
-  padding-top: var(--spacing-sm);
-  border-top: 1px solid var(--color-border, rgba(255, 255, 255, 0.1));
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--color-border, rgba(255, 255, 255, 0.1));
 }
 
 .inspect-meta__item {
@@ -43,8 +90,10 @@
 }
 
 .inspect-result__pre {
-  max-height: 70vh;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
+  margin-top: var(--spacing-sm);
   padding: var(--spacing-md);
   border-radius: var(--radius-md);
   background: var(--color-bg);
@@ -54,6 +103,7 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
+  @include custom-scrollbar();
 }
 
 #inspect-status[data-kind="loading"] { color: var(--color-text-secondary); }
