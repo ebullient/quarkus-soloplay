@@ -146,6 +146,18 @@ public class GameRepository {
         });
     }
 
+    public PlayerActor findPlayerActorByNameOrAlias(String gameId, String nameOrAlias) {
+        var session = sessionFactory.openSession();
+        String normalized = normalize(nameOrAlias);
+        String cypher = """
+                MATCH (a:PlayerActor {gameId: $gameId})
+                WHERE a.normalizedName = $name OR $name IN a.aliases
+                RETURN a
+                LIMIT 1
+                """;
+        return session.queryForObject(PlayerActor.class, cypher, Map.of("gameId", gameId, "name", normalized));
+    }
+
     public boolean hasProtagonists(String gameId) {
         var actors = listPlayerActors(gameId);
         return actors != null && !actors.isEmpty();

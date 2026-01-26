@@ -4,8 +4,10 @@ import java.util.List;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
@@ -18,6 +20,7 @@ import dev.ebullient.soloplay.play.model.Actor;
 import dev.ebullient.soloplay.play.model.Event;
 import dev.ebullient.soloplay.play.model.GameState;
 import dev.ebullient.soloplay.play.model.Location;
+import dev.ebullient.soloplay.play.model.PlayerActor;
 
 /**
  * REST API for game management operations.
@@ -121,5 +124,72 @@ public class GameResource {
     @Produces(MediaType.APPLICATION_JSON)
     public List<Event> listEvents(@RestPath String gameId) {
         return gameRepository.listEvents(gameId);
+    }
+
+    /**
+     * Update a player-controlled character's details.
+     *
+     * @param gameId The game identifier
+     * @param actorId The actor identifier (name or alias)
+     * @param request The update request containing fields to modify
+     * @return The updated actor, or 404 if not found
+     */
+    @PATCH
+    @Path("/{gameId}/party/{actorId}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response updatePartyMember(
+            @RestPath String gameId,
+            @RestPath String actorId,
+            PlayerActorUpdateRequest request) {
+
+        PlayerActor playerActor = gameRepository.findPlayerActorByNameOrAlias(gameId, actorId);
+        if (playerActor == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity("Player actor not found: " + actorId)
+                    .build();
+        }
+
+        // Apply updates
+        if (request.name() != null) {
+            playerActor.setName(request.name());
+        }
+        if (request.summary() != null) {
+            playerActor.setSummary(request.summary());
+        }
+        if (request.description() != null) {
+            playerActor.setDescription(request.description());
+        }
+        if (request.actorClass() != null) {
+            playerActor.setActorClass(request.actorClass());
+        }
+        if (request.level() != null) {
+            playerActor.setLevel(request.level());
+        }
+        if (request.aliases() != null) {
+            playerActor.setAliases(request.aliases());
+        }
+        if (request.tags() != null) {
+            playerActor.setTags(request.tags());
+        }
+
+        gameRepository.saveActor(playerActor);
+        gameRepository.refreshTheParty(gameId);
+
+        return Response.ok(playerActor).build();
+    }
+
+    /**
+     * Request body for updating a player-controlled character.
+     * All fields are optional; only non-null fields will be updated.
+     */
+    public record PlayerActorUpdateRequest(
+            String name,
+            String summary,
+            String description,
+            String actorClass,
+            Integer level,
+            List<String> aliases,
+            List<String> tags) {
     }
 }
