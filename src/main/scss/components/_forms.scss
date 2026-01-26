@@ -7,7 +7,9 @@ select {
   font-family: var(--font-family-base);
 }
 
-input[type="text"] {
+input[type="text"],
+input[type="number"],
+textarea {
   padding: var(--spacing-sm);
   background: var(--color-bg-base);
   border: 1px solid var(--color-text-accent);

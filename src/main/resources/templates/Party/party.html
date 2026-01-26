@@ -1,0 +1,76 @@
+{#include base}
+{#title}Party{/title}
+
+{#stylesheets}
+<link rel="stylesheet" href="/party.css">
+{/stylesheets}
+
+{#scripts}
+<script src="/party.js" defer></script>
+{/scripts}
+
+{#header-title}Party{/header-title}
+
+{#mainClass}class="party"{/mainClass}
+{#content}
+<div class="party-controls" data-game-id="{gameId}">
+  <div class="cluster">
+    <label for="party-game-select">Current game</label>
+    <select id="party-game-select">
+      <option value="">Loading games...</option>
+    </select>
+  </div>
+</div>
+
+{#if flash:error}
+<div class="card card--error">
+  <p>{flash:error}</p>
+</div>
+{/if}
+
+{#if flash:success}
+<div class="card card--success">
+  <p>{flash:success}</p>
+</div>
+{/if}
+
+{#if members.isEmpty && gameId != null}
+<div class="card">
+  <p>No player characters found for this game.</p>
+</div>
+{/if}
+
+{#if gameId == null}
+<div class="card">
+  <p>Select a game to view and edit your party members.</p>
+</div>
+{/if}
+
+<div class="party-members">
+  {#for member in members}
+  <div class="card party-card">
+    <form method="POST" action="/party/{gameId}/{member.name}">
+      <h3>{member.name}</h3>
+
+      <div class="form-inline"><label for="name-{member.id}">Name</label><input type="text" id="name-{member.id}" name="name" value="{member.name}" required></div>
+      <div class="form-inline"><label for="actorClass-{member.id}">Class</label><input type="text" id="actorClass-{member.id}" name="actorClass" value="{member.actorClass}" placeholder="e.g., Fighter, Wizard"></div>
+      <div class="form-inline"><label for="level-{member.id}">Level</label><input type="number" id="level-{member.id}" name="level" value="{member.level}" min="1"></div>
+      <div class="form-inline"><label for="aliases-{member.id}">Aliases</label><input type="text" id="aliases-{member.id}" name="aliases" value="{#each member.aliases}{it}{#if it_hasNext}, {/if}{/each}" placeholder="Comma-separated"></div>
+      <div class="form-inline"><label for="tags-{member.id}">Tags</label><input type="text" id="tags-{member.id}" name="tags" value="{#each member.tags}{it}{#if it_hasNext}, {/if}{/each}" placeholder="Comma-separated"></div>
+      <div class="form-group">
+        <label for="summary-{member.id}">Summary</label>
+        <textarea id="summary-{member.id}" name="summary" rows="2" placeholder="Short identifier">{member.summary}</textarea>
+      </div>
+      <div class="form-group">
+        <label for="description-{member.id}">Description</label>
+        <textarea id="description-{member.id}" name="description" rows="4" placeholder="Full narrative description">{member.description}</textarea>
+      </div>
+
+      {#authenticityToken/}
+      <button type="submit" class="btn btn-primary btn-sm">Save</button>
+    </form>
+  </div>
+  {/for}
+</div>
+{/content}
+{/include}
