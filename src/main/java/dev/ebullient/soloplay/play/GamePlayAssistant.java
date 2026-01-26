@@ -6,6 +6,7 @@ import jakarta.enterprise.context.SessionScoped;
 
 import dev.ebullient.soloplay.ai.LoreRetriever;
 import dev.ebullient.soloplay.ai.LoreTools;
+import dev.ebullient.soloplay.play.model.Event;
 import dev.ebullient.soloplay.play.model.RollResult;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
@@ -28,6 +29,7 @@ import io.quarkiverse.langchain4j.RegisterAiService;
            - Set pendingRoll = null, patches = null when asking for clarification
 
         2. DETERMINE IF ROLL IS NEEDED
+
            When player intent is clear and action requires mechanical resolution:
            - Skill checks: persuasion, stealth, perception, investigation, etc.
            - Attack rolls: melee, ranged, spell attacks
@@ -43,6 +45,25 @@ import io.quarkiverse.langchain4j.RegisterAiService;
            - Narrate the outcome with vivid detail
            - Update world state via patches (NPCs, locations, plot flags)
            - Present next decision point or hook
+
+        CRITICAL RULE: Never mix choices and rolls in the same response.
+
+        If the narrative requires a dice roll:
+        - Present ONLY the roll requirement
+        - Do not offer other choices
+
+        If presenting choices to the player:
+        - Do not include any roll requirements
+        - Choices should be complete actions: "Investigate the vine" not "Make a strength check"
+
+        WRONG (what you're doing now):
+        "You have two options: fight the blights, or investigate the vine.
+        Roll Required: strength check vs. d6"
+
+        RIGHT (two separate turns):
+        Turn 1: "Roll Required: Strength check to resist the vine's pull (DC 14)"
+        [player rolls]
+        Turn 2: "You resist the pull. Two options: fight the new blights, or investigate the vine."
 
         === GM PRINCIPLES ===
 
@@ -84,49 +105,6 @@ import io.quarkiverse.langchain4j.RegisterAiService;
 
         Use game state tools to check for existing NPCs/locations before creating patches,
         and to maintain continuity with established characters and places.
-
-        === OUTPUT FORMAT (JSON ONLY) ===
-
-        Return a single JSON object:
-
-        {
-          "narration": "string - your narrative response in markdown",
-          "turnSummary": "string - recap-friendly summary of what happened and current situation",
-          "currentLocation": "string - name of location at end of turn",
-          "pendingRoll": {
-            "type": "skill_check" | "attack" | "saving_throw" | "ability_check",
-            "skill": "persuasion" | "stealth" | etc. (null for attacks/saves),
-            "ability": "strength" | "dexterity" | etc.,
-            "dc": number or null (null if contested or unknown),
-            "target": "who/what this is against",
-            "context": "brief explanation for player"
-          } | null,
-          "patches": [
-            {
-              "type": "actor" | "location",
-              "name": string,
-              "summary": string | null,
-              "description": string | null,
-              "tags": string[] | null,
-              "aliases": string[] | null,
-              "sources": ["filename.md"] or []
-            }
-          ] | null,
-          "sources": ["filename.md"] or [],
-          "actorsPresent": ["NPC Name", "Another NPC"],
-          "locationsPresent": ["other location name"]
-        }
-
-        Rules:
-        - narration: the GM's narrative response to the player
-        - turnSummary: 1-2 sentences capturing what happened AND where things stand now (for event log and session recaps)
-        - currentLocation: just the location name (e.g., "Rusty Anchor Tavern")
-        - pendingRoll = null means no roll needed, action resolved
-        - patches = null or [] means no world state changes. ONLY use type "actor" (for NPCs/creatures) or "location". Never use "event", "player_actor", or any other type.
-        - sources: list of lore document filenames used. If you did not use lore docs or tools, sources = []. Don't invent filenames.
-        - actorsPresent: names of all NPCs/creatures currently in the scene (not the player character)
-        - locationsPresent: current location(s) relevant to the scene
-        - No code fences. Output must start with `{` and end with `}`
 
         === EXAMPLE RESPONSE (no pending roll) ===
 
@@ -194,10 +172,7 @@ public interface GamePlayAssistant {
     // --- Scene Start: First scene of the adventure ---
 
     @UserMessage("""
-            === BEGIN ADVENTURE ===
-            - Game ID: {gameId}
-
-            Player-controlled characters:
+            === PLAYER CHARACTERS ===
             {theParty}
 
             {#if adventureName}
@@ -238,16 +213,19 @@ public interface GamePlayAssistant {
             Adventure: {adventureName}
             {/if}
 
-            Player-controlled characters:
+            === PLAYER CHARACTERS ===
             {theParty}
 
-            Current Location: {locationName}
+            === CURRENT LOCATION ===
+            {locationName}
+
+            === RECENT EVENTS ===
+            {recentEvents}
 
             Welcome the player back. Briefly recap where they are and what's happening,
             then prompt for their next action.
 
-            Recent Events:
-            {recentEvents}
+            MUST use the player character's actual name. DO NOT invent or alter character names.
 
             RESPOND matching the OUTPUT FORMAT above (narration, turnSummary, currentSituation, etc. at top level).
             """)
@@ -270,6 +248,12 @@ public interface GamePlayAssistant {
             {theParty}
 
             Current Location: {locationName}
+            {#if event}
+
+            Previously:
+
+            {event.render()}
+            {/if}
 
             Player says:
 
@@ -280,6 +264,7 @@ public interface GamePlayAssistant {
             String adventureName,
             List<String> theParty,
             String locationName,
+            Event event,
             String playerInput);
 
     // --- Roll Resolution: Player completed a roll ---
@@ -294,6 +279,12 @@ public interface GamePlayAssistant {
             {theParty}
 
             Current Location: {locationName}
+            {#if event}
+
+            Previously:
+
+            {event.render()}
+            {/if}
 
             The player rolled for: {rollResult.context}
             Result: {rollResult.total} ({rollResult.breakdown})
@@ -307,5 +298,6 @@ public interface GamePlayAssistant {
             String adventureName,
             List<String> theParty,
             String locationName,
+            Event event,
             RollResult rollResult);
 }

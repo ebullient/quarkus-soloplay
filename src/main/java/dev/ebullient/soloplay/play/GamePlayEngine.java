@@ -24,6 +24,7 @@ import dev.ebullient.soloplay.play.model.RollResult;
 
 @ApplicationScoped
 public class GamePlayEngine {
+    static final String EVENT_STASH = "prev_event";
 
     @Inject
     GameRepository gameRepository;
@@ -86,6 +87,7 @@ public class GamePlayEngine {
                 game.getAdventureName(),
                 listTheParty(game),
                 game.getCurrentLocation(),
+                game.getStash(EVENT_STASH, Event.class),
                 playerInput);
 
         return processResponse(game, response, emitter);
@@ -107,6 +109,7 @@ public class GamePlayEngine {
                 game.getAdventureName(),
                 listTheParty(game),
                 game.getCurrentLocation(),
+                game.getStash(EVENT_STASH, Event.class),
                 rollResult);
 
         return processResponse(game, response, emitter);
@@ -185,6 +188,7 @@ public class GamePlayEngine {
             event.addParticipants(actors);
             event.addLocations(locations);
             modified.add(event);
+            game.putStash(EVENT_STASH, event);
         }
 
         modified.addAll(actors);

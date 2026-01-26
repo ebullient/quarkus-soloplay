@@ -124,7 +124,6 @@ public class RollHandler {
             return Optional.empty();
         }
         game.putStash(DRAFT_KEY, pendingRoll);
-        Log.debugf("create fragment for pending roll: %s", pendingRoll.render());
         return Optional.of(new HtmlFragment(DRAFT_KEY, pendingRoll.render()));
     }
 }

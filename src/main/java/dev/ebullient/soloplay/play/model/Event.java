@@ -12,7 +12,7 @@ import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 
 @NodeEntity
-public class Event extends BaseEntity {
+public class Event extends BaseEntity implements Stash {
 
     @CheckedTemplate(basePath = "models")
     public static class Templates {

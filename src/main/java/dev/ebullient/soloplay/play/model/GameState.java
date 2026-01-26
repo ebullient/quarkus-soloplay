@@ -32,7 +32,7 @@ public class GameState extends BaseEntity {
     GamePhase gamePhase;
 
     // Gameplay state
-    Integer turnNumber; // Increment each turn
+    int turnNumber; // Increment each turn
     String currentLocation; // "location:docks"
     Long lastPlayedAt;
 
@@ -78,11 +78,7 @@ public class GameState extends BaseEntity {
     }
 
     public void incrementTurn() {
-        if (turnNumber == null) {
-            turnNumber = 1;
-        } else {
-            turnNumber++;
-        }
+        turnNumber++;
         this.lastPlayedAt = Instant.now().toEpochMilli();
     }
 

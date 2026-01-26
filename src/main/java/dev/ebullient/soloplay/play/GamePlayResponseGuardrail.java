@@ -34,6 +34,11 @@ public class GamePlayResponseGuardrail implements OutputGuardrail {
             if (response.narration() == null) {
                 return reprompt("Missing narration", REPROMPT_PROMPT);
             }
+            if (response.pendingRoll() != null && response.playerChoices() != null && !response.playerChoices().isEmpty()) {
+                // The LLM violated the constraint - force correction
+                return reprompt("Offer only a roll or a choice of actions", REPROMPT_PROMPT);
+            }
+
             return OutputGuardrailResult.successWith(responseFromLLM.text(), response);
         } catch (JsonProcessingException e) {
             return reprompt(REPROMPT_MESSAGE, e, REPROMPT_PROMPT);
