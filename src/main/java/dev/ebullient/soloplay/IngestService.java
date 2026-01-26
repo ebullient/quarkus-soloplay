@@ -1,19 +1,14 @@
 package dev.ebullient.soloplay;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.neo4j.ogm.session.SessionFactory;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
@@ -27,14 +22,6 @@ import io.quarkus.logging.Log;
 @ApplicationScoped
 public class IngestService {
     static final String TOOLS_DOC_SEPARATOR = "============\n";
-
-    // Regex pattern for YAML frontmatter
-    // (?s) enables DOTALL mode (. matches newlines)
-    // ^--- matches opening ---
-    // (.*?) captures content (non-greedy)
-    // \n--- matches closing ---
-    static final java.util.regex.Pattern YAML_FRONTMATTER_PATTERN = java.util.regex.Pattern
-            .compile("(?s)^---\\s*\\n(.*?)\\n---\\s*\\n");
 
     // Regex pattern for markdown section headers (## Header)
     // (?m) enables multiline mode (^ matches line starts)
@@ -57,6 +44,9 @@ public class IngestService {
     @Inject
     SessionFactory sessionFactory;
 
+    @Inject
+    MarkdownDocumentParser markdownParser;
+
     public void ingestFile(String filename, String content) {
         Log.infof("Processing file: %s (size: %d bytes)", filename, content.length());
 
@@ -71,16 +61,18 @@ public class IngestService {
                 String trimmed = part.trim();
                 // Skip empty parts and parts that are just the separator
                 if (!trimmed.isBlank() && !trimmed.equals("============")) {
-                    List<String> chunkIds = processStructuredMarkdown(filename, trimmed);
+                    Document document = markdownParser.parse(filename, trimmed);
+                    List<String> chunkIds = chunkDocument(document);
                     if (allChunkIds != null) {
                         allChunkIds.addAll(chunkIds);
                     }
                     processedCount++;
                 }
             }
-            Log.infof("Processed %d non-empty sections from %s", processedCount, filename);
+            Log.infof("Processed %d non-empty notes from %s", processedCount, filename);
         } else {
-            List<String> chunkIds = processStructuredMarkdown(filename, content.trim());
+            Document document = markdownParser.parse(filename, content.trim());
+            List<String> chunkIds = chunkDocument(document);
             if (allChunkIds != null) {
                 allChunkIds.addAll(chunkIds);
             }
@@ -94,33 +86,19 @@ public class IngestService {
         Log.infof("Completed processing file: %s", filename);
     }
 
-    private List<String> processStructuredMarkdown(String filename, String content) {
-        // Parse YAML frontmatter
-        // Note: structured frontmatter includes the real filename
-        // Keep ingest sourceFile for traceability + allow re-processing
-        Map<String, Object> yamlMetadata = parseYamlFrontmatter(content);
-        yamlMetadata.put("sourceFile", filename);
-        yamlMetadata.put("canonical", "true");
+    private List<String> chunkDocument(Document document) {
+        Metadata common = document.metadata();
 
-        Metadata common = Metadata.from(yamlMetadata);
-
-        String cleanContent = removeYamlFrontmatter(content)
-                .replaceAll("\\^[a-z0-9]+$", ""); // replace block references
-
-        String prefix = "";
-        if (yamlMetadata.containsKey("adventureName")) {
-            prefix += "Adventure: %s\n\n".formatted(yamlMetadata.get("adventureName"));
-        }
-        if (yamlMetadata.containsKey("chapterName")) {
-            prefix += "Chapter %s: %s\n\n".formatted(yamlMetadata.get("chapterNumber"), yamlMetadata.get("chapterName"));
-        }
+        String sourceFile = common.getString("sourceFile");
+        String prefix = common.getString("groupPrefix");
+        String content = document.text();
 
         List<TextSegment> segments = new ArrayList<>();
         // Track start index of multi-chunk sections for NEXT relationships
         List<int[]> chunkedSectionRanges = new ArrayList<>();
 
-        if (prefix.length() + cleanContent.length() > chunkSize) {
-            String[] sections = SECTION_HEADER_PATTERN.split(cleanContent);
+        if (prefix.length() + content.length() > chunkSize) {
+            String[] sections = SECTION_HEADER_PATTERN.split(content);
             int sectionIndex = 0;
             for (String section : sections) {
                 if (section.isBlank()) {
@@ -142,13 +120,12 @@ public class IngestService {
 
                     int chunkIndex = 0;
                     for (TextSegment subSegment : subSegments) {
+                        subSegment.metadata().putAll(common.toMap());
                         subSegment.metadata()
                                 .put("section", sectionTitle)
                                 .put("sectionIndex", sectionIndex)
-                                .put("chunkIndex", chunkIndex++)
-                                .put("sourceFile", filename)
-                                .put("canonical", "true");
-                        subSegment.metadata().putAll(yamlMetadata);
+                                .put("chunkIndex", chunkIndex++);
+
                         segments.add(subSegment);
                     }
 
@@ -168,9 +145,9 @@ public class IngestService {
                 }
                 sectionIndex++;
             }
-        } else if (!cleanContent.isBlank()) {
+        } else if (!content.isBlank()) {
             TextSegment segment = TextSegment.from(
-                    prefix + cleanContent,
+                    prefix + content,
                     common);
             segment.metadata()
                     .put("sectionIndex", 0)
@@ -179,26 +156,23 @@ public class IngestService {
         }
 
         // Generate embeddings and store
-        Log.infof("Generating embeddings for %d segments from %s", segments.size(), filename);
+        Log.infof("Generating embeddings for %d segments from %s", segments.size(), sourceFile);
 
         if (segments.isEmpty()) {
-            Log.warnf("No valid segments to embed for %s", filename);
+            Log.warnf("No valid segments to embed for %s", sourceFile);
             return List.of();
         }
 
         List<Embedding> embeddings = embeddingModel.embedAll(segments).content();
         List<String> chunkIds = embeddingStore.addAll(embeddings, segments);
-        Log.infof("Stored %d embeddings for %s", embeddings.size(), filename);
+        Log.infof("Stored %d embeddings for %s", embeddings.size(), sourceFile);
 
         // Add source-specific label to nodes (e.g., items.txt → :Item)
-        String label = deriveLabelFromFilename(filename);
-        if (label != null) {
-            addLabelToNodes(chunkIds, label);
-        }
+        addLabelToNodes(chunkIds, common.getString("label"));
 
         // Create NEXT relationships for chunked sections (non-adventure files only)
         // Adventure files handle this separately with relationships across all chunks
-        boolean isAdventureFile = "adventures.txt".equals(filename);
+        boolean isAdventureFile = "adventures.txt".equals(sourceFile);
         if (!isAdventureFile && !chunkedSectionRanges.isEmpty()) {
             createSectionChunkRelationships(chunkIds, chunkedSectionRanges);
         }
@@ -206,60 +180,14 @@ public class IngestService {
         return chunkIds;
     }
 
-    /**
-     * Derive a PascalCase singular label from a filename.
-     * Example: "items.txt" → "Item", "magic-items.txt" → "MagicItem"
-     */
-    private String deriveLabelFromFilename(String filename) {
-        if (filename == null || filename.isBlank()) {
-            return null;
+    private String extractFirstLine(String content) {
+        int newlineIndex = content.indexOf('\n');
+        if (newlineIndex > 0) {
+            return content.substring(0, newlineIndex)
+                    .replaceAll("^#* ", "")
+                    .trim();
         }
-
-        // Remove extension
-        String baseName = filename.contains(".")
-                ? filename.substring(0, filename.lastIndexOf('.'))
-                : filename;
-
-        if (baseName.isBlank()) {
-            return null;
-        }
-
-        // Singularization rules for common English plural forms
-        if (baseName.endsWith("ies")) {
-            // abilities → ability
-            baseName = baseName.substring(0, baseName.length() - 3) + "y";
-        } else if (baseName.endsWith("sses")) {
-            // classes → class
-            baseName = baseName.substring(0, baseName.length() - 2);
-        } else if (baseName.endsWith("xes")) {
-            // boxes → box
-            baseName = baseName.substring(0, baseName.length() - 2);
-        } else if (baseName.endsWith("ches")) {
-            // watches → watch
-            baseName = baseName.substring(0, baseName.length() - 2);
-        } else if (baseName.endsWith("shes")) {
-            // dishes → dish
-            baseName = baseName.substring(0, baseName.length() - 2);
-        } else if (baseName.endsWith("s") && !baseName.endsWith("ss")) {
-            // items → item, adventures → adventure, monsters → monster
-            baseName = baseName.substring(0, baseName.length() - 1);
-        }
-
-        // Convert to PascalCase, handling hyphens and underscores
-        // "magic-item" → "MagicItem", "magic_item" → "MagicItem"
-        StringBuilder result = new StringBuilder();
-        boolean capitalizeNext = true;
-        for (char c : baseName.toCharArray()) {
-            if (c == '-' || c == '_') {
-                capitalizeNext = true;
-            } else if (capitalizeNext) {
-                result.append(Character.toUpperCase(c));
-                capitalizeNext = false;
-            } else {
-                result.append(Character.toLowerCase(c));
-            }
-        }
-        return result.toString();
+        return content.trim();
     }
 
     /**
@@ -271,9 +199,7 @@ public class IngestService {
         }
 
         var session = sessionFactory.openSession();
-        var tx = session.beginTransaction();
-
-        try {
+        try (var tx = session.beginTransaction()) {
             String cypher = """
                     MATCH (d:Document) WHERE d.id IN $nodeIds
                     SET d:%s
@@ -283,10 +209,7 @@ public class IngestService {
             tx.commit();
             Log.infof("Added label :%s to %d nodes", label, nodeIds.size());
         } catch (Exception e) {
-            tx.rollback();
             Log.errorf(e, "Error adding label to nodes: %s", e.getMessage());
-        } finally {
-            tx.close();
         }
     }
 
@@ -363,152 +286,6 @@ public class IngestService {
             throw new RuntimeException("Failed to create section chunk relationships: " + e.getMessage(), e);
         } finally {
             tx.close();
-        }
-    }
-
-    private String extractFirstLine(String content) {
-        int newlineIndex = content.indexOf('\n');
-        if (newlineIndex > 0) {
-            return content.substring(0, newlineIndex)
-                    .replaceAll("^#* ", "")
-                    .trim();
-        }
-        return content.trim();
-    }
-
-    private String removeYamlFrontmatter(String content) {
-        return YAML_FRONTMATTER_PATTERN.matcher(content).replaceFirst("").trim();
-    }
-
-    private Map<String, Object> parseYamlFrontmatter(String content) {
-        try {
-            // Extract YAML content between --- delimiters using regex
-            var matcher = YAML_FRONTMATTER_PATTERN.matcher(content);
-
-            if (!matcher.find()) {
-                return new HashMap<>(); // No frontmatter - this is fine
-            }
-
-            String yamlContent = matcher.group(1).trim();
-
-            // Parse YAML using Jackson
-            ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
-            @SuppressWarnings("unchecked")
-            Map<String, Object> rawMap = yamlMapper.readValue(yamlContent, Map.class);
-
-            // If aliases exists but name doesn't, use first alias as name
-            if (!rawMap.containsKey("name") && rawMap.containsKey("aliases")) {
-                Object aliases = rawMap.get("aliases");
-                if (aliases instanceof List<?> list && !list.isEmpty()) {
-                    rawMap.put("name", list.get(0));
-                }
-            }
-
-            // Convert to Map<String, String> for metadata
-            Map<String, Object> result = new HashMap<>();
-
-            Object loreTags = rawMap.get("loreTags");
-            if (loreTags instanceof List<?> loreTagList) {
-                parseHierarchicalTags(loreTagList, result);
-            }
-
-            for (Map.Entry<String, Object> entry : rawMap.entrySet()) {
-                String key = entry.getKey();
-                Object value = entry.getValue();
-
-                // Skip null values
-                if (value == null) {
-                    Log.debugf("Skipping null value for YAML key: %s", key);
-                    continue;
-                }
-
-                // Handle lists as comma-delimited strings
-                if (value instanceof List<?> list) {
-                    result.put(key,
-                            list.stream()
-                                    .map(Object::toString)
-                                    .collect(Collectors.joining(",")));
-                } else {
-                    result.put(key, value.toString());
-                }
-            }
-            return result;
-        } catch (Exception e) {
-            // Document has frontmatter but it's malformed - fail the upload
-            Log.errorf(e, "Failed to parse YAML frontmatter: %s", e.getMessage());
-            throw new DocumentProcessingException(
-                    "Invalid YAML frontmatter: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Parse hierarchical loreTags into structured metadata.
-     * Example: "lore/monster/cr/8" → metadata.put("monster.cr", "8")
-     *
-     * @param loreTags List of hierarchical tags from YAML
-     * @param metadata Metadata map to populate
-     */
-    private void parseHierarchicalTags(List<?> loreTags, Map<String, Object> metadata) {
-        if (loreTags == null || loreTags.isEmpty()) {
-            return;
-        }
-
-        boolean contentTypeSet = false;
-
-        for (Object tag : loreTags) {
-            String tagStr = tag.toString();
-
-            // Only process tags with "lore/" prefix
-            if (!tagStr.startsWith("lore/")) {
-                continue;
-            }
-
-            // Remove "lore/" prefix
-            String path = tagStr.substring(5); // "monster/cr/8"
-
-            // Split into parts: ["monster", "cr", "8"]
-            String[] parts = path.split("/");
-
-            if (parts.length == 0 || "compendium".equals(parts[0])) {
-                continue;
-            }
-
-            // Set contentType from first lore/ tag encountered
-            if (!contentTypeSet) {
-                metadata.put("contentType", parts[0]);
-                contentTypeSet = true;
-            }
-
-            final String key;
-            final String value;
-            // Parse nested properties
-            if (parts.length == 2) {
-                key = parts[0];
-                value = parts[1];
-            } else if (parts.length >= 3) {
-                // Complex case: "lore/monster/cr/8" → metadata["monster.cr"] = "8"
-                // Build dotted key from all parts except the last
-                StringBuilder keyBuilder = new StringBuilder(parts[0]);
-                for (int i = 1; i < parts.length - 1; i++) {
-                    keyBuilder.append(".").append(parts[i]);
-                }
-                key = keyBuilder.toString();
-                value = parts[parts.length - 1].replaceAll("\\s+", " ").trim();
-            } else {
-                // Simple case: "lore/statblock" → contentType already set, no other value to
-                // save
-                continue;
-            }
-
-            if (value.isEmpty()) {
-                continue; // Skip tags with empty values
-            }
-
-            // Convert to list if multiple of the same key, e.g.
-            // - lore/monster/environment/grassland
-            // - lore/monster/environment/hill
-            // - lore/monster/environment/mountain
-            metadata.merge(key, value, (v1, v2) -> v1 + ", " + v2);
         }
     }
 
