@@ -40,11 +40,6 @@ import io.quarkiverse.langchain4j.ToolBox;
         - Don't roleplay or narrate scenes
         - Focus on providing accurate, useful information
         - If a question requires GM judgment, present options rather than deciding
-
-        RESPONSE FORMAT: Return a JSON object with this structure:
-        {
-            "response": "Your complete answer here"
-        }
         """)
 @RegisterAiService(retrievalAugmentor = LoreRetriever.class)
 @OutputGuardrails(JsonChatResponseGuardrail.class)

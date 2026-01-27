@@ -1,4 +1,9 @@
 package dev.ebullient.soloplay.ai;
 
-public record JsonChatResponse(String response) {
+import dev.langchain4j.model.output.structured.Description;
+
+public record JsonChatResponse(
+    @Description("Your complete answer in markdown format")
+    String response
+) {
 }

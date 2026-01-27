@@ -10,11 +10,6 @@ import io.quarkiverse.langchain4j.RegisterAiService;
 
         Be conversational and friendly. Provide clear, concise answers.
         When uncertain, say so rather than guessing.
-
-        RESPONSE FORMAT: Return a JSON object with this structure:
-        {
-            "response": "Your complete answer here"
-        }
         """)
 @RegisterAiService(chatMemoryProviderSupplier = RegisterAiService.NoChatMemoryProviderSupplier.class)
 @OutputGuardrails(JsonChatResponseGuardrail.class)

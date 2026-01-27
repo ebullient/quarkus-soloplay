@@ -30,6 +30,9 @@ public class ActorCreationResponseGuardrail implements OutputGuardrail {
     public OutputGuardrailResult validate(AiMessage responseFromLLM) {
         try {
             ActorCreationResponse response = objectMapper.readValue(responseFromLLM.text(), ActorCreationResponse.class);
+            if (response.message() == null || response.message().isBlank()) {
+                return reprompt("Missing message to ", REPROMPT_PROMPT);
+            }
             return OutputGuardrailResult.successWith(responseFromLLM.text(), response);
         } catch (JsonProcessingException e) {
             return reprompt(REPROMPT_MESSAGE, e, REPROMPT_PROMPT);

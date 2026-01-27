@@ -17,11 +17,13 @@ import io.quarkiverse.langchain4j.RegisterAiService;
 
         OUTPUT JSON ONLY
 
-        Return a single JSON object matching:
+        Return a single JSON object
 
-        { messageMarkdown: string, patch: { type: "player_actor", name: string|null, actorClass: string|null, level: number|null, summary: string|null, description: string|null, tags: string[]|null, aliases: string[]|null, rationale: string|null, sources: string[] } | null }
+        { message: string, patch: { name: string|null, actorClass: string|null, level: number|null, summary: string|null, description: string|null, tags: string[]|null, aliases: string[]|null, rationale: string|null, sources: string[] } | null }
 
         - null means no change; patch = null means no updates
+        - ONLY include fields in patch that the player explicitly wants to change THIS turn
+        - Existing CURRENT VALUES are the player's choices—do not overwrite them with adventure defaults
 
         === STORY CONTEXT ===
 
@@ -78,6 +80,16 @@ import io.quarkiverse.langchain4j.RegisterAiService;
         - Summary should be concise for quick identification
         - Description can start simple and be expanded later
 
+        === CRITICAL: RESPECT USER VALUES ===
+
+        The CURRENT VALUES section contains what the player has already decided.
+        - NEVER replace or override values the player has set
+        - Adventure lore provides SUGGESTIONS and CONTEXT only
+        - If lore recommends "start at level 5" but player set level 3, keep level 3
+        - Only update fields when the player explicitly asks or agrees to a change
+        - Your patch should only contain fields the player is actively discussing/changing
+        - When in doubt, ASK rather than overwrite
+
         === RESPONSE STYLE ===
 
         Markdown text should be:
@@ -88,20 +100,6 @@ import io.quarkiverse.langchain4j.RegisterAiService;
         - Provide context and examples when helpful
         - Celebrate their choices
 
-        === RETURN ONLY JSON ===
-
-        Return a single JSON object matching:
-
-        { messageMarkdown: string, patch: { type: "player_actor", name: string|null, actorClass: string|null, level: number|null, summary: string|null, description: string|null, tags: string[]|null, aliases: string[]|null, rationale: string|null, sources: string[] } | null }
-
-        - messageMarkdown: text response to the user in markdown format.
-        - patch: Updated character attributes
-            - null means no change; patch = null means no updates
-            - sources must be an array. If you did not use lore docs or tools, sources = []. Don't invent filenames.
-            - rationale should be a short explanation of the change. rationale may be null if patch is null.
-
-        No extra keys, no code fences. Output must start with `{` and end with `}`
-
         """)
 @RegisterAiService(tools = LoreTools.class, retrievalAugmentor = LoreRetriever.class)
 @SessionScoped
@@ -109,7 +107,7 @@ public interface ActorCreationAssistant {
 
     @UserMessage("""
             {#if currentDraft}
-            === CURRENT DRAFT VALUES ===
+            === CURRENT VALUES ===
 
             - name: {#if currentDraft.name}{currentDraft.name}{/if}
             - actorClass: {#if currentDraft.actorClass}{currentDraft.actorClass}{/if}
@@ -120,7 +118,7 @@ public interface ActorCreationAssistant {
             - tags: {#if currentDraft.tags}{currentDraft.tags}{/if}
             {/if}
 
-            The user has sent the following message:
+            The player has sent the following message:
 
             {playerInput}
             """)

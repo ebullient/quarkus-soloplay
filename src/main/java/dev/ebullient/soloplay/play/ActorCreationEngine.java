@@ -57,7 +57,7 @@ public class ActorCreationEngine {
             ActorCreationResponse response = handleAssistantResponse(game, currentDraft, trimmed);
 
             // All is well with parsed response
-            var message = response.messageMarkdown();
+            var message = response.message();
             var patch = response.patch();
 
             emitter.assistantDelta("Updating your character…\n");
